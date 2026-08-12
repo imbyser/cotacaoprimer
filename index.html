@@ -31,7 +31,7 @@
     .btn-cat:hover { background: #e2e8f0; }
 
     /* Leitor de Câmera */
-    #leitor-camera { width: 100%; max-width: 400px; margin: 10px auto; display: none; }
+    #leitor-camera { width: 100%; max-width: 400px; margin: 10px auto; display: none; border-radius: 10px; overflow: hidden; border: 2px solid #2b6cb0; }
 
     /* Cards de Produto */
     .produto-card { background: white; border-radius: 10px; padding: 12px; margin-bottom: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); display: flex; flex-direction: column; gap: 8px; }
@@ -150,15 +150,13 @@
     window.onload = function() {
       carregarDadosCliente();
       
-      // Verifica se a página foi aberta através de um link de cotação vindo do WhatsApp
       const urlParams = new URLSearchParams(window.location.search);
       const dadosCotacao = urlParams.get('cotacao');
       
       if (dadosCotacao) {
         carregarItensViaUrl(dadosCotacao);
-        alternarModo(2); // Muda direto para modo Pedido se veio via link inteligente
+        alternarModo(2); // Abre direto no modo Pedido se for link vindo do WhatsApp
       } else {
-        // Se for acesso normal, adiciona 1 card padrão
         adicionarNovoProduto("Margarina Deline", "250g (Cx c/ 24)");
       }
     };
@@ -187,9 +185,10 @@
       }
     }
 
-    // 3. LEITOR DE CÓDIGO DE BARRAS
+    // 3. LEITOR DE CÓDIGO DE BARRAS APRIMORADO
     function iniciarLeitorBarcode() {
       const containerCamera = document.getElementById('leitor-camera');
+      
       if (containerCamera.style.display === 'block') {
         if (html5QrcodeScanner) html5QrcodeScanner.clear();
         containerCamera.style.display = 'none';
@@ -197,17 +196,28 @@
       }
 
       containerCamera.style.display = 'block';
-      html5QrcodeScanner = new Html5QrcodeScanner("leitor-camera", { fps: 10, qrbox: 250 });
+
+      html5QrcodeScanner = new Html5QrcodeScanner("leitor-camera", { 
+        fps: 15, 
+        qrbox: { width: 250, height: 150 },
+        experimentalFeatures: {
+          useBarCodeDetectorIfSupported: true
+        }
+      });
       
       html5QrcodeScanner.render((decodedText) => {
-        // Quando lê o código de barras, insere um novo produto com o código lido
-        adicionarNovoProduto(`Prod. Código: ${decodedText}`, "Verificar Caixa");
+        if (navigator.vibrate) navigator.vibrate(200);
+        
+        adicionarNovoProduto(`Cód. Barras: ${decodedText}`, "Verificar Caixa");
         html5QrcodeScanner.clear();
         containerCamera.style.display = 'none';
-      }, (error) => {});
+        alert(`Código de barras ${decodedText} lido com sucesso!`);
+      }, (error) => {
+        // Busca contínua
+      });
     }
 
-    // FUNÇÕES BÁSICAS DO CATALOGO
+    // FUNÇÕES BÁSICAS DO CATÁLOGO
     function alternarModo(modo) {
       modoAtual = modo;
       document.getElementById('btnModo1').classList.toggle('ativo', modo === 1);
@@ -295,7 +305,7 @@
       document.getElementById('totalDisplay').innerText = 'R$ ' + total.toFixed(2).replace('.', ',');
     }
 
-    // 4. LINK INTELIGENTE E ENVIO WHATSAPP
+    // 4. LINK INTELIGENTE E ENVIO WHATSAPP (SEM NÚMERO FIXO)
     function enviarWhatsApp() {
       const nomeCliente = document.getElementById('nomeCliente').value.trim();
       const telCliente = document.getElementById('telCliente').value.trim();
@@ -337,7 +347,6 @@
       let mensagem = "";
 
       if (modoAtual === 1) {
-        // Gera o link codificado para o vendedor abrir com os itens preenchidos
         const baseUrl = window.location.href.split('?')[0];
         const urlInteligente = `${baseUrl}?cotacao=${encodeURIComponent(itensParaUrl.join(';'))}`;
 
@@ -357,12 +366,11 @@
         mensagem += `*TOTAL ESTIMADO:* R$ ${total.toFixed(2).replace('.', ',')}`;
       }
 
-      const seuNumeroWhatsApp = "5500000000000"; // SEU WHATSAPP COM DDD
-      const url = `https://api.whatsapp.com/send?phone=${seuNumeroWhatsApp}&text=${encodeURIComponent(mensagem)}`;
+      // Link genérico da API do WhatsApp (sem número pré-definido)
+      const url = `https://api.whatsapp.com/send?text=${encodeURIComponent(mensagem)}`;
       window.open(url, '_blank');
     }
 
-    // Carrega itens na tela se for aberto por um link inteligente
     function carregarItensViaUrl(dados) {
       document.getElementById('listaProdutos').innerHTML = '';
       const itens = decodeURIComponent(dados).split(';');
