@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sistema Profissional de Cotação e Pedidos</title>
+
+  <!-- Bibliotecas externas para Leitor de Código de Barras e PDF -->
+  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
+  <style>
+    * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 0; }
+    body { background-color: #f0f2f5; padding-bottom: 160px; }
+    
+    header { background: #1a365d; color: white; padding: 15px; text-align: center; }
+    header h1 { font-size: 1.3em; margin-bottom: 5px; }
+    header p { font-size: 0.85em; opacity: 0.9; }
+
+    .modo-selector { display: flex; justify-content: center; gap: 10px; background: #e2e8f0; padding: 10px; margin-bottom: 15px; }
+    .btn-modo { padding: 10px 20px; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 0.9em; flex: 1; max-width: 200px; text-align: center; }
+    .btn-modo.ativo { background: #2b6cb0; color: white; box-shadow: 0 2px 4px rgba(0,0,0,0.15); }
+
+    .container { max-width: 650px; margin: 0 auto; padding: 0 15px; }
+
+    /* Seção de Atalhos Rápidos / Categorias */
+    .secao-atalhos { background: white; padding: 12px; border-radius: 10px; margin-bottom: 15px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+    .titulo-atalhos { font-size: 0.85em; font-weight: bold; color: #4a5568; margin-bottom: 8px; }
+    .botoes-categorias { display: flex; flex-wrap: wrap; gap: 6px; }
+    .btn-cat { background: #edf2f7; border: 1px solid #cbd5e0; border-radius: 20px; padding: 6px 12px; font-size: 0.8em; font-weight: bold; color: #2d3748; cursor: pointer; }
+    .btn-cat:hover { background: #e2e8f0; }
+
+    /* Leitor de Câmera */
+    #leitor-camera { width: 100%; max-width: 400px; margin: 10px auto; display: none; }
+
+    /* Cards de Produto */
+    .produto-card { background: white; border-radius: 10px; padding: 12px; margin-bottom: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); display: flex; flex-direction: column; gap: 8px; }
+    .linha-inputs { display: flex; gap: 8px; }
+    .input-editavel { border: 1px solid #cbd5e0; border-radius: 6px; padding: 8px; font-size: 0.9em; outline: none; }
+    .input-editavel:focus { border-color: #2b6cb0; background-color: #f7fafc; }
+    
+    .input-nome { flex: 2; font-weight: bold; }
+    .input-embalagem { flex: 1; color: #4a5568; }
+    
+    .linha-acoes { display: flex; justify-content: space-between; align-items: center; border-top: 1px solid #edf2f7; padding-top: 8px; }
+    .bloco-preco { display: flex; align-items: center; gap: 5px; font-weight: bold; color: #2f855a; }
+    .input-preco { width: 85px; font-weight: bold; color: #2f855a; text-align: right; }
+
+    .qtd-controle { display: flex; align-items: center; background: #edf2f7; border-radius: 8px; padding: 2px; }
+    .btn-qtd { background: white; border: 1px solid #cbd5e0; color: #2d3748; width: 30px; height: 30px; border-radius: 6px; font-size: 1.1em; font-weight: bold; cursor: pointer; }
+    .qtd-valor { width: 35px; text-align: center; font-weight: bold; font-size: 0.9em; border: none; background: transparent; }
+
+    .btn-excluir { background: #fff5f5; color: #e53e3e; border: 1px solid #fed7d7; border-radius: 6px; padding: 6px 10px; font-size: 0.8em; cursor: pointer; }
+
+    .btn-adicionar { background: #ebf8ff; color: #2b6cb0; border: 2px dashed #90cdf4; border-radius: 10px; width: 100%; padding: 12px; font-size: 0.95em; font-weight: bold; cursor: pointer; margin-top: 5px; }
+    .btn-camera { background: #faf5ff; color: #6b46c1; border: 1px solid #d6bcfa; border-radius: 10px; width: 100%; padding: 10px; font-size: 0.9em; font-weight: bold; cursor: pointer; margin-top: 8px; }
+
+    /* Barra Inferior Fixa */
+    .carrinho-bar { position: fixed; bottom: 0; left: 0; right: 0; background: white; border-top: 1px solid #e2e8f0; padding: 15px; box-shadow: 0 -2px 10px rgba(0,0,0,0.1); }
+    .carrinho-conteudo { max-width: 650px; margin: 0 auto; }
+    
+    .linha-dados-cliente { display: flex; gap: 8px; margin-bottom: 8px; }
+    .campo-cliente { flex: 1; padding: 8px 10px; border: 1px solid #cbd5e0; border-radius: 6px; font-size: 0.85em; }
+
+    .resumo-total { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; font-size: 1.1em; font-weight: bold; color: #1a365d; }
+
+    .botoes-acao-final { display: flex; gap: 8px; }
+    .btn-whatsapp { background: #25d366; color: white; border: none; flex: 2; padding: 12px; border-radius: 8px; font-size: 0.95em; font-weight: bold; cursor: pointer; text-align: center; }
+    .btn-pdf { background: #e53e3e; color: white; border: none; flex: 1; padding: 12px; border-radius: 8px; font-size: 0.85em; font-weight: bold; cursor: pointer; text-align: center; display: none; }
+  </style>
+</head>
+<body>
+
+  <header>
+    <h1 id="tituloHeader">Cotação de Produtos</h1>
+    <p id="subtituloHeader">Adicione a lista de produtos que seu mercado precisa</p>
+  </header>
+
+  <!-- Botões de Alternância -->
+  <div class="modo-selector">
+    <button class="btn-modo ativo" id="btnModo1" onclick="alternarModo(1)">Cotação</button>
+    <button class="btn-modo" id="btnModo2" onclick="alternarModo(2)">Pedido</button>
+  </div>
+
+  <div class="container" id="conteudoParaPdf">
+    
+    <!-- Atalhos de Categorias Frequentes -->
+    <div class="secao-atalhos" id="secaoAtalhos">
+      <div class="titulo-atalhos">⚡ Adicionar produtos rápidos por categoria:</div>
+      <div class="botoes-categorias">
+        <button class="btn-cat" onclick="carregarCategoria('limpeza')">+ Limpeza</button>
+        <button class="btn-cat" onclick="carregarCategoria('cereais')">+ Cereais & Alimentos</button>
+        <button class="btn-cat" onclick="carregarCategoria('perfumaria')">+ Perfumaria & Cosméticos</button>
+      </div>
+    </div>
+
+    <!-- Leitor de Câmera (Barcode) -->
+    <button class="btn-camera" id="btnToggleCamera" onclick="iniciarLeitorBarcode()">📷 Ler Código de Barras do Estoque</button>
+    <div id="leitor-camera"></div>
+
+    <div id="listaProdutos" style="margin-top: 10px;"></div>
+
+    <button class="btn-adicionar" onclick="adicionarNovoProduto('', '')">+ Adicionar Item em Branco</button>
+  </div>
+
+  <!-- Rodapé -->
+  <div class="carrinho-bar">
+    <div class="carrinho-conteudo">
+      <div class="linha-dados-cliente">
+        <input type="text" id="nomeCliente" class="campo-cliente" placeholder="Nome do Mercadinho..." onchange="salvarDadosCliente()">
+        <input type="tel" id="telCliente" class="campo-cliente" placeholder="WhatsApp da Loja..." onchange="salvarDadosCliente()">
+      </div>
+
+      <div class="resumo-total" id="boxTotal" style="display: none;">
+        <span>Total Estimado:</span>
+        <span id="totalDisplay">R$ 0,00</span>
+      </div>
+
+      <div class="botoes-acao-final">
+        <button class="btn-whatsapp" id="btnAcao" onclick="enviarWhatsApp()">Enviar Cotação pelo WhatsApp</button>
+        <button class="btn-pdf" id="btnPdf" onclick="gerarPDF()">📄 Baixar PDF</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let modoAtual = 1; 
+    let html5QrcodeScanner = null;
+
+    // Catálogo pré-definido para botões rápidos
+    const produtosPreCadastrados = {
+      limpeza: [
+        { nome: "Detergente Neutro 500ml", emb: "Cx c/ 24" },
+        { nome: "Sabão em Pó 800g", emb: "Cx c/ 20" },
+        { nome: "Desinfetante 1L", emb: "Cx c/ 12" }
+      ],
+      cereais: [
+        { nome: "Margarina Deline 250g", emb: "Cx c/ 24" },
+        { nome: "Arroz Tipo 1 5kg", emb: "Fardo c/ 6" },
+        { nome: "Feijão Carioca 1kg", emb: "Fardo c/ 10" }
+      ],
+      perfumaria: [
+        { nome: "Sabonete em Barra 90g", emb: "Cx c/ 72" },
+        { nome: "Shampoo 325ml", emb: "Cx c/ 12" },
+        { nome: "Creme Dental 90g", emb: "Cx c/ 48" }
+      ]
+    };
+
+    // Inicialização ao carregar a página
+    window.onload = function() {
+      carregarDadosCliente();
+      
+      // Verifica se a página foi aberta através de um link de cotação vindo do WhatsApp
+      const urlParams = new URLSearchParams(window.location.search);
+      const dadosCotacao = urlParams.get('cotacao');
+      
+      if (dadosCotacao) {
+        carregarItensViaUrl(dadosCotacao);
+        alternarModo(2); // Muda direto para modo Pedido se veio via link inteligente
+      } else {
+        // Se for acesso normal, adiciona 1 card padrão
+        adicionarNovoProduto("Margarina Deline", "250g (Cx c/ 24)");
+      }
+    };
+
+    // 1. SALVAMENTO AUTOMÁTICO DE DADOS DO CLIENTE
+    function salvarDadosCliente() {
+      const nome = document.getElementById('nomeCliente').value;
+      const tel = document.getElementById('telCliente').value;
+      localStorage.setItem('cliente_nome', nome);
+      localStorage.setItem('cliente_tel', tel);
+    }
+
+    function carregarDadosCliente() {
+      const nomeSalvo = localStorage.getItem('cliente_nome');
+      const telSalvo = localStorage.getItem('cliente_tel');
+      if (nomeSalvo) document.getElementById('nomeCliente').value = nomeSalvo;
+      if (telSalvo) document.getElementById('telCliente').value = telSalvo;
+    }
+
+    // 2. ADICIONAR PRODUTOS POR CATEGORIA
+    function carregarCategoria(cat) {
+      if (produtosPreCadastrados[cat]) {
+        produtosPreCadastrados[cat].forEach(item => {
+          adicionarNovoProduto(item.nome, item.emb);
+        });
+      }
+    }
+
+    // 3. LEITOR DE CÓDIGO DE BARRAS
+    function iniciarLeitorBarcode() {
+      const containerCamera = document.getElementById('leitor-camera');
+      if (containerCamera.style.display === 'block') {
+        if (html5QrcodeScanner) html5QrcodeScanner.clear();
+        containerCamera.style.display = 'none';
+        return;
+      }
+
+      containerCamera.style.display = 'block';
+      html5QrcodeScanner = new Html5QrcodeScanner("leitor-camera", { fps: 10, qrbox: 250 });
+      
+      html5QrcodeScanner.render((decodedText) => {
+        // Quando lê o código de barras, insere um novo produto com o código lido
+        adicionarNovoProduto(`Prod. Código: ${decodedText}`, "Verificar Caixa");
+        html5QrcodeScanner.clear();
+        containerCamera.style.display = 'none';
+      }, (error) => {});
+    }
+
+    // FUNÇÕES BÁSICAS DO CATALOGO
+    function alternarModo(modo) {
+      modoAtual = modo;
+      document.getElementById('btnModo1').classList.toggle('ativo', modo === 1);
+      document.getElementById('btnModo2').classList.toggle('ativo', modo === 2);
+
+      const precos = document.querySelectorAll('.bloco-preco');
+      const quantidades = document.querySelectorAll('.qtd-controle');
+      const boxTotal = document.getElementById('boxTotal');
+      const btnPdf = document.getElementById('btnPdf');
+
+      if (modo === 1) {
+        document.getElementById('tituloHeader').innerText = "Cotação de Produtos";
+        document.getElementById('subtituloHeader').innerText = "Adicione a lista de produtos que seu mercado precisa";
+        document.getElementById('btnAcao').innerText = "Enviar Cotação pelo WhatsApp";
+        
+        precos.forEach(p => p.style.display = 'none');
+        quantidades.forEach(q => q.style.display = 'none');
+        boxTotal.style.display = 'none';
+        btnPdf.style.display = 'none';
+      } else {
+        document.getElementById('tituloHeader').innerText = "Fechamento do Pedido";
+        document.getElementById('subtituloHeader').innerText = "Ajuste os preços e selecione a quantidade de caixas";
+        document.getElementById('btnAcao').innerText = "Enviar Pedido Final";
+        
+        precos.forEach(p => p.style.display = 'flex');
+        quantidades.forEach(q => q.style.display = 'flex');
+        boxTotal.style.display = 'flex';
+        btnPdf.style.display = 'block';
+        calcularTotal();
+      }
+    }
+
+    function alterarQtd(elemento, delta) {
+      const card = elemento.closest('.produto-card');
+      const inputQtd = card.querySelector('.qtd-valor');
+      let valorAtual = parseInt(inputQtd.value) || 0;
+      valorAtual += delta;
+      if (valorAtual < 0) valorAtual = 0;
+      inputQtd.value = valorAtual;
+      calcularTotal();
+    }
+
+    function adicionarNovoProduto(nome = '', embalagem = '', preco = 0) {
+      const lista = document.getElementById('listaProdutos');
+      const novoCard = document.createElement('div');
+      novoCard.className = 'produto-card';
+      novoCard.innerHTML = `
+        <div class="linha-inputs">
+          <input type="text" class="input-editavel input-nome" value="${nome}" placeholder="Nome do Produto">
+          <input type="text" class="input-editavel input-embalagem" value="${embalagem}" placeholder="Ex: 500g / Cx c/ 12">
+        </div>
+        <div class="linha-acoes">
+          <div class="bloco-preco" style="display: ${modoAtual === 2 ? 'flex' : 'none'};">
+            <span>R$/Cx:</span>
+            <input type="number" step="0.01" class="input-editavel input-preco" value="${preco.toFixed(2)}" oninput="calcularTotal()">
+          </div>
+          <div class="qtd-controle" style="display: ${modoAtual === 2 ? 'flex' : 'none'};">
+            <button class="btn-qtd" onclick="alterarQtd(this, -1)">-</button>
+            <input type="text" class="qtd-valor" value="1" readonly>
+            <button class="btn-qtd" onclick="alterarQtd(this, 1)">+</button>
+          </div>
+          <button class="btn-excluir" onclick="removerProduto(this)">Excluir</button>
+        </div>
+      `;
+      lista.appendChild(novoCard);
+      if (modoAtual === 2) calcularTotal();
+    }
+
+    function removerProduto(elemento) {
+      elemento.closest('.produto-card').remove();
+      calcularTotal();
+    }
+
+    function calcularTotal() {
+      if (modoAtual === 1) return;
+      let total = 0;
+      const cards = document.querySelectorAll('.produto-card');
+
+      cards.forEach(card => {
+        const qtd = parseInt(card.querySelector('.qtd-valor').value) || 0;
+        const preco = parseFloat(card.querySelector('.input-preco').value) || 0;
+        total += qtd * preco;
+      });
+
+      document.getElementById('totalDisplay').innerText = 'R$ ' + total.toFixed(2).replace('.', ',');
+    }
+
+    // 4. LINK INTELIGENTE E ENVIO WHATSAPP
+    function enviarWhatsApp() {
+      const nomeCliente = document.getElementById('nomeCliente').value.trim();
+      const telCliente = document.getElementById('telCliente').value.trim();
+      const cards = document.querySelectorAll('.produto-card');
+      
+      let itensMensagem = "";
+      let itensParaUrl = [];
+      let total = 0;
+      let temItens = false;
+
+      cards.forEach(card => {
+        const nome = card.querySelector('.input-nome').value.trim();
+        const embalagem = card.querySelector('.input-embalagem').value.trim();
+        const qtd = parseInt(card.querySelector('.qtd-valor').value) || 0;
+        const preco = parseFloat(card.querySelector('.input-preco').value) || 0;
+
+        if (nome !== "") {
+          temItens = true;
+          const descEmbalagem = embalagem ? ` (${embalagem})` : '';
+
+          if (modoAtual === 1) {
+            itensMensagem += `• ${nome}${descEmbalagem}\n`;
+            itensParaUrl.push(`${nome}|${embalagem}`);
+          } else {
+            if (qtd > 0) {
+              const subtotal = qtd * preco;
+              total += subtotal;
+              itensMensagem += `• *${qtd}x* ${nome}${descEmbalagem} - R$ ${preco.toFixed(2)}/cx = *R$ ${subtotal.toFixed(2)}*\n`;
+            }
+          }
+        }
+      });
+
+      if (!temItens) {
+        alert("Preencha ao menos um produto para continuar.");
+        return;
+      }
+
+      let mensagem = "";
+
+      if (modoAtual === 1) {
+        // Gera o link codificado para o vendedor abrir com os itens preenchidos
+        const baseUrl = window.location.href.split('?')[0];
+        const urlInteligente = `${baseUrl}?cotacao=${encodeURIComponent(itensParaUrl.join(';'))}`;
+
+        mensagem = `*SOLICITAÇÃO DE COTAÇÃO DE PREÇOS*\n`;
+        if (nomeCliente) mensagem += `*Cliente:* ${nomeCliente}\n`;
+        if (telCliente) mensagem += `*Contato:* ${telCliente}\n`;
+        mensagem += `----------------------------\n`;
+        mensagem += `*Produtos solicitados:*\n\n${itensMensagem}`;
+        mensagem += `----------------------------\n`;
+        mensagem += `🔗 *Link para o Vendedor Cotar:* ${urlInteligente}`;
+      } else {
+        mensagem = `*FECHAMENTO DE PEDIDO FINAL*\n`;
+        if (nomeCliente) mensagem += `*Cliente:* ${nomeCliente}\n`;
+        mensagem += `----------------------------\n`;
+        mensagem += itensMensagem;
+        mensagem += `----------------------------\n`;
+        mensagem += `*TOTAL ESTIMADO:* R$ ${total.toFixed(2).replace('.', ',')}`;
+      }
+
+      const seuNumeroWhatsApp = "5500000000000"; // SEU WHATSAPP COM DDD
+      const url = `https://api.whatsapp.com/send?phone=${seuNumeroWhatsApp}&text=${encodeURIComponent(mensagem)}`;
+      window.open(url, '_blank');
+    }
+
+    // Carrega itens na tela se for aberto por um link inteligente
+    function carregarItensViaUrl(dados) {
+      document.getElementById('listaProdutos').innerHTML = '';
+      const itens = decodeURIComponent(dados).split(';');
+      itens.forEach(item => {
+        const partes = item.split('|');
+        adicionarNovoProduto(partes[0] || '', partes[1] || '');
+      });
+    }
+
+    // 5. GERADOR DE PDF
+    function gerarPDF() {
+      const elemento = document.getElementById('conteudoParaPdf');
+      const nomeCliente = document.getElementById('nomeCliente').value || 'Cliente';
+      
+      const opcoes = {
+        margin: 10,
+        filename: `Orcamento_${nomeCliente}.pdf`,
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2 },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+      };
+
+      html2pdf().set(opcoes).from(elemento).save();
+    }
+  </script>
+
+</body>
+</html>
