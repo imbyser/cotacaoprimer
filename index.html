@@ -56,7 +56,7 @@
     .btn-qtd { background: white; border: 1px solid #cbd5e0; color: #2d3748; width: 30px; height: 30px; border-radius: 6px; font-size: 1.1em; font-weight: bold; cursor: pointer; }
     .qtd-valor { width: 35px; text-align: center; font-weight: bold; font-size: 0.9em; border: none; background: transparent; }
 
-    .btn-excluir { background: #fff5f5; color: #e53e3e; border: 1px solid #fed7d7; border-radius: 6px; padding: 6px 10px; font-size: 0.8em; cursor: pointer; }
+    .btn-excluir { background: #fff5f5; color: #e53e3e; border: 1px solid #fed7d7; border-radius: 6px; padding: 6px 10px; font-size: 0.8em; cursor: pointer; font-weight: bold; }
 
     .btn-adicionar { background: #ebf8ff; color: #2b6cb0; border: 2px dashed #90cdf4; border-radius: 10px; width: 100%; padding: 12px; font-size: 0.95em; font-weight: bold; cursor: pointer; margin-top: 5px; }
     .btn-camera { background: #faf5ff; color: #6b46c1; border: 1px solid #d6bcfa; border-radius: 10px; width: 100%; padding: 10px; font-size: 0.9em; font-weight: bold; cursor: pointer; margin-top: 8px; }
@@ -147,7 +147,7 @@
     let etapaAtual = 1; 
     let html5QrcodeScanner = null;
 
-    // Catálogo pré-definido para botões rápidos
+    // BANCO DE DADOS DE PRODUTOS (Pode adicionar código de barras aqui no futuro!)
     const produtosPreCadastrados = {
       limpeza: [
         { nome: "Detergente Neutro 500ml", emb: "Cx c/ 24" },
@@ -166,7 +166,6 @@
       ]
     };
 
-    // Inicialização ao carregar a página
     window.onload = function() {
       carregarDadosCliente();
       
@@ -183,12 +182,9 @@
       }
     };
 
-    // 1. SALVAMENTO AUTOMÁTICO DE DADOS DO CLIENTE
     function salvarDadosCliente() {
-      const nome = document.getElementById('nomeCliente').value;
-      const tel = document.getElementById('telCliente').value;
-      localStorage.setItem('cliente_nome', nome);
-      localStorage.setItem('cliente_tel', tel);
+      localStorage.setItem('cliente_nome', document.getElementById('nomeCliente').value);
+      localStorage.setItem('cliente_tel', document.getElementById('telCliente').value);
     }
 
     function carregarDadosCliente() {
@@ -198,7 +194,6 @@
       if (telSalvo) document.getElementById('telCliente').value = telSalvo;
     }
 
-    // 2. ADICIONAR PRODUTOS POR CATEGORIA
     function carregarCategoria(cat) {
       if (produtosPreCadastrados[cat]) {
         produtosPreCadastrados[cat].forEach(item => {
@@ -207,7 +202,6 @@
       }
     }
 
-    // 3. LEITOR DE CÓDIGO DE BARRAS
     function iniciarLeitorBarcode() {
       const containerCamera = document.getElementById('leitor-camera');
       
@@ -221,10 +215,7 @@
 
       html5QrcodeScanner = new Html5QrcodeScanner("leitor-camera", { 
         fps: 15, 
-        qrbox: { width: 250, height: 150 },
-        experimentalFeatures: {
-          useBarCodeDetectorIfSupported: true
-        }
+        qrbox: { width: 250, height: 150 }
       });
       
       html5QrcodeScanner.render((decodedText) => {
@@ -237,11 +228,9 @@
       }, (error) => {});
     }
 
-    // LÓGICA DAS 3 ETAPAS
     function alternarEtapa(etapa) {
       etapaAtual = etapa;
 
-      // Destaca botão ativo
       document.getElementById('btnEtapa1').classList.toggle('ativo', etapa === 1);
       document.getElementById('btnEtapa2').classList.toggle('ativo', etapa === 2);
       document.getElementById('btnEtapa3').classList.toggle('ativo', etapa === 3);
@@ -261,7 +250,6 @@
       const badgeOrientacao = document.getElementById('badgeOrientacao');
 
       if (etapa === 1) {
-        // ETAPA 1: CLIENTE SOLICITA COTAÇÃO
         document.getElementById('tituloHeader').innerText = "1. Solicitando Cotação";
         document.getElementById('subtituloHeader').innerText = "O cliente seleciona os produtos que precisa e envia ao vendedor";
         document.getElementById('btnAcao').innerText = "Enviar Cotação para o Vendedor";
@@ -274,7 +262,7 @@
 
         precos.forEach(p => p.style.display = 'none');
         quantidades.forEach(q => q.style.display = 'none');
-        botoesExcluir.forEach(b => b.style.display = 'block');
+        botoesExcluir.forEach(b => b.style.display = 'block'); // Botão Excluir Ativo
         
         inputsNome.forEach(i => i.disabled = false);
         inputsEmb.forEach(i => i.disabled = false);
@@ -283,12 +271,11 @@
         btnPdf.style.display = 'none';
 
       } else if (etapa === 2) {
-        // ETAPA 2: VENDEDOR PRECIFICA OS ITENS
         document.getElementById('tituloHeader').innerText = "2. Precificação pelo Vendedor";
         document.getElementById('subtituloHeader').innerText = "O vendedor digita os preços unitários/caixa de cada item";
         document.getElementById('btnAcao').innerText = "Enviar Preços Digitados ao Cliente";
 
-        badgeOrientacao.innerHTML = "💰 <b>Etapa 2 (Vendedor):</b> Digite o preço em cada produto abaixo e envie a cotação pronta de volta para o cliente.";
+        badgeOrientacao.innerHTML = "💰 <b>Etapa 2 (Vendedor):</b> Digite o preço dos produtos. Se algum item estiver em falta, você pode <b>Excluir</b> antes de enviar.";
 
         secaoAtalhos.style.display = 'none';
         btnToggleCamera.style.display = 'none';
@@ -296,7 +283,7 @@
 
         precos.forEach(p => p.style.display = 'flex');
         quantidades.forEach(q => q.style.display = 'none');
-        botoesExcluir.forEach(b => b.style.display = 'none');
+        botoesExcluir.forEach(b => b.style.display = 'block'); // BOTÃO EXCLUIR ATIVO TAMBÉM NA ETAPA 2!
 
         inputsNome.forEach(i => i.disabled = true);
         inputsEmb.forEach(i => i.disabled = true);
@@ -306,7 +293,6 @@
         btnPdf.style.display = 'none';
 
       } else if (etapa === 3) {
-        // ETAPA 3: CLIENTE SELECIONA QUANTIDADES E FECHA O PEDIDO
         document.getElementById('tituloHeader').innerText = "3. Fechamento do Pedido";
         document.getElementById('subtituloHeader').innerText = "O cliente define as quantidades de caixas e confirma o pedido final";
         document.getElementById('btnAcao').innerText = "Confirmar e Enviar Pedido Final";
@@ -319,7 +305,7 @@
 
         precos.forEach(p => p.style.display = 'flex');
         quantidades.forEach(q => q.style.display = 'flex');
-        botoesExcluir.forEach(b => b.style.display = 'none');
+        botoesExcluir.forEach(b => b.style.display = 'none'); // Esconde no fechamento do pedido
 
         inputsNome.forEach(i => i.disabled = true);
         inputsEmb.forEach(i => i.disabled = true);
@@ -360,7 +346,7 @@
             <input type="text" class="qtd-valor" value="${qtd}" readonly>
             <button class="btn-qtd" onclick="alterarQtd(this, 1)">+</button>
           </div>
-          <button class="btn-excluir" onclick="removerProduto(this)">Excluir</button>
+          <button class="btn-excluir" style="display: ${etapaAtual <= 2 ? 'block' : 'none'};" onclick="removerProduto(this)">Excluir</button>
         </div>
       `;
       lista.appendChild(novoCard);
@@ -386,7 +372,6 @@
       document.getElementById('totalDisplay').innerText = 'R$ ' + total.toFixed(2).replace('.', ',');
     }
 
-    // 4. LINK INTELIGENTE E ENVIO WHATSAPP (3 ETAPAS)
     function enviarWhatsApp() {
       const nomeCliente = document.getElementById('nomeCliente').value.trim();
       const telCliente = document.getElementById('telCliente').value.trim();
@@ -409,16 +394,13 @@
           const descEmbalagem = embalagem ? ` (${embalagem})` : '';
 
           if (etapaAtual === 1) {
-            // Etapa 1 -> Envia para Etapa 2
             itensMensagem += `• ${nome}${descEmbalagem}\n`;
             itensParaUrl.push(`${nome}|${embalagem}|0|1`);
           } else if (etapaAtual === 2) {
-            // Etapa 2 -> Envia para Etapa 3
             const strPreco = preco > 0 ? ` - R$ ${preco.toFixed(2)}/cx` : ' - (Sem preço)';
             itensMensagem += `• ${nome}${descEmbalagem}${strPreco}\n`;
             itensParaUrl.push(`${nome}|${embalagem}|${preco}|1`);
           } else if (etapaAtual === 3) {
-            // Etapa 3 -> Envia Pedido Final
             if (qtd > 0) {
               const subtotal = qtd * preco;
               total += subtotal;
@@ -437,41 +419,29 @@
       let mensagem = "";
 
       if (etapaAtual === 1) {
-        // Envio do Cliente ao Vendedor
         const urlVendedor = `${baseUrl}?e=2&cotacao=${encodeURIComponent(itensParaUrl.join(';'))}`;
-
         mensagem = `📋 *SOLICITAÇÃO DE COTAÇÃO DE PREÇOS*\n`;
         if (nomeCliente) mensagem += `*Mercadinho:* ${nomeCliente}\n`;
         if (telCliente) mensagem += `*Contato:* ${telCliente}\n`;
-        mensagem += `----------------------------\n`;
-        mensagem += `*Produtos para Precificar:*\n\n${itensMensagem}`;
-        mensagem += `----------------------------\n`;
+        mensagem += `----------------------------\n*Produtos para Precificar:*\n\n${itensMensagem}----------------------------\n`;
         mensagem += `🔗 *Link para o Vendedor Digitar os Preços:* ${urlVendedor}`;
 
       } else if (etapaAtual === 2) {
-        // Envio do Vendedor ao Cliente com Preços
         const urlCliente = `${baseUrl}?e=3&cotacao=${encodeURIComponent(itensParaUrl.join(';'))}`;
-
         mensagem = `💰 *COTAÇÃO COM PREÇOS PRONTA*\n`;
         if (nomeCliente) mensagem += `*Cliente:* ${nomeCliente}\n`;
-        mensagem += `----------------------------\n`;
-        mensagem += `*Produtos e Preços Informados:*\n\n${itensMensagem}`;
-        mensagem += `----------------------------\n`;
+        mensagem += `----------------------------\n*Produtos e Preços Informados:*\n\n${itensMensagem}----------------------------\n`;
         mensagem += `🔗 *Link para o Cliente Selecionar a Quantidade e Fechar Pedido:* ${urlCliente}`;
 
       } else if (etapaAtual === 3) {
-        // Envio do Pedido Final Fechado
         mensagem = `✅ *CONFIRMAÇÃO DE PEDIDO FINAL*\n`;
         if (nomeCliente) mensagem += `*Mercadinho:* ${nomeCliente}\n`;
         if (telCliente) mensagem += `*Contato:* ${telCliente}\n`;
-        mensagem += `----------------------------\n`;
-        mensagem += itensMensagem;
-        mensagem += `----------------------------\n`;
+        mensagem += `----------------------------\n${itensMensagem}----------------------------\n`;
         mensagem += `*TOTAL DO PEDIDO:* R$ ${total.toFixed(2).replace('.', ',')}`;
       }
 
-      const url = `https://api.whatsapp.com/send?text=${encodeURIComponent(mensagem)}`;
-      window.open(url, '_blank');
+      window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(mensagem)}`, '_blank');
     }
 
     function carregarItensViaUrl(dados) {
@@ -479,28 +449,20 @@
       const itens = decodeURIComponent(dados).split(';');
       itens.forEach(item => {
         const partes = item.split('|');
-        const nome = partes[0] || '';
-        const emb = partes[1] || '';
-        const preco = parseFloat(partes[2]) || 0;
-        const qtd = parseInt(partes[3]) || 1;
-        adicionarNovoProduto(nome, emb, preco, qtd);
+        adicionarNovoProduto(partes[0] || '', partes[1] || '', parseFloat(partes[2]) || 0, parseInt(partes[3]) || 1);
       });
     }
 
-    // 5. GERADOR DE PDF
     function gerarPDF() {
       const elemento = document.getElementById('conteudoParaPdf');
       const nomeCliente = document.getElementById('nomeCliente').value || 'Cliente';
-      
-      const opcoes = {
+      html2pdf().set({
         margin: 10,
         filename: `Pedido_${nomeCliente}.pdf`,
         image: { type: 'jpeg', quality: 0.98 },
         html2canvas: { scale: 2 },
         jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
-      };
-
-      html2pdf().set(opcoes).from(elemento).save();
+      }).from(elemento).save();
     }
   </script>
 
