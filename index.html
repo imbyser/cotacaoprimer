@@ -17,11 +17,16 @@
     header h1 { font-size: 1.3em; margin-bottom: 5px; }
     header p { font-size: 0.85em; opacity: 0.9; }
 
-    .modo-selector { display: flex; justify-content: center; gap: 10px; background: #e2e8f0; padding: 10px; margin-bottom: 15px; }
-    .btn-modo { padding: 10px 20px; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 0.9em; flex: 1; max-width: 200px; text-align: center; }
-    .btn-modo.ativo { background: #2b6cb0; color: white; box-shadow: 0 2px 4px rgba(0,0,0,0.15); }
+    /* Seletor de 3 Etapas */
+    .etapas-bar { display: flex; justify-content: center; background: #e2e8f0; padding: 8px; gap: 4px; margin-bottom: 15px; }
+    .btn-etapa { flex: 1; max-width: 200px; padding: 10px 6px; border: none; border-radius: 6px; font-weight: bold; font-size: 0.78em; text-align: center; cursor: pointer; color: #4a5568; background: #cbd5e0; transition: all 0.2s; }
+    .btn-etapa.ativo { background: #2b6cb0; color: white; box-shadow: 0 2px 4px rgba(0,0,0,0.15); }
+    .btn-etapa span { display: block; font-size: 0.7em; font-weight: normal; opacity: 0.9; }
 
     .container { max-width: 650px; margin: 0 auto; padding: 0 15px; }
+
+    /* Indicador visual de contexto */
+    .badge-etapa { background: #ebf8ff; border-left: 4px solid #2b6cb0; color: #2c5282; padding: 10px 12px; border-radius: 6px; margin-bottom: 15px; font-size: 0.85em; line-height: 1.4; }
 
     /* Seção de Atalhos Rápidos / Categorias */
     .secao-atalhos { background: white; padding: 12px; border-radius: 10px; margin-bottom: 15px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
@@ -38,12 +43,13 @@
     .linha-inputs { display: flex; gap: 8px; }
     .input-editavel { border: 1px solid #cbd5e0; border-radius: 6px; padding: 8px; font-size: 0.9em; outline: none; }
     .input-editavel:focus { border-color: #2b6cb0; background-color: #f7fafc; }
+    .input-editavel:disabled { background-color: #edf2f7; color: #4a5568; }
     
     .input-nome { flex: 2; font-weight: bold; }
     .input-embalagem { flex: 1; color: #4a5568; }
     
     .linha-acoes { display: flex; justify-content: space-between; align-items: center; border-top: 1px solid #edf2f7; padding-top: 8px; }
-    .bloco-preco { display: flex; align-items: center; gap: 5px; font-weight: bold; color: #2f855a; }
+    .bloco-preco { display: flex; align-items: center; gap: 5px; font-weight: bold; color: #2f855a; font-size: 0.9em; }
     .input-preco { width: 85px; font-weight: bold; color: #2f855a; text-align: right; }
 
     .qtd-controle { display: flex; align-items: center; background: #edf2f7; border-radius: 8px; padding: 2px; }
@@ -72,18 +78,32 @@
 <body>
 
   <header>
-    <h1 id="tituloHeader">Cotação de Produtos</h1>
-    <p id="subtituloHeader">Adicione a lista de produtos que seu mercado precisa</p>
+    <h1 id="tituloHeader">1. Solicitando Cotação</h1>
+    <p id="subtituloHeader">O cliente seleciona os produtos que precisa e envia ao vendedor</p>
   </header>
 
-  <!-- Botões de Alternância -->
-  <div class="modo-selector">
-    <button class="btn-modo ativo" id="btnModo1" onclick="alternarModo(1)">Cotação</button>
-    <button class="btn-modo" id="btnModo2" onclick="alternarModo(2)">Pedido</button>
+  <!-- Botões de Alternância de 3 Etapas -->
+  <div class="etapas-bar">
+    <button class="btn-etapa ativo" id="btnEtapa1" onclick="alternarEtapa(1)">
+      1. Lista
+      <span>Cliente solicita</span>
+    </button>
+    <button class="btn-etapa" id="btnEtapa2" onclick="alternarEtapa(2)">
+      2. Preços
+      <span>Vendedor precifica</span>
+    </button>
+    <button class="btn-etapa" id="btnEtapa3" onclick="alternarEtapa(3)">
+      3. Pedido
+      <span>Cliente fecha</span>
+    </button>
   </div>
 
   <div class="container" id="conteudoParaPdf">
     
+    <div class="badge-etapa" id="badgeOrientacao">
+      📌 <b>Etapa 1 (Cliente):</b> Adicione os produtos que seu mercado precisa cotar e envie o link ao seu vendedor pelo WhatsApp.
+    </div>
+
     <!-- Atalhos de Categorias Frequentes -->
     <div class="secao-atalhos" id="secaoAtalhos">
       <div class="titulo-atalhos">⚡ Adicionar produtos rápidos por categoria:</div>
@@ -100,7 +120,7 @@
 
     <div id="listaProdutos" style="margin-top: 10px;"></div>
 
-    <button class="btn-adicionar" onclick="adicionarNovoProduto('', '')">+ Adicionar Item em Branco</button>
+    <button class="btn-adicionar" id="btnAdicionarManual" onclick="adicionarNovoProduto('', '')">+ Adicionar Item em Branco</button>
   </div>
 
   <!-- Rodapé -->
@@ -112,19 +132,19 @@
       </div>
 
       <div class="resumo-total" id="boxTotal" style="display: none;">
-        <span>Total Estimado:</span>
+        <span>Total Estimado do Pedido:</span>
         <span id="totalDisplay">R$ 0,00</span>
       </div>
 
       <div class="botoes-acao-final">
-        <button class="btn-whatsapp" id="btnAcao" onclick="enviarWhatsApp()">Enviar Cotação pelo WhatsApp</button>
+        <button class="btn-whatsapp" id="btnAcao" onclick="enviarWhatsApp()">Enviar Cotação para o Vendedor</button>
         <button class="btn-pdf" id="btnPdf" onclick="gerarPDF()">📄 Baixar PDF</button>
       </div>
     </div>
   </div>
 
   <script>
-    let modoAtual = 1; 
+    let etapaAtual = 1; 
     let html5QrcodeScanner = null;
 
     // Catálogo pré-definido para botões rápidos
@@ -151,11 +171,13 @@
       carregarDadosCliente();
       
       const urlParams = new URLSearchParams(window.location.search);
+      const eParam = urlParams.get('e');
       const dadosCotacao = urlParams.get('cotacao');
       
       if (dadosCotacao) {
+        let etapaDestino = parseInt(eParam) || 2;
         carregarItensViaUrl(dadosCotacao);
-        alternarModo(2); // Abre direto no modo Pedido se for link vindo do WhatsApp
+        alternarEtapa(etapaDestino);
       } else {
         adicionarNovoProduto("Margarina Deline", "250g (Cx c/ 24)");
       }
@@ -185,7 +207,7 @@
       }
     }
 
-    // 3. LEITOR DE CÓDIGO DE BARRAS APRIMORADO
+    // 3. LEITOR DE CÓDIGO DE BARRAS
     function iniciarLeitorBarcode() {
       const containerCamera = document.getElementById('leitor-camera');
       
@@ -212,38 +234,97 @@
         html5QrcodeScanner.clear();
         containerCamera.style.display = 'none';
         alert(`Código de barras ${decodedText} lido com sucesso!`);
-      }, (error) => {
-        // Busca contínua
-      });
+      }, (error) => {});
     }
 
-    // FUNÇÕES BÁSICAS DO CATÁLOGO
-    function alternarModo(modo) {
-      modoAtual = modo;
-      document.getElementById('btnModo1').classList.toggle('ativo', modo === 1);
-      document.getElementById('btnModo2').classList.toggle('ativo', modo === 2);
+    // LÓGICA DAS 3 ETAPAS
+    function alternarEtapa(etapa) {
+      etapaAtual = etapa;
+
+      // Destaca botão ativo
+      document.getElementById('btnEtapa1').classList.toggle('ativo', etapa === 1);
+      document.getElementById('btnEtapa2').classList.toggle('ativo', etapa === 2);
+      document.getElementById('btnEtapa3').classList.toggle('ativo', etapa === 3);
 
       const precos = document.querySelectorAll('.bloco-preco');
       const quantidades = document.querySelectorAll('.qtd-controle');
+      const botoesExcluir = document.querySelectorAll('.btn-excluir');
+      const inputsNome = document.querySelectorAll('.input-nome');
+      const inputsEmb = document.querySelectorAll('.input-embalagem');
+      const inputsPreco = document.querySelectorAll('.input-preco');
+      
       const boxTotal = document.getElementById('boxTotal');
       const btnPdf = document.getElementById('btnPdf');
+      const secaoAtalhos = document.getElementById('secaoAtalhos');
+      const btnToggleCamera = document.getElementById('btnToggleCamera');
+      const btnAdicionarManual = document.getElementById('btnAdicionarManual');
+      const badgeOrientacao = document.getElementById('badgeOrientacao');
 
-      if (modo === 1) {
-        document.getElementById('tituloHeader').innerText = "Cotação de Produtos";
-        document.getElementById('subtituloHeader').innerText = "Adicione a lista de produtos que seu mercado precisa";
-        document.getElementById('btnAcao').innerText = "Enviar Cotação pelo WhatsApp";
+      if (etapa === 1) {
+        // ETAPA 1: CLIENTE SOLICITA COTAÇÃO
+        document.getElementById('tituloHeader').innerText = "1. Solicitando Cotação";
+        document.getElementById('subtituloHeader').innerText = "O cliente seleciona os produtos que precisa e envia ao vendedor";
+        document.getElementById('btnAcao').innerText = "Enviar Cotação para o Vendedor";
         
+        badgeOrientacao.innerHTML = "📌 <b>Etapa 1 (Cliente):</b> Adicione os produtos que seu mercado precisa cotar e envie ao seu vendedor pelo WhatsApp.";
+
+        secaoAtalhos.style.display = 'block';
+        btnToggleCamera.style.display = 'block';
+        btnAdicionarManual.style.display = 'block';
+
         precos.forEach(p => p.style.display = 'none');
         quantidades.forEach(q => q.style.display = 'none');
+        botoesExcluir.forEach(b => b.style.display = 'block');
+        
+        inputsNome.forEach(i => i.disabled = false);
+        inputsEmb.forEach(i => i.disabled = false);
+
         boxTotal.style.display = 'none';
         btnPdf.style.display = 'none';
-      } else {
-        document.getElementById('tituloHeader').innerText = "Fechamento do Pedido";
-        document.getElementById('subtituloHeader').innerText = "Ajuste os preços e selecione a quantidade de caixas";
-        document.getElementById('btnAcao').innerText = "Enviar Pedido Final";
-        
+
+      } else if (etapa === 2) {
+        // ETAPA 2: VENDEDOR PRECIFICA OS ITENS
+        document.getElementById('tituloHeader').innerText = "2. Precificação pelo Vendedor";
+        document.getElementById('subtituloHeader').innerText = "O vendedor digita os preços unitários/caixa de cada item";
+        document.getElementById('btnAcao').innerText = "Enviar Preços Digitados ao Cliente";
+
+        badgeOrientacao.innerHTML = "💰 <b>Etapa 2 (Vendedor):</b> Digite o preço em cada produto abaixo e envie a cotação pronta de volta para o cliente.";
+
+        secaoAtalhos.style.display = 'none';
+        btnToggleCamera.style.display = 'none';
+        btnAdicionarManual.style.display = 'none';
+
+        precos.forEach(p => p.style.display = 'flex');
+        quantidades.forEach(q => q.style.display = 'none');
+        botoesExcluir.forEach(b => b.style.display = 'none');
+
+        inputsNome.forEach(i => i.disabled = true);
+        inputsEmb.forEach(i => i.disabled = true);
+        inputsPreco.forEach(i => i.disabled = false);
+
+        boxTotal.style.display = 'none';
+        btnPdf.style.display = 'none';
+
+      } else if (etapa === 3) {
+        // ETAPA 3: CLIENTE SELECIONA QUANTIDADES E FECHA O PEDIDO
+        document.getElementById('tituloHeader').innerText = "3. Fechamento do Pedido";
+        document.getElementById('subtituloHeader').innerText = "O cliente define as quantidades de caixas e confirma o pedido final";
+        document.getElementById('btnAcao').innerText = "Confirmar e Enviar Pedido Final";
+
+        badgeOrientacao.innerHTML = "🛒 <b>Etapa 3 (Cliente):</b> Defina a quantidade de caixas/unidades que deseja comprar de cada item precificado e envie o pedido final.";
+
+        secaoAtalhos.style.display = 'none';
+        btnToggleCamera.style.display = 'none';
+        btnAdicionarManual.style.display = 'none';
+
         precos.forEach(p => p.style.display = 'flex');
         quantidades.forEach(q => q.style.display = 'flex');
+        botoesExcluir.forEach(b => b.style.display = 'none');
+
+        inputsNome.forEach(i => i.disabled = true);
+        inputsEmb.forEach(i => i.disabled = true);
+        inputsPreco.forEach(i => i.disabled = true);
+
         boxTotal.style.display = 'flex';
         btnPdf.style.display = 'block';
         calcularTotal();
@@ -260,7 +341,7 @@
       calcularTotal();
     }
 
-    function adicionarNovoProduto(nome = '', embalagem = '', preco = 0) {
+    function adicionarNovoProduto(nome = '', embalagem = '', preco = 0, qtd = 1) {
       const lista = document.getElementById('listaProdutos');
       const novoCard = document.createElement('div');
       novoCard.className = 'produto-card';
@@ -270,29 +351,29 @@
           <input type="text" class="input-editavel input-embalagem" value="${embalagem}" placeholder="Ex: 500g / Cx c/ 12">
         </div>
         <div class="linha-acoes">
-          <div class="bloco-preco" style="display: ${modoAtual === 2 ? 'flex' : 'none'};">
+          <div class="bloco-preco" style="display: ${etapaAtual >= 2 ? 'flex' : 'none'};">
             <span>R$/Cx:</span>
             <input type="number" step="0.01" class="input-editavel input-preco" value="${preco.toFixed(2)}" oninput="calcularTotal()">
           </div>
-          <div class="qtd-controle" style="display: ${modoAtual === 2 ? 'flex' : 'none'};">
+          <div class="qtd-controle" style="display: ${etapaAtual === 3 ? 'flex' : 'none'};">
             <button class="btn-qtd" onclick="alterarQtd(this, -1)">-</button>
-            <input type="text" class="qtd-valor" value="1" readonly>
+            <input type="text" class="qtd-valor" value="${qtd}" readonly>
             <button class="btn-qtd" onclick="alterarQtd(this, 1)">+</button>
           </div>
           <button class="btn-excluir" onclick="removerProduto(this)">Excluir</button>
         </div>
       `;
       lista.appendChild(novoCard);
-      if (modoAtual === 2) calcularTotal();
+      if (etapaAtual === 3) calcularTotal();
     }
 
     function removerProduto(elemento) {
       elemento.closest('.produto-card').remove();
-      calcularTotal();
+      if (etapaAtual === 3) calcularTotal();
     }
 
     function calcularTotal() {
-      if (modoAtual === 1) return;
+      if (etapaAtual !== 3) return;
       let total = 0;
       const cards = document.querySelectorAll('.produto-card');
 
@@ -305,12 +386,13 @@
       document.getElementById('totalDisplay').innerText = 'R$ ' + total.toFixed(2).replace('.', ',');
     }
 
-    // 4. LINK INTELIGENTE E ENVIO WHATSAPP (SEM NÚMERO FIXO)
+    // 4. LINK INTELIGENTE E ENVIO WHATSAPP (3 ETAPAS)
     function enviarWhatsApp() {
       const nomeCliente = document.getElementById('nomeCliente').value.trim();
       const telCliente = document.getElementById('telCliente').value.trim();
       const cards = document.querySelectorAll('.produto-card');
-      
+      const baseUrl = window.location.href.split('?')[0];
+
       let itensMensagem = "";
       let itensParaUrl = [];
       let total = 0;
@@ -326,14 +408,22 @@
           temItens = true;
           const descEmbalagem = embalagem ? ` (${embalagem})` : '';
 
-          if (modoAtual === 1) {
+          if (etapaAtual === 1) {
+            // Etapa 1 -> Envia para Etapa 2
             itensMensagem += `• ${nome}${descEmbalagem}\n`;
-            itensParaUrl.push(`${nome}|${embalagem}`);
-          } else {
+            itensParaUrl.push(`${nome}|${embalagem}|0|1`);
+          } else if (etapaAtual === 2) {
+            // Etapa 2 -> Envia para Etapa 3
+            const strPreco = preco > 0 ? ` - R$ ${preco.toFixed(2)}/cx` : ' - (Sem preço)';
+            itensMensagem += `• ${nome}${descEmbalagem}${strPreco}\n`;
+            itensParaUrl.push(`${nome}|${embalagem}|${preco}|1`);
+          } else if (etapaAtual === 3) {
+            // Etapa 3 -> Envia Pedido Final
             if (qtd > 0) {
               const subtotal = qtd * preco;
               total += subtotal;
               itensMensagem += `• *${qtd}x* ${nome}${descEmbalagem} - R$ ${preco.toFixed(2)}/cx = *R$ ${subtotal.toFixed(2)}*\n`;
+              itensParaUrl.push(`${nome}|${embalagem}|${preco}|${qtd}`);
             }
           }
         }
@@ -346,27 +436,40 @@
 
       let mensagem = "";
 
-      if (modoAtual === 1) {
-        const baseUrl = window.location.href.split('?')[0];
-        const urlInteligente = `${baseUrl}?cotacao=${encodeURIComponent(itensParaUrl.join(';'))}`;
+      if (etapaAtual === 1) {
+        // Envio do Cliente ao Vendedor
+        const urlVendedor = `${baseUrl}?e=2&cotacao=${encodeURIComponent(itensParaUrl.join(';'))}`;
 
-        mensagem = `*SOLICITAÇÃO DE COTAÇÃO DE PREÇOS*\n`;
-        if (nomeCliente) mensagem += `*Cliente:* ${nomeCliente}\n`;
+        mensagem = `📋 *SOLICITAÇÃO DE COTAÇÃO DE PREÇOS*\n`;
+        if (nomeCliente) mensagem += `*Mercadinho:* ${nomeCliente}\n`;
         if (telCliente) mensagem += `*Contato:* ${telCliente}\n`;
         mensagem += `----------------------------\n`;
-        mensagem += `*Produtos solicitados:*\n\n${itensMensagem}`;
+        mensagem += `*Produtos para Precificar:*\n\n${itensMensagem}`;
         mensagem += `----------------------------\n`;
-        mensagem += `🔗 *Link para o Vendedor Cotar:* ${urlInteligente}`;
-      } else {
-        mensagem = `*FECHAMENTO DE PEDIDO FINAL*\n`;
+        mensagem += `🔗 *Link para o Vendedor Digitar os Preços:* ${urlVendedor}`;
+
+      } else if (etapaAtual === 2) {
+        // Envio do Vendedor ao Cliente com Preços
+        const urlCliente = `${baseUrl}?e=3&cotacao=${encodeURIComponent(itensParaUrl.join(';'))}`;
+
+        mensagem = `💰 *COTAÇÃO COM PREÇOS PRONTA*\n`;
         if (nomeCliente) mensagem += `*Cliente:* ${nomeCliente}\n`;
+        mensagem += `----------------------------\n`;
+        mensagem += `*Produtos e Preços Informados:*\n\n${itensMensagem}`;
+        mensagem += `----------------------------\n`;
+        mensagem += `🔗 *Link para o Cliente Selecionar a Quantidade e Fechar Pedido:* ${urlCliente}`;
+
+      } else if (etapaAtual === 3) {
+        // Envio do Pedido Final Fechado
+        mensagem = `✅ *CONFIRMAÇÃO DE PEDIDO FINAL*\n`;
+        if (nomeCliente) mensagem += `*Mercadinho:* ${nomeCliente}\n`;
+        if (telCliente) mensagem += `*Contato:* ${telCliente}\n`;
         mensagem += `----------------------------\n`;
         mensagem += itensMensagem;
         mensagem += `----------------------------\n`;
-        mensagem += `*TOTAL ESTIMADO:* R$ ${total.toFixed(2).replace('.', ',')}`;
+        mensagem += `*TOTAL DO PEDIDO:* R$ ${total.toFixed(2).replace('.', ',')}`;
       }
 
-      // Link genérico da API do WhatsApp (sem número pré-definido)
       const url = `https://api.whatsapp.com/send?text=${encodeURIComponent(mensagem)}`;
       window.open(url, '_blank');
     }
@@ -376,7 +479,11 @@
       const itens = decodeURIComponent(dados).split(';');
       itens.forEach(item => {
         const partes = item.split('|');
-        adicionarNovoProduto(partes[0] || '', partes[1] || '');
+        const nome = partes[0] || '';
+        const emb = partes[1] || '';
+        const preco = parseFloat(partes[2]) || 0;
+        const qtd = parseInt(partes[3]) || 1;
+        adicionarNovoProduto(nome, emb, preco, qtd);
       });
     }
 
@@ -387,7 +494,7 @@
       
       const opcoes = {
         margin: 10,
-        filename: `Orcamento_${nomeCliente}.pdf`,
+        filename: `Pedido_${nomeCliente}.pdf`,
         image: { type: 'jpeg', quality: 0.98 },
         html2canvas: { scale: 2 },
         jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
