@@ -13,11 +13,41 @@
     * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 0; }
     body { background-color: #f0f2f5; padding-bottom: 160px; }
     
+    /* ESTILOS TELA DE LOGIN */
+    #authOverlay {
+      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(26, 54, 93, 0.95); z-index: 9999;
+      display: flex; justify-content: center; align-items: center; padding: 20px;
+    }
+    .auth-card {
+      background: white; border-radius: 12px; padding: 25px; width: 100%; max-width: 400px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.2); text-align: center;
+    }
+    .auth-card h2 { color: #1a365d; margin-bottom: 8px; font-size: 1.4em; }
+    .auth-card p { font-size: 0.85em; color: #718096; margin-bottom: 20px; }
+    .auth-input {
+      width: 100%; padding: 12px; margin-bottom: 12px; border: 1px solid #cbd5e0;
+      border-radius: 8px; font-size: 0.95em; outline: none;
+    }
+    .auth-input:focus { border-color: #2b6cb0; }
+    .btn-auth-primary {
+      width: 100%; padding: 12px; background: #2b6cb0; color: white; border: none;
+      border-radius: 8px; font-weight: bold; font-size: 1em; cursor: pointer; transition: background 0.2s;
+    }
+    .btn-auth-primary:hover { background: #2c5282; }
+    .auth-toggle { margin-top: 15px; font-size: 0.85em; color: #4a5568; }
+    .auth-toggle span { color: #2b6cb0; font-weight: bold; cursor: pointer; text-decoration: underline; }
+    .auth-error { color: #e53e3e; font-size: 0.8em; margin-bottom: 10px; display: none; }
+
+    /* BARRA USUARIO LOGADO */
+    .user-bar { background: #0f2342; color: white; padding: 6px 15px; display: flex; justify-content: space-between; align-items: center; font-size: 0.8em; }
+    .btn-logout { background: #e53e3e; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-weight: bold; }
+
+    /* ESTILOS SISTEMA */
     header { background: #1a365d; color: white; padding: 15px; text-align: center; }
     header h1 { font-size: 1.3em; margin-bottom: 5px; }
     header p { font-size: 0.85em; opacity: 0.9; }
 
-    /* Seletor de 3 Etapas */
     .etapas-bar { display: flex; justify-content: center; background: #e2e8f0; padding: 8px; gap: 4px; margin-bottom: 15px; }
     .btn-etapa { flex: 1; max-width: 200px; padding: 10px 6px; border: none; border-radius: 6px; font-weight: bold; font-size: 0.78em; text-align: center; cursor: pointer; color: #4a5568; background: #cbd5e0; transition: all 0.2s; }
     .btn-etapa.ativo { background: #2b6cb0; color: white; box-shadow: 0 2px 4px rgba(0,0,0,0.15); }
@@ -25,20 +55,16 @@
 
     .container { max-width: 650px; margin: 0 auto; padding: 0 15px; }
 
-    /* Indicador visual de contexto */
     .badge-etapa { background: #ebf8ff; border-left: 4px solid #2b6cb0; color: #2c5282; padding: 10px 12px; border-radius: 6px; margin-bottom: 15px; font-size: 0.85em; line-height: 1.4; }
 
-    /* Seção de Atalhos Rápidos / Categorias */
     .secao-atalhos { background: white; padding: 12px; border-radius: 10px; margin-bottom: 15px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
     .titulo-atalhos { font-size: 0.85em; font-weight: bold; color: #4a5568; margin-bottom: 8px; }
     .botoes-categorias { display: flex; flex-wrap: wrap; gap: 6px; }
     .btn-cat { background: #edf2f7; border: 1px solid #cbd5e0; border-radius: 20px; padding: 6px 12px; font-size: 0.8em; font-weight: bold; color: #2d3748; cursor: pointer; }
     .btn-cat:hover { background: #e2e8f0; }
 
-    /* Leitor de Câmera */
     #leitor-camera { width: 100%; max-width: 400px; margin: 10px auto; display: none; border-radius: 10px; overflow: hidden; border: 2px solid #2b6cb0; }
 
-    /* Cards de Produto */
     .produto-card { background: white; border-radius: 10px; padding: 12px; margin-bottom: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); display: flex; flex-direction: column; gap: 8px; }
     .linha-inputs { display: flex; gap: 8px; }
     .input-editavel { border: 1px solid #cbd5e0; border-radius: 6px; padding: 8px; font-size: 0.9em; outline: none; }
@@ -61,7 +87,6 @@
     .btn-adicionar { background: #ebf8ff; color: #2b6cb0; border: 2px dashed #90cdf4; border-radius: 10px; width: 100%; padding: 12px; font-size: 0.95em; font-weight: bold; cursor: pointer; margin-top: 5px; }
     .btn-camera { background: #faf5ff; color: #6b46c1; border: 1px solid #d6bcfa; border-radius: 10px; width: 100%; padding: 10px; font-size: 0.9em; font-weight: bold; cursor: pointer; margin-top: 8px; }
 
-    /* Barra Inferior Fixa */
     .carrinho-bar { position: fixed; bottom: 0; left: 0; right: 0; background: white; border-top: 1px solid #e2e8f0; padding: 15px; box-shadow: 0 -2px 10px rgba(0,0,0,0.1); }
     .carrinho-conteudo { max-width: 650px; margin: 0 auto; }
     
@@ -77,72 +102,199 @@
 </head>
 <body>
 
-  <header>
-    <h1 id="tituloHeader">1. Solicitando Cotação</h1>
-    <p id="subtituloHeader">O cliente seleciona os produtos que precisa e envia ao vendedor</p>
-  </header>
-
-  <!-- Botões de Alternância de 3 Etapas -->
-  <div class="etapas-bar">
-    <button class="btn-etapa ativo" id="btnEtapa1" onclick="alternarEtapa(1)">
-      1. Lista
-      <span>Cliente solicita</span>
-    </button>
-    <button class="btn-etapa" id="btnEtapa2" onclick="alternarEtapa(2)">
-      2. Preços
-      <span>Vendedor precifica</span>
-    </button>
-    <button class="btn-etapa" id="btnEtapa3" onclick="alternarEtapa(3)">
-      3. Pedido
-      <span>Cliente fecha</span>
-    </button>
-  </div>
-
-  <div class="container" id="conteudoParaPdf">
-    
-    <div class="badge-etapa" id="badgeOrientacao">
-      📌 <b>Etapa 1 (Cliente):</b> Adicione os produtos que seu mercado precisa cotar e envie o link ao seu vendedor pelo WhatsApp.
-    </div>
-
-    <!-- Atalhos de Categorias Frequentes -->
-    <div class="secao-atalhos" id="secaoAtalhos">
-      <div class="titulo-atalhos">⚡ Adicionar produtos rápidos por categoria:</div>
-      <div class="botoes-categorias">
-        <button class="btn-cat" onclick="carregarCategoria('limpeza')">+ Limpeza</button>
-        <button class="btn-cat" onclick="carregarCategoria('cereais')">+ Cereais & Alimentos</button>
-        <button class="btn-cat" onclick="carregarCategoria('perfumaria')">+ Perfumaria & Cosméticos</button>
-      </div>
-    </div>
-
-    <!-- Leitor de Câmera (Barcode) -->
-    <button class="btn-camera" id="btnToggleCamera" onclick="iniciarLeitorBarcode()">📷 Ler Código de Barras do Estoque</button>
-    <div id="leitor-camera"></div>
-
-    <div id="listaProdutos" style="margin-top: 10px;"></div>
-
-    <button class="btn-adicionar" id="btnAdicionarManual" onclick="adicionarNovoProduto('', '')">+ Adicionar Item em Branco</button>
-  </div>
-
-  <!-- Rodapé -->
-  <div class="carrinho-bar">
-    <div class="carrinho-conteudo">
-      <div class="linha-dados-cliente">
-        <input type="text" id="nomeCliente" class="campo-cliente" placeholder="Nome do Mercadinho..." onchange="salvarDadosCliente()">
-        <input type="tel" id="telCliente" class="campo-cliente" placeholder="WhatsApp da Loja..." onchange="salvarDadosCliente()">
-      </div>
-
-      <div class="resumo-total" id="boxTotal" style="display: none;">
-        <span>Total Estimado do Pedido:</span>
-        <span id="totalDisplay">R$ 0,00</span>
-      </div>
-
-      <div class="botoes-acao-final">
-        <button class="btn-whatsapp" id="btnAcao" onclick="enviarWhatsApp()">Enviar Cotação para o Vendedor</button>
-        <button class="btn-pdf" id="btnPdf" onclick="gerarPDF()">📄 Baixar PDF</button>
+  <!-- TELA DE AUTENTICAÇÃO (LOGIN / REGISTRO) -->
+  <div id="authOverlay">
+    <div class="auth-card">
+      <h2 id="authTitle">Acessar Sistema</h2>
+      <p id="authSubtitle">Entre com seu e-mail e senha para continuar</p>
+      
+      <div id="authError" class="auth-error"></div>
+      
+      <input type="email" id="authEmail" class="auth-input" placeholder="Seu e-mail..." autocomplete="email">
+      <input type="password" id="authPassword" class="auth-input" placeholder="Sua senha..." autocomplete="current-password">
+      
+      <button id="btnAuthSubmit" class="btn-auth-primary" onclick="processarAuth()">Entrar</button>
+      
+      <div class="auth-toggle">
+        <span id="authToggleText">Não tem uma conta? <span onclick="alternarModoAuth()">Cadastre-se</span></span>
       </div>
     </div>
   </div>
 
+  <!-- BARRA DE USUÁRIO LOGADO -->
+  <div class="user-bar" id="userBar" style="display: none;">
+    <span>👤 Conectado como: <b id="userEmailDisplay">-</b></span>
+    <button class="btn-logout" onclick="fazerLogout()">Sair</button>
+  </div>
+
+  <!-- CONTEÚDO DO SISTEMA -->
+  <div id="appContainer" style="display: none;">
+    <header>
+      <h1 id="tituloHeader">1. Solicitando Cotação</h1>
+      <p id="subtituloHeader">O cliente seleciona os produtos que precisa e envia ao vendedor</p>
+    </header>
+
+    <div class="etapas-bar">
+      <button class="btn-etapa ativo" id="btnEtapa1" onclick="alternarEtapa(1)">
+        1. Lista
+        <span>Cliente solicita</span>
+      </button>
+      <button class="btn-etapa" id="btnEtapa2" onclick="alternarEtapa(2)">
+        2. Preços
+        <span>Vendedor precifica</span>
+      </button>
+      <button class="btn-etapa" id="btnEtapa3" onclick="alternarEtapa(3)">
+        3. Pedido
+        <span>Cliente fecha</span>
+      </button>
+    </div>
+
+    <div class="container" id="conteudoParaPdf">
+      
+      <div class="badge-etapa" id="badgeOrientacao">
+        📌 <b>Etapa 1 (Cliente):</b> Adicione os produtos que seu mercado precisa cotar e envie o link ao seu vendedor pelo WhatsApp.
+      </div>
+
+      <div class="secao-atalhos" id="secaoAtalhos">
+        <div class="titulo-atalhos">⚡ Adicionar produtos rápidos por categoria:</div>
+        <div class="botoes-categorias">
+          <button class="btn-cat" onclick="carregarCategoria('limpeza')">+ Limpeza</button>
+          <button class="btn-cat" onclick="carregarCategoria('cereais')">+ Cereais & Alimentos</button>
+          <button class="btn-cat" onclick="carregarCategoria('perfumaria')">+ Perfumaria & Cosméticos</button>
+        </div>
+      </div>
+
+      <button class="btn-camera" id="btnToggleCamera" onclick="iniciarLeitorBarcode()">📷 Ler Código de Barras do Estoque</button>
+      <div id="leitor-camera"></div>
+
+      <div id="listaProdutos" style="margin-top: 10px;"></div>
+
+      <button class="btn-adicionar" id="btnAdicionarManual" onclick="adicionarNovoProduto('', '')">+ Adicionar Item em Branco</button>
+    </div>
+
+    <div class="carrinho-bar">
+      <div class="carrinho-conteudo">
+        <div class="linha-dados-cliente">
+          <input type="text" id="nomeCliente" class="campo-cliente" placeholder="Nome do Mercadinho..." onchange="salvarDadosCliente()">
+          <input type="tel" id="telCliente" class="campo-cliente" placeholder="WhatsApp da Loja..." onchange="salvarDadosCliente()">
+        </div>
+
+        <div class="resumo-total" id="boxTotal" style="display: none;">
+          <span>Total Estimado do Pedido:</span>
+          <span id="totalDisplay">R$ 0,00</span>
+        </div>
+
+        <div class="botoes-acao-final">
+          <button class="btn-whatsapp" id="btnAcao" onclick="enviarWhatsApp()">Enviar Cotação para o Vendedor</button>
+          <button class="btn-pdf" id="btnPdf" onclick="gerarPDF()">📄 Baixar PDF</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CONEXÃO FIREBASE (MODULAR SDK v10) -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+    import { 
+      getAuth, 
+      signInWithEmailAndPassword, 
+      createUserWithEmailAndPassword, 
+      onAuthStateChanged, 
+      signOut 
+    } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+
+    // Configuração do seu Projeto Firebase supercotacao-6a43c
+    const firebaseConfig = {
+      apiKey: "AIzaSyAPBH_zOO3xrdiyW1qk20b3b1ejMlyYSvg",
+      authDomain: "supercotacao-6a43c.firebaseapp.com",
+      projectId: "supercotacao-6a43c",
+      storageBucket: "supercotacao-6a43c.firebasestorage.app",
+      messagingSenderId: "360323319589",
+      appId: "1:360323319589:web:b09f3744f1b9a92f11bccc"
+    };
+
+    // Inicialização
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+
+    let isLoginMode = true;
+
+    // Monitor do estado da autenticação em tempo real
+    onAuthStateChanged(auth, (user) => {
+      if (user) {
+        // Usuário logado
+        document.getElementById('authOverlay').style.display = 'none';
+        document.getElementById('appContainer').style.display = 'block';
+        document.getElementById('userBar').style.display = 'flex';
+        document.getElementById('userEmailDisplay').innerText = user.email;
+      } else {
+        // Usuário desconectado
+        document.getElementById('authOverlay').style.display = 'flex';
+        document.getElementById('appContainer').style.display = 'none';
+        document.getElementById('userBar').style.display = 'none';
+      }
+    });
+
+    // Função de Login/Cadastro
+    window.processarAuth = async function() {
+      const email = document.getElementById('authEmail').value.trim();
+      const password = document.getElementById('authPassword').value.trim();
+      const errorDiv = document.getElementById('authError');
+      errorDiv.style.display = 'none';
+
+      if (!email || !password) {
+        errorDiv.innerText = "Por favor, preencha e-mail e senha.";
+        errorDiv.style.display = 'block';
+        return;
+      }
+
+      try {
+        if (isLoginMode) {
+          await signInWithEmailAndPassword(auth, email, password);
+        } else {
+          await createUserWithEmailAndPassword(auth, email, password);
+          alert("Conta criada com sucesso!");
+        }
+      } catch (error) {
+        let msg = "Ocorreu um erro. Tente novamente.";
+        if (error.code === 'auth/invalid-email') msg = "E-mail inválido.";
+        if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') msg = "E-mail ou senha incorretos.";
+        if (error.code === 'auth/email-already-in-use') msg = "Este e-mail já está cadastrado.";
+        if (error.code === 'auth/weak-password') msg = "A senha deve ter pelo menos 6 caracteres.";
+        
+        errorDiv.innerText = msg;
+        errorDiv.style.display = 'block';
+      }
+    };
+
+    // Alternar entre Login e Cadastro
+    window.alternarModoAuth = function() {
+      isLoginMode = !isLoginMode;
+      const title = document.getElementById('authTitle');
+      const subtitle = document.getElementById('authSubtitle');
+      const btn = document.getElementById('btnAuthSubmit');
+      const toggle = document.getElementById('authToggleText');
+
+      if (isLoginMode) {
+        title.innerText = "Acessar Sistema";
+        subtitle.innerText = "Entre com seu e-mail e senha para continuar";
+        btn.innerText = "Entrar";
+        toggle.innerHTML = 'Não tem uma conta? <span onclick="alternarModoAuth()">Cadastre-se</span>';
+      } else {
+        title.innerText = "Criar Nova Conta";
+        subtitle.innerText = "Cadastre-se para ter acesso ao sistema de cotação";
+        btn.innerText = "Cadastrar";
+        toggle.innerHTML = 'Já possui conta? <span onclick="alternarModoAuth()">Fazer Login</span>';
+      }
+    };
+
+    // Logout
+    window.fazerLogout = function() {
+      signOut(auth);
+    };
+  </script>
+
+  <!-- LÓGICA DE NEGÓCIO DO SISTEMA DE COTAÇÃO -->
   <script>
     let etapaAtual = 1; 
     let html5QrcodeScanner = null;
@@ -371,7 +523,6 @@
       document.getElementById('totalDisplay').innerText = 'R$ ' + total.toFixed(2).replace('.', ',');
     }
 
-    // MENSAGEM DO WHATSAPP ENXUTA (Sem exibir a lista de produtos)
     function enviarWhatsApp() {
       const nomeCliente = document.getElementById('nomeCliente').value.trim();
       const telCliente = document.getElementById('telCliente').value.trim();
