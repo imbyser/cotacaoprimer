@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sistema de Cotação - Agilize suas Compras no Atacado</title>
+  
+  <!-- Fonte Google -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', sans-serif; }
+    body { background-color: #f8fafc; color: #1e293b; line-height: 1.6; }
+
+    /* HEADER / HERO */
+    .hero {
+      background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 100%);
+      color: white;
+      padding: 60px 20px 80px 20px;
+      text-align: center;
+    }
+    .badge-hero {
+      background: rgba(59, 130, 246, 0.2);
+      border: 1px solid #60a5fa;
+      color: #93c5fd;
+      padding: 6px 16px;
+      border-radius: 20px;
+      font-size: 0.85em;
+      font-weight: 600;
+      display: inline-block;
+      margin-bottom: 20px;
+    }
+    .hero h1 {
+      font-size: 2.3em;
+      font-weight: 800;
+      line-height: 1.2;
+      max-width: 800px;
+      margin: 0 auto 20px auto;
+    }
+    .hero h1 span { color: #38bdf8; }
+    .hero p {
+      font-size: 1.1em;
+      color: #cbd5e1;
+      max-width: 600px;
+      margin: 0 auto 30px auto;
+    }
+
+    /* BOTOES CTA */
+    .btn-cta-principal {
+      background: #22c55e;
+      color: white;
+      padding: 16px 32px;
+      border-radius: 10px;
+      font-size: 1.1em;
+      font-weight: 700;
+      text-decoration: none;
+      display: inline-block;
+      box-shadow: 0 10px 20px rgba(34, 197, 94, 0.3);
+      transition: transform 0.2s, background 0.2s;
+    }
+    .btn-cta-principal:hover {
+      background: #16a34a;
+      transform: translateY(-2px);
+    }
+    .sub-cta {
+      display: block;
+      font-size: 0.8em;
+      color: #94a3b8;
+      margin-top: 10px;
+    }
+
+    /* CONTAINER GERAL */
+    .container {
+      max-width: 1000px;
+      margin: 0 auto;
+      padding: 60px 20px;
+    }
+
+    /* BENEFICIOS / RECURSOS */
+    .grid-recursos {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 25px;
+      margin-top: 40px;
+    }
+    .card-recurso {
+      background: white;
+      padding: 30px;
+      border-radius: 12px;
+      border: 1px solid #e2e8f0;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+    }
+    .card-recurso .icone {
+      font-size: 2em;
+      margin-bottom: 15px;
+      display: inline-block;
+    }
+    .card-recurso h3 {
+      font-size: 1.2em;
+      margin-bottom: 10px;
+      color: #0f172a;
+    }
+    .card-recurso p {
+      color: #64748b;
+      font-size: 0.95em;
+    }
+
+    /* SEÇÃO OFERTA / PREÇO */
+    .secao-preco {
+      background: white;
+      border: 2px solid #3b82f6;
+      border-radius: 20px;
+      padding: 40px 20px;
+      text-align: center;
+      max-width: 500px;
+      margin: 40px auto 0 auto;
+      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+      position: relative;
+    }
+    .badge-pop {
+      position: absolute;
+      top: -15px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #3b82f6;
+      color: white;
+      padding: 4px 16px;
+      border-radius: 20px;
+      font-size: 0.8em;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+    .preco-valor {
+      font-size: 2.8em;
+      font-weight: 800;
+      color: #0f172a;
+      margin: 15px 0 5px 0;
+    }
+    .preco-periodo {
+      font-size: 0.9em;
+      color: #64748b;
+      margin-bottom: 25px;
+    }
+    .lista-check {
+      text-align: left;
+      margin-bottom: 30px;
+      display: inline-block;
+    }
+    .lista-check li {
+      list-style: none;
+      margin-bottom: 10px;
+      font-size: 0.95em;
+      color: #334155;
+    }
+    .lista-check li::before {
+      content: "✓ ";
+      color: #22c55e;
+      font-weight: bold;
+    }
+
+    /* FOOTER */
+    footer {
+      text-align: center;
+      padding: 40px 20px;
+      background: #0f172a;
+      color: #64748b;
+      font-size: 0.85em;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- HERO SECTION -->
+  <header class="hero">
+    <span class="badge-hero">🚀 Feito para Mercados e Atacadistas</span>
+    <h1>Faça Cotações de Compras <span>10x Mais Rápido</span> e Sem Erros</h1>
+    <p>O sistema definitivo para o pequeno comerciante cotar preços de caixas com fornecedores, ler código de barras pelo celular e enviar direto no WhatsApp.</p>
+    
+    <a href="https://mpago.la/2MvjRwM" target="_blank" class="btn-cta-principal">
+      Quero Assinar Agora ➔
+    </a>
+    <span class="sub-cta">🔒 Checkout Seguro Mercado Pago | Cancele quando quiser</span>
+  </header>
+
+  <!-- RECURSOS / BENEFÍCIOS -->
+  <main class="container">
+    <h2 style="text-align: center; font-size: 1.8em; color: #0f172a;">Tudo o que seu comércio precisa</h2>
+    <p style="text-align: center; color: #64748b; margin-bottom: 30px;">Desenvolvido para simplificar a rotina de compras do seu negócio.</p>
+
+    <div class="grid-recursos">
+      <div class="card-recurso">
+        <span class="icone">📷</span>
+        <h3>Leitor no Celular</h3>
+        <p>Bipe os códigos de barras das embalagens diretamente com a câmera do seu smartphone para montar a lista sem digitar.</p>
+      </div>
+
+      <div class="card-recurso">
+        <span class="icone">💬</span>
+        <h3>Integração com WhatsApp</h3>
+        <p>Envie as cotações e pedidos finais direto para o WhatsApp do seu representante comercial em um único clique.</p>
+      </div>
+
+      <div class="card-recurso">
+        <span class="icone">📄</span>
+        <h3>Geração de PDF</h3>
+        <p>Gere documentos em PDF organizados com os totais calculados para manter o controle financeiro do seu estoque.</p>
+      </div>
+    </div>
+
+    <!-- CARD DE PREÇO -->
+    <div class="secao-preco">
+      <span class="badge-pop">Acesso Ilimitado</span>
+      <h3 style="font-size: 1.4em; color: #0f172a;">Plano Profissional</h3>
+      <div class="preco-valor">R$ 169,90</div>
+      <div class="preco-periodo">por mês (renovação automática)</div>
+
+      <ul class="lista-check">
+        <li>Cotações Ilimitadas</li>
+        <li>Leitor de Código de Barras</li>
+        <li>Exportação para PDF e WhatsApp</li>
+        <li>Suporte Prioritário</li>
+        <li>Sem taxa de adesão ou cancelamento</li>
+      </ul>
+
+      <a href="https://mpago.la/2MvjRwM" target="_blank" class="btn-cta-principal" style="width: 100%;">
+        Assinar por R$ 169,90/mês
+      </a>
+    </div>
+  </main>
+
+  <footer>
+    <p>© 2026 Sistema de Cotações. Todos os direitos reservados.</p>
+  </footer>
+
+</body>
+</html>
