@@ -81,9 +81,12 @@
     /* BENEFICIOS / RECURSOS */
     .grid-recursos {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); /* Ajustado para 2 cards */
       gap: 25px;
       margin-top: 40px;
+      max-width: 800px; /* Centraliza melhor 2 cards */
+      margin-left: auto;
+      margin-right: auto;
     }
     .card-recurso {
       background: white;
@@ -176,7 +179,8 @@
   <header class="hero">
     <span class="badge-hero">🚀 Feito para Mercados e Atacadistas</span>
     <h1>Faça Cotações de Compras <span>10x Mais Rápido</span> e Sem Erros</h1>
-    <p>O sistema definitivo para o pequeno comerciante cotar preços de caixas com fornecedores, ler código de barras pelo celular e enviar direto no WhatsApp.</p>
+    <!-- ALTERAÇÃO AQUI: Removido texto sobre leitor de código de barras -->
+    <p>O sistema definitivo para o pequeno comerciante cotar preços com fornecedores e enviar a lista organizada direto no WhatsApp.</p>
     
     <a href="https://mpago.la/2MvjRwM" target="_blank" class="btn-cta-principal">
       Quero Assinar Agora ➔
@@ -190,11 +194,7 @@
     <p style="text-align: center; color: #64748b; margin-bottom: 30px;">Desenvolvido para simplificar a rotina de compras do seu negócio.</p>
 
     <div class="grid-recursos">
-      <div class="card-recurso">
-        <span class="icone">📷</span>
-        <h3>Leitor no Celular</h3>
-        <p>Bipe os códigos de barras das embalagens diretamente com a câmera do seu smartphone para montar a lista sem digitar.</p>
-      </div>
+      <!-- ALTERAÇÃO AQUI: Removido o card "Leitor no Celular" -->
 
       <div class="card-recurso">
         <span class="icone">💬</span>
@@ -218,7 +218,7 @@
 
       <ul class="lista-check">
         <li>Cotações Ilimitadas</li>
-        <li>Leitor de Código de Barras</li>
+        <!-- ALTERAÇÃO AQUI: Removido item do leitor -->
         <li>Exportação para PDF e WhatsApp</li>
         <li>Suporte Prioritário</li>
         <li>Sem taxa de adesão ou cancelamento</li>
