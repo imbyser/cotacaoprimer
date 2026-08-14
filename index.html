@@ -159,7 +159,7 @@
     <div class="container" id="conteudoParaPdf">
       
       <div class="badge-etapa" id="badgeOrientacao">
-        📌 <b>Etapa 1 (Cliente):</b> Adicione os produtos que seu mercado precisa cotar e envie o link ao seu vendedor pelo WhatsApp.
+        📌 <b>Etapa 1 (Cliente):</b> Adicione os produtos, escolha o prazo/pagamento desejado e envie ao seu vendedor.
       </div>
 
       <!-- PAINEL EXCLUSIVO DO VENDEDOR (ETAPA 2) -->
@@ -195,21 +195,21 @@
           <input type="tel" id="telCliente" class="campo-cliente" placeholder="WhatsApp da Loja..." onchange="salvarDadosCliente()">
         </div>
 
-        <!-- SEÇÃO NOVOS CAMPOS DE PAGAMENTO E PRAZO (EXCLUSIVO ETAPA 3) -->
-        <div class="linha-pagamento" id="secaoPagamento" style="display: none;">
+        <!-- SEÇÃO DE PRAZO E FORMA DE PAGAMENTO (DISPONÍVEL NAS ETAPAS 1, 2 e 3) -->
+        <div class="linha-pagamento" id="secaoPagamento">
           <select id="prazoPagamento" class="campo-cliente">
-            <option value="À vista">⏱️ À vista</option>
-            <option value="7 dias">⏱️ 7 dias</option>
-            <option value="14 dias">⏱️ 14 dias</option>
-            <option value="21 dias">⏱️ 21 dias</option>
-            <option value="30 dias">⏱️ 30 dias</option>
+            <option value="À vista">⏱️ Prazo: À vista</option>
+            <option value="7 dias">⏱️ Prazo: 7 dias</option>
+            <option value="14 dias">⏱️ Prazo: 14 dias</option>
+            <option value="21 dias">⏱️ Prazo: 21 dias</option>
+            <option value="30 dias">⏱️ Prazo: 30 dias</option>
           </select>
 
           <select id="formaPagamento" class="campo-cliente">
-            <option value="Boleto">💳 Boleto</option>
-            <option value="Dinheiro">💵 Dinheiro</option>
-            <option value="PIX">📱 PIX</option>
-            <option value="Cartão">💳 Cartão de Crédito</option>
+            <option value="Boleto">💳 Pagto: Boleto</option>
+            <option value="Dinheiro">💵 Pagto: Dinheiro</option>
+            <option value="PIX">📱 Pagto: PIX</option>
+            <option value="Cartão">💳 Pagto: Cartão de Crédito</option>
           </select>
         </div>
 
@@ -349,6 +349,11 @@
       const urlParams = new URLSearchParams(window.location.search);
       const eParam = urlParams.get('e');
       const dadosCotacao = urlParams.get('cotacao');
+      const prazoUrl = urlParams.get('prazo');
+      const pagtoUrl = urlParams.get('pagto');
+
+      if (prazoUrl) document.getElementById('prazoPagamento').value = prazoUrl;
+      if (pagtoUrl) document.getElementById('formaPagamento').value = pagtoUrl;
       
       if (dadosCotacao) {
         let etapaDestino = parseInt(eParam) || 2;
@@ -421,12 +426,14 @@
       const btnAdicionarManual = document.getElementById('btnAdicionarManual');
       const badgeOrientacao = document.getElementById('badgeOrientacao');
 
+      secaoPagamento.style.display = 'flex'; // Exibe a seção de pagamento em TODAS as etapas
+
       if (etapa === 1) {
         document.getElementById('tituloHeader').innerText = "1. Solicitando Cotação";
         document.getElementById('subtituloHeader').innerText = "O cliente seleciona os produtos que precisa e envia ao vendedor";
         document.getElementById('btnAcao').innerText = "Enviar Cotação para o Vendedor";
         
-        badgeOrientacao.innerHTML = "📌 <b>Etapa 1 (Cliente):</b> Adicione os produtos que seu mercado precisa cotar e envie ao seu vendedor pelo WhatsApp.";
+        badgeOrientacao.innerHTML = "📌 <b>Etapa 1 (Cliente):</b> Adicione os produtos, defina o prazo/pagamento desejado e envie ao vendedor.";
 
         secaoAtalhos.style.display = 'block';
         secaoVendedor.style.display = 'none';
@@ -442,7 +449,6 @@
         inputsEmb.forEach(i => i.disabled = false);
 
         boxTotal.style.display = 'none';
-        secaoPagamento.style.display = 'none';
         btnPdf.style.display = 'none';
 
       } else if (etapa === 2) {
@@ -450,7 +456,7 @@
         document.getElementById('subtituloHeader').innerText = "O vendedor digita os preços unitários/caixa de cada item";
         document.getElementById('btnAcao').innerText = "Enviar Preços Digitados ao Cliente";
 
-        badgeOrientacao.innerHTML = "💰 <b>Etapa 2 (Vendedor):</b> Digite seu nome, empresa e o preço dos produtos. Se algum item estiver em falta, você pode <b>Excluir</b>.";
+        badgeOrientacao.innerHTML = "💰 <b>Etapa 2 (Vendedor):</b> Digite seu nome, empresa e os preços dos produtos respeitando a condição de pagamento informada.";
 
         secaoAtalhos.style.display = 'none';
         secaoVendedor.style.display = 'block';
@@ -467,7 +473,6 @@
         inputsPreco.forEach(i => i.disabled = false);
 
         boxTotal.style.display = 'none';
-        secaoPagamento.style.display = 'none';
         btnPdf.style.display = 'none';
 
       } else if (etapa === 3) {
@@ -475,7 +480,7 @@
         document.getElementById('subtituloHeader').innerText = "O cliente escolhe a melhor oferta e confirma o pedido final";
         document.getElementById('btnAcao').innerText = "Confirmar e Enviar Pedido Final";
 
-        badgeOrientacao.innerHTML = "🛒 <b>Etapa 3 (Cliente):</b> Defina o prazo/pagamento desejado, as quantidades e envie o pedido final.";
+        badgeOrientacao.innerHTML = "🛒 <b>Etapa 3 (Cliente):</b> O sistema indica o melhor preço. Ajuste as quantidades finais e envie o pedido.";
 
         secaoAtalhos.style.display = 'none';
         secaoVendedor.style.display = 'none';
@@ -492,7 +497,6 @@
         inputsPreco.forEach(i => i.disabled = true);
 
         boxTotal.style.display = 'flex';
-        secaoPagamento.style.display = 'flex';
         btnPdf.style.display = 'block';
         calcularTotal();
       }
@@ -609,24 +613,26 @@
       let mensagem = "";
 
       if (etapaAtual === 1) {
-        const urlVendedor = `${baseUrl}?e=2&cotacao=${encodeURIComponent(itensParaUrl.join(';'))}`;
-        mensagem = `📋 *NOVA SOLICITAÇÃO DE COTAÇÃO*\n`;
+        const urlVendedor = `${baseUrl}?e=2&prazo=${encodeURIComponent(prazo)}&pagto=${encodeURIComponent(formaPagto)}&cotacao=${encodeURIComponent(itensParaUrl.join(';'))}`;
+        mensagem = `📋 *SOLICITAÇÃO DE COTAÇÃO*\n`;
         if (nomeCliente) mensagem += `*Cliente:* ${nomeCliente}\n`;
         if (telCliente) mensagem += `*Contato:* ${telCliente}\n`;
+        mensagem += `*Condição Solicitada:* ${prazo} - ${formaPagto}\n`;
         mensagem += `*Total de itens:* ${totalItens} produto(s)\n\n`;
         mensagem += `🔗 *Acesse o link para preencher os preços:*\n${urlVendedor}`;
 
       } else if (etapaAtual === 2) {
-        const urlCliente = `${baseUrl}?e=3&cotacao=${encodeURIComponent(itensParaUrl.join(';'))}`;
+        const urlCliente = `${baseUrl}?e=3&prazo=${encodeURIComponent(prazo)}&pagto=${encodeURIComponent(formaPagto)}&cotacao=${encodeURIComponent(itensParaUrl.join(';'))}`;
         mensagem = `💰 *COTAÇÃO COM PREÇOS PRONTA*\n`;
         if (nomeVendedor) mensagem += `*Vendedor:* ${nomeVendedor}\n`;
         if (empresaVendedor) mensagem += `*Empresa:* ${empresaVendedor}\n`;
         if (nomeCliente) mensagem += `*Cliente:* ${nomeCliente}\n`;
+        mensagem += `*Condição Válida:* ${prazo} - ${formaPagto}\n`;
         mensagem += `*Total de itens precificados:* ${totalItens} produto(s)\n\n`;
-        mensagem += `🔗 *Acesse o link para ver a menor oferta e fechar o pedido:*\n${urlCliente}`;
+        mensagem += `🔗 *Acesse o link para conferir e fechar o pedido:*\n${urlCliente}`;
 
       } else if (etapaAtual === 3) {
-        const urlCliente = `${baseUrl}?e=3&cotacao=${encodeURIComponent(itensParaUrl.join(';'))}`;
+        const urlCliente = `${baseUrl}?e=3&prazo=${encodeURIComponent(prazo)}&pagto=${encodeURIComponent(formaPagto)}&cotacao=${encodeURIComponent(itensParaUrl.join(';'))}`;
         mensagem = `✅ *PEDIDO FINAL CONFIRMADO*\n`;
         if (nomeCliente) mensagem += `*Cliente:* ${nomeCliente}\n`;
         if (telCliente) mensagem += `*Contato:* ${telCliente}\n`;
@@ -666,7 +672,6 @@
             empate: false
           };
         } else {
-          // Comparação para encontrar o menor preço ou detectar empate
           const precoExistente = mapaOtimizado[chave].preco;
           if (preco > 0 && (preco < precoExistente || precoExistente === 0)) {
             mapaOtimizado[chave].preco = preco;
