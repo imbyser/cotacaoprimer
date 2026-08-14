@@ -279,8 +279,8 @@
 
     let isLoginMode = true;
 
-    // CONFIGURAÇÃO DO SEU WHATSAPP DE VENDAS (Insira seu número com DDD e 55)
-    window.SEU_NUMERO_WHATSAPP = "5581999999999"; // Altere aqui para seu número real
+    // SEU NÚMERO DE WHATSAPP CONFIGURADO
+    window.SEU_NUMERO_WHATSAPP = "5581995432834"; 
     window.VALOR_PLANO_MENSAL = "R$ 49,90";
 
     onAuthStateChanged(auth, (user) => {
@@ -352,7 +352,7 @@
         } else {
           const userCredential = await createUserWithEmailAndPassword(auth, email, password);
           
-          // MENSAGEM AUTOMÁTICA DE BOAS-VINDAS NO WHATSAPP
+          // MENSAGEM AUTOMÁTICA DE BOAS-VINDAS ENVIADA PARA SEU WHATSAPP
           const msgBoasVindas = `Olá! Vi que você criou sua conta (${email}) no Sistema de Cotações. Seus 7 dias grátis estão liberados! Se precisar de ajuda para criar sua primeira cotação, me avise por aqui.`;
           window.open(`https://api.whatsapp.com/send?phone=${window.SEU_NUMERO_WHATSAPP}&text=${encodeURIComponent(msgBoasVindas)}`, '_blank');
         }
