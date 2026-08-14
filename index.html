@@ -5,6 +5,16 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Sistema Profissional de Cotação e Pedidos</title>
 
+  <!-- Meta tags fundamentais para o Google -->
+  <meta name="description" content="Sistema de cotação online de preços e pedidos para mercadinhos e distribuidores. Faça cotações e envie direto pelo WhatsApp.">
+  <meta name="keywords" content="cotacao de preços, pedidos mercadinho, lista de compras atacado, cotacao whatsapp, distribuidora de alimentos">
+  <meta name="robots" content="index, follow">
+
+  <!-- Configuração para redes sociais e WhatsApp ao compartilhar o link -->
+  <meta property="og:title" content="Sistema Profissional de Cotação e Pedidos">
+  <meta property="og:description" content="Faça cotações de preços para o seu comércio de forma simples e rápida via WhatsApp.">
+  <meta property="og:type" content="website">
+
   <!-- Bibliotecas externas para Leitor de Código de Barras e PDF -->
   <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
@@ -13,8 +23,8 @@
     * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 0; }
     body { background-color: #f0f2f5; padding-bottom: 220px; }
     
-    /* ESTILOS TELA DE LOGIN */
-    #authOverlay {
+    /* ESTILOS TELA DE LOGIN / BLOQUEIO */
+    #authOverlay, #trialExpiradoOverlay {
       position: fixed; top: 0; left: 0; width: 100%; height: 100%;
       background: rgba(26, 54, 93, 0.95); z-index: 9999;
       display: flex; justify-content: center; align-items: center; padding: 20px;
@@ -39,8 +49,10 @@
     .auth-toggle span { color: #2b6cb0; font-weight: bold; cursor: pointer; text-decoration: underline; }
     .auth-error { color: #e53e3e; font-size: 0.8em; margin-bottom: 10px; display: none; }
 
-    /* BARRA USUARIO LOGADO */
+    /* BARRA DE TRIAL E USUÁRIO LOGADO */
     .user-bar { background: #0f2342; color: white; padding: 6px 15px; display: flex; justify-content: space-between; align-items: center; font-size: 0.8em; }
+    .trial-banner { background: #feebc8; color: #742a2a; border-bottom: 1px solid #fbd38d; padding: 8px 15px; text-align: center; font-size: 0.85em; font-weight: bold; display: flex; justify-content: space-between; align-items: center; }
+    .btn-renovar { background: #25d366; color: white; border: none; padding: 4px 10px; border-radius: 6px; font-size: 0.8em; font-weight: bold; cursor: pointer; text-decoration: none; }
     .btn-logout { background: #e53e3e; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-weight: bold; }
 
     /* ESTILOS SISTEMA */
@@ -123,15 +135,31 @@
       <button id="btnAuthSubmit" class="btn-auth-primary" onclick="processarAuth()">Entrar</button>
       
       <div class="auth-toggle">
-        <span id="authToggleText">Não tem uma conta? <span onclick="alternarModoAuth()">Cadastre-se</span></span>
+        <span id="authToggleText">Não tem uma conta? <span onclick="alternarModoAuth()">Cadastre-se e teste 7 dias grátis</span></span>
       </div>
     </div>
   </div>
 
-  <!-- BARRA DE USUÁRIO LOGADO -->
+  <!-- TELA DE BLOQUEIO POR TRIAL EXPIRADO -->
+  <div id="trialExpiradoOverlay" style="display: none;">
+    <div class="auth-card">
+      <h2>⏰ Período de Testes Encerrado</h2>
+      <p>Seus 7 dias de degustação gratuita chegaram ao fim. Para continuar realizando cotações e enviando aos fornecedores, ative o seu plano mensal.</p>
+      <button class="btn-auth-primary" style="background: #25d366;" onclick="falarVendasAtivacao('expirado')">📱 Contratar Plano no WhatsApp</button>
+      <br><br>
+      <button class="btn-logout" style="width: 100%; padding: 10px;" onclick="fazerLogout()">Sair da Conta</button>
+    </div>
+  </div>
+
+  <!-- BARRA DE USUÁRIO E TEMPO DE TRIAL -->
   <div class="user-bar" id="userBar" style="display: none;">
     <span>👤 Conectado como: <b id="userEmailDisplay">-</b></span>
     <button class="btn-logout" onclick="fazerLogout()">Sair</button>
+  </div>
+  
+  <div class="trial-banner" id="trialBanner" style="display: none;">
+    <span id="textoTrial">⏳ Você está no seu período grátis (Restam 7 dias).</span>
+    <a href="javascript:void(0)" class="btn-renovar" onclick="falarVendasAtivacao('renovar')">Ativar Plano Completo</a>
   </div>
 
   <!-- CONTEÚDO DO SISTEMA -->
@@ -195,7 +223,7 @@
           <input type="tel" id="telCliente" class="campo-cliente" placeholder="WhatsApp da Loja..." onchange="salvarDadosCliente()">
         </div>
 
-        <!-- SEÇÃO DE PRAZO E FORMA DE PAGAMENTO (DISPONÍVEL NAS ETAPAS 1, 2 e 3) -->
+        <!-- SEÇÃO DE PRAZO E FORMA DE PAGAMENTO -->
         <div class="linha-pagamento" id="secaoPagamento">
           <select id="prazoPagamento" class="campo-cliente">
             <option value="À vista">⏱️ Prazo: À vista</option>
@@ -251,16 +279,58 @@
 
     let isLoginMode = true;
 
+    // CONFIGURAÇÃO DO SEU WHATSAPP DE VENDAS (Insira seu número com DDD e 55)
+    window.SEU_NUMERO_WHATSAPP = "5581999999999"; // Altere aqui para seu número real
+    window.VALOR_PLANO_MENSAL = "R$ 49,90";
+
     onAuthStateChanged(auth, (user) => {
       if (user) {
         document.getElementById('authOverlay').style.display = 'none';
-        document.getElementById('appContainer').style.display = 'block';
-        document.getElementById('userBar').style.display = 'flex';
         document.getElementById('userEmailDisplay').innerText = user.email;
+
+        // VERIFICAÇÃO AUTOMÁTICA DOS 7 DIAS DE TESTE
+        const dataCadastroKey = `cadastro_date_${user.uid}`;
+        let dataCadastroStr = localStorage.getItem(dataCadastroKey);
+
+        if (!dataCadastroStr) {
+          dataCadastroStr = new Date().toISOString();
+          localStorage.setItem(dataCadastroKey, dataCadastroStr);
+        }
+
+        const dataCadastro = new Date(dataCadastroStr);
+        const agora = new Date();
+        const diferencaDias = Math.floor((agora - dataCadastro) / (1000 * 60 * 60 * 24));
+        const diasRestantes = 7 - diferencaDias;
+
+        if (diasRestantes <= 0) {
+          // TRIAL EXPIRADO -> BLOQUEIA TELA
+          document.getElementById('appContainer').style.display = 'none';
+          document.getElementById('userBar').style.display = 'none';
+          document.getElementById('trialBanner').style.display = 'none';
+          document.getElementById('trialExpiradoOverlay').style.display = 'flex';
+        } else {
+          // TRIAL ATIVO
+          document.getElementById('appContainer').style.display = 'block';
+          document.getElementById('userBar').style.display = 'flex';
+          document.getElementById('trialBanner').style.display = 'flex';
+          
+          const textoBanner = document.getElementById('textoTrial');
+          
+          if (diasRestantes <= 2) {
+            textoBanner.innerHTML = `⚠️ <b>Atenção:</b> Faltam apenas ${diasRestantes} dia(s) para encerrar o seu teste grátis!`;
+            document.getElementById('trialBanner').style.background = '#fe2c2c';
+            document.getElementById('trialBanner').style.color = 'white';
+          } else {
+            textoBanner.innerHTML = `⏳ Período de testes ativo: Você tem <b>${diasRestantes} dias restantes</b>.`;
+          }
+        }
+
       } else {
         document.getElementById('authOverlay').style.display = 'flex';
         document.getElementById('appContainer').style.display = 'none';
         document.getElementById('userBar').style.display = 'none';
+        document.getElementById('trialBanner').style.display = 'none';
+        document.getElementById('trialExpiradoOverlay').style.display = 'none';
       }
     });
 
@@ -280,8 +350,11 @@
         if (isLoginMode) {
           await signInWithEmailAndPassword(auth, email, password);
         } else {
-          await createUserWithEmailAndPassword(auth, email, password);
-          alert("Conta criada com sucesso!");
+          const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+          
+          // MENSAGEM AUTOMÁTICA DE BOAS-VINDAS NO WHATSAPP
+          const msgBoasVindas = `Olá! Vi que você criou sua conta (${email}) no Sistema de Cotações. Seus 7 dias grátis estão liberados! Se precisar de ajuda para criar sua primeira cotação, me avise por aqui.`;
+          window.open(`https://api.whatsapp.com/send?phone=${window.SEU_NUMERO_WHATSAPP}&text=${encodeURIComponent(msgBoasVindas)}`, '_blank');
         }
       } catch (error) {
         let msg = "Ocorreu um erro. Tente novamente.";
@@ -306,13 +379,23 @@
         title.innerText = "Acessar Sistema";
         subtitle.innerText = "Entre com seu e-mail e senha para continuar";
         btn.innerText = "Entrar";
-        toggle.innerHTML = 'Não tem uma conta? <span onclick="alternarModoAuth()">Cadastre-se</span>';
+        toggle.innerHTML = 'Não tem uma conta? <span onclick="alternarModoAuth()">Cadastre-se e teste 7 dias grátis</span>';
       } else {
-        title.innerText = "Criar Nova Conta";
-        subtitle.innerText = "Cadastre-se para ter acesso ao sistema de cotação";
-        btn.innerText = "Cadastrar";
+        title.innerText = "Criar Nova Conta (7 Dias Grátis)";
+        subtitle.innerText = "Cadastre-se para liberar o sistema por 7 dias sem compromisso";
+        btn.innerText = "Cadastrar e Começar Teste";
         toggle.innerHTML = 'Já possui conta? <span onclick="alternarModoAuth()">Fazer Login</span>';
       }
+    };
+
+    window.falarVendasAtivacao = function(motivo) {
+      let texto = "";
+      if (motivo === 'expirado') {
+        texto = `Olá! Meu período de testes de 7 dias expirou no Sistema de Cotações. Gostaria de assinar o plano por apenas ${window.VALOR_PLANO_MENSAL}/mês para liberar meu acesso.`;
+      } else {
+        texto = `Olá! Estou testando o Sistema de Cotações e gostaria de garantir minha assinatura no valor de ${window.VALOR_PLANO_MENSAL}/mês.`;
+      }
+      window.open(`https://api.whatsapp.com/send?phone=${window.SEU_NUMERO_WHATSAPP}&text=${encodeURIComponent(texto)}`, '_blank');
     };
 
     window.fazerLogout = function() {
@@ -426,7 +509,7 @@
       const btnAdicionarManual = document.getElementById('btnAdicionarManual');
       const badgeOrientacao = document.getElementById('badgeOrientacao');
 
-      secaoPagamento.style.display = 'flex'; // Exibe a seção de pagamento em TODAS as etapas
+      secaoPagamento.style.display = 'flex';
 
       if (etapa === 1) {
         document.getElementById('tituloHeader').innerText = "1. Solicitando Cotação";
