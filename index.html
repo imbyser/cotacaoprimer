@@ -138,7 +138,7 @@
   
   <div class="trial-banner" id="trialBanner" style="display: none;">
     <span id="textoTrial">⏳ Teste ativo: 7 dias restantes.</span>
-    <a href="javascript:void(0)" class="btn-renovar" onclick="falarVendasAtivacao('renovar')">Ativar Plano</a>
+    <a href="https://imbyser.github.io/supercotacao/vendas.html" class="btn-renovar">Ativar Plano</a>
   </div>
 
   <!-- APLICAÇÃO -->
@@ -256,7 +256,7 @@
 
     let isLoginMode = true;
     window.SEU_NUMERO_WHATSAPP = "5581995432834"; 
-    window.VALOR_PLANO_MENSAL = "R$ 49,90";
+    window.VALOR_PLANO_MENSAL = "R$ 98,90";
 
     onAuthStateChanged(auth, (user) => {
       if (user) {
@@ -323,8 +323,7 @@
     };
 
     window.falarVendasAtivacao = function(motivo) {
-      const texto = `Olá! Gostaria de assinar o plano do Sistema de Cotações por ${window.VALOR_PLANO_MENSAL}/mês.`;
-      window.open(`https://api.whatsapp.com/send?phone=${window.SEU_NUMERO_WHATSAPP}&text=${encodeURIComponent(texto)}`, '_blank');
+      window.location.href = "https://imbyser.github.io/supercotacao/vendas.html";
     };
 
     window.fazerLogout = function() { signOut(auth); };
@@ -595,111 +594,71 @@
     }
 
     function carregarItensViaUrl(dados) {
-      document.getElementById('listaProdutos').innerHTML = '';
-      const itens = decodeURIComponent(dados).split(';');
-      
-      let mapaMenorPreco = {};
+      const lista = document.getElementById('listaProdutos');
+      lista.innerHTML = "";
+      const itens = dados.split(';');
 
-      itens.forEach(item => {
-        const partes = item.split('|');
-        const nome = partes[0] || '';
-        const emb = partes[1] || '';
-        const preco = parseFloat(partes[2]) || 0;
-        const qtd = parseInt(partes[3]) || 1;
-        const vend = partes[4] || '';
+      let propostas = {};
 
-        const chave = `${nome.toLowerCase().trim()}_${emb.toLowerCase().trim()}`;
+      itens.forEach(itemStr => {
+        const partes = itemStr.split('|');
+        if (partes.length >= 2) {
+          const nome = partes[0];
+          const emb = partes[1];
+          const preco = parseFloat(partes[2]) || 0;
+          const qtd = parseInt(partes[3]) || 1;
+          const vend = partes[4] || '';
 
-        if (!mapaMenorPreco[chave]) {
-          mapaMenorPreco[chave] = { nome, emb, preco, qtd, vendedor: vend };
-        } else {
-          // SE O PREÇO ATUAL É MENOR QUE O REGISTRADO ANTERIORMENTE, O NOVO VENDEDOR ASSUME A LIDERANÇA
-          if (preco > 0 && (mapaMenorPreco[chave].preco === 0 || preco < mapaMenorPreco[chave].preco)) {
-            mapaMenorPreco[chave].preco = preco;
-            mapaMenorPreco[chave].vendedor = vend;
+          if (!propostas[nome]) {
+            propostas[nome] = { emb: emb, ofertas: [] };
+          }
+          if (preco > 0) {
+            propostas[nome].ofertas.push({ preco: preco, vendedor: vend, qtd: qtd });
           }
         }
       });
 
-      Object.values(mapaMenorPreco).forEach(item => {
-        adicionarNovoProduto(item.nome, item.emb, item.preco, item.qtd, item.vendedor);
-      });
+      for (let nomeItem in propostas) {
+        const itemData = propostas[nomeItem];
+        let menorPreco = 0;
+        let melhorVendedor = '';
+        let qtd = 1;
+
+        if (itemData.ofertas.length > 0) {
+          itemData.ofertas.sort((a, b) => a.preco - b.preco);
+          menorPreco = itemData.ofertas[0].preco;
+          melhorVendedor = itemData.ofertas[0].vendedor;
+          qtd = itemData.ofertas[0].qtd;
+        }
+
+        adicionarNovoProduto(nomeItem, itemData.emb, menorPreco, qtd, melhorVendedor);
+      }
     }
 
     function calcularTotalEGerarSplits() {
-      if (etapaAtual !== 3) return;
-
       const cards = document.querySelectorAll('.produto-card');
-      const nomeCliente = document.getElementById('nomeCliente').value.trim();
-      const tipo = document.getElementById('tipoCotacao').value;
       let totalGeral = 0;
 
-      let pedidosPorVendedor = {};
-
       cards.forEach(card => {
-        const nome = card.querySelector('.input-nome').value.trim();
-        const emb = card.querySelector('.input-embalagem').value.trim();
-        const qtd = parseInt(card.querySelector('.qtd-valor').value) || 0;
         const preco = parseFloat(card.querySelector('.input-preco').value) || 0;
-        const vendedor = card.getAttribute('data-vendedor') || 'Sem Oferta';
-
-        const subtotal = qtd * preco;
-        totalGeral += subtotal;
-
-        if (qtd > 0 && preco > 0) {
-          if (!pedidosPorVendedor[vendedor]) {
-            pedidosPorVendedor[vendedor] = { itens: [], total: 0 };
-          }
-          pedidosPorVendedor[vendedor].itens.push({ nome, emb, qtd, preco, subtotal });
-          pedidosPorVendedor[vendedor].total += subtotal;
-        }
+        const qtd = parseInt(card.querySelector('.qtd-valor').value) || 0;
+        totalGeral += (preco * qtd);
       });
 
-      document.getElementById('totalDisplay').innerText = 'R$ ' + totalGeral.toFixed(2).replace('.', ',');
-
-      // GERAR PAINEL DE BOTÕES DE ENVIO SEPARADOS POR VENDEDOR
-      const painel = document.getElementById('painelEnvioDividido');
-      painel.innerHTML = '';
-      painel.style.display = 'block';
-
-      Object.keys(pedidosPorVendedor).forEach(vendedor => {
-        const dados = pedidosPorVendedor[vendedor];
-        
-        let msgVend = `✅ *PEDIDO FINAL (VOCÊ VENCEU O LEILÃO DE PREÇOS)*\n`;
-        msgVend += `*Cliente:* ${nomeCliente}\n`;
-        msgVend += `*Modalidade:* ${tipo}\n`;
-        msgVend += `*Total Deste Pedido:* R$ ${dados.total.toFixed(2).replace('.', ',')}\n\n`;
-        msgVend += `📦 *ITENS GANHOS POR VOCÊ:*\n`;
-
-        dados.itens.forEach(i => {
-          msgVend += `• ${i.qtd}x ${i.nome} (${i.emb}) - R$ ${i.preco.toFixed(2)} = R$ ${i.subtotal.toFixed(2)}\n`;
-        });
-
-        const cardHtml = document.createElement('div');
-        cardHtml.className = 'card-divisao-vendedor';
-        cardHtml.innerHTML = `
-          <div>
-            <b>🏆 Vendedor: ${vendedor}</b><br>
-            <span style="color: #2f855a; font-weight: bold;">Subtotal: R$ ${dados.total.toFixed(2).replace('.', ',')}</span>
-          </div>
-          <button class="btn-whatsapp" style="padding: 6px 12px; font-size: 0.8em;" onclick="window.open('https://api.whatsapp.com/send?text=${encodeURIComponent(msgVend)}', '_blank')">📱 Enviar Pedido para ${vendedor}</button>
-        `;
-        painel.appendChild(cardHtml);
-      });
+      document.getElementById('totalDisplay').innerText = `R$ ${totalGeral.toFixed(2).replace('.', ',')}`;
     }
 
     function gerarPDF() {
       const elemento = document.getElementById('conteudoParaPdf');
-      const nomeCliente = document.getElementById('nomeCliente').value || 'Cliente';
-      html2pdf().set({
-        margin: 10,
-        filename: `Pedido_Comparado_${nomeCliente}.pdf`,
+      const opt = {
+        margin: 0.5,
+        filename: 'Pedido_Cotacao.pdf',
         image: { type: 'jpeg', quality: 0.98 },
         html2canvas: { scale: 2 },
-        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
-      }).from(elemento).save();
+        jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' }
+      };
+      html2pdf().set(opt).from(elemento).save();
     }
   </script>
-
 </body>
 </html>
