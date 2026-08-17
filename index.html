@@ -61,12 +61,12 @@
     .input-embalagem { flex: 1; color: #4a5568; }
     
     .linha-acoes { display: flex; justify-content: space-between; align-items: center; border-top: 1px solid #edf2f7; padding-top: 8px; flex-wrap: wrap; gap: 6px; }
-    .bloco-preco { display: flex; align-items: center; gap: 5px; font-weight: bold; color: #2f855a; font-size: 0.85em; }
+    .bloco-preco { display: none; align-items: center; gap: 5px; font-weight: bold; color: #2f855a; font-size: 0.85em; }
     .input-preco { width: 85px; font-weight: bold; color: #2f855a; text-align: right; }
 
     .badge-vencedor { background: #c6f6d5; color: #22543d; padding: 4px 8px; border-radius: 6px; font-size: 0.78em; font-weight: bold; border: 1px solid #9ae6b4; display: none; }
 
-    .qtd-controle { display: flex; align-items: center; background: #edf2f7; border-radius: 8px; padding: 2px; }
+    .qtd-controle { display: none; align-items: center; background: #edf2f7; border-radius: 8px; padding: 2px; }
     .btn-qtd { background: white; border: 1px solid #cbd5e0; color: #2d3748; width: 30px; height: 30px; border-radius: 6px; font-size: 1.1em; font-weight: bold; cursor: pointer; }
     .qtd-valor { width: 35px; text-align: center; font-weight: bold; font-size: 0.9em; border: none; background: transparent; }
 
@@ -87,7 +87,6 @@
 </head>
 <body>
 
-  <!-- AUTENTICAÇÃO -->
   <div id="authOverlay">
     <div class="auth-card">
       <h2 id="authTitle">Acessar Sistema</h2>
@@ -301,7 +300,7 @@
           alert("✅ Seus preços foram enviados com sucesso!");
         }
       } catch (error) {
-        alert("❌ Erro ao enviar.");
+        alert("❌ Erro ao enviar: " + error.message);
       }
     };
 
@@ -323,7 +322,7 @@
 
               for (let vend in ofertas) {
                 const precoVendedor = parseFloat(ofertas[vend][prod.nome]);
-                if (precoVendedor > 0) {
+                if (!isNaN(precoVendedor) && precoVendedor > 0) {
                   if (menorPreco === 0 || precoVendedor < menorPreco) {
                     menorPreco = precoVendedor;
                     vencedor = vend;
@@ -386,7 +385,9 @@
         </div>
       `;
       container.appendChild(card);
-      if(cotacaoIdAtual) alternarEtapa(etapaAtual);
+      
+      // APLICA REGRA DA ETAPA ATUAL IMEDIATAMENTE AO NOVO PRODUTO
+      alternarEtapa(etapaAtual);
     }
 
     function alterarQtd(btn, delta) {
@@ -428,8 +429,8 @@
 
         inputsNome.forEach(i => i.disabled = false);
         inputsEmb.forEach(i => i.disabled = false);
-        precos.forEach(p => p.style.display = 'none');
-        quantidades.forEach(q => q.style.display = 'none');
+        precos.forEach(p => p.style.display = 'none'); // GARANTE OCULTAMENTO NA ETAPA 1
+        quantidades.forEach(q => q.style.display = 'none'); // GARANTE OCULTAMENTO NA ETAPA 1
         botoesExcluir.forEach(b => b.style.display = 'block');
         badgesVencedor.forEach(b => b.style.display = 'none');
       } else if (etapa === 2) {
@@ -477,7 +478,8 @@
       cards.forEach(card => {
         const preco = parseFloat(card.querySelector('.input-preco').value) || 0;
         const qtd = parseInt(card.querySelector('.qtd-valor').value) || 1;
-        const vencedor = card.querySelector('.nome-vencedor').innerText;
+        const vencedorEl = card.querySelector('.nome-vencedor');
+        const vencedor = vencedorEl ? vencedorEl.innerText : 'Pendente';
 
         if (preco > 0) {
           const subtotal = preco * qtd;
