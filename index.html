@@ -125,18 +125,19 @@
 
   <div id="appContainer" style="display: none;">
     <header>
-      <h1 id="tituloHeader">1. Solicitando Cotação</h1>
+      <h1 id="tituloHeader">Cotação de Produtos</h1>
     </header>
 
+    <!-- BARRA DE ETAPAS (Sempre Visível) -->
     <div class="etapas-bar" id="barraEtapas">
       <button class="btn-etapa ativo" id="btnEtapa1" onclick="alternarEtapa(1)">1. Lista</button>
-      <button class="btn-etapa" id="btnEtapa2" style="display: none;" onclick="alternarEtapa(2)">2. Preços</button>
+      <button class="btn-etapa" id="btnEtapa2" onclick="alternarEtapa(2)">2. Preços</button>
       <button class="btn-etapa" id="btnEtapa3" onclick="alternarEtapa(3)">3. Pedido</button>
     </div>
 
     <div class="container">
       <div class="badge-etapa" id="badgeOrientacao">
-        <span>📌 <b>Etapa 1:</b> Monte sua lista.</span>
+        <span id="textoOrientacao">📌 <b>Etapa 1:</b> Monte sua lista.</span>
         <span id="statusSalvamento"></span>
       </div>
 
@@ -230,7 +231,6 @@
         if (cParam) {
           window.carregarCotacaoDoBanco(cParam, eParam || 2);
         } else {
-          // SE NÃO HOUVER PARAMETRO NA URL, VERIFICA SE EXISTE UMA COTAÇÃO EM ABERTO SALVA
           const cotacaoSalvaLocal = localStorage.getItem('cotacaoAtiva_' + user.uid);
           if (cotacaoSalvaLocal) {
             window.carregarCotacaoDoBanco(cotacaoSalvaLocal, 1);
@@ -331,7 +331,6 @@
       window.carregarCotacaoDoBanco(id, 1);
     };
 
-    // AUTO-SALVAMENTO: PERSISTE AUTOMATICAMENTE TUDO DIGITADO PELO CLIENTE
     window.agendarSalvarAutomatico = function() {
       if (etapaAtual !== 1) return;
       document.getElementById('statusSalvamento').innerText = "💾 Salvando...";
@@ -388,8 +387,11 @@
 
       let msg = `🛒 *SOLICITAÇÃO DE COTAÇÃO*\nCliente: *${cliente}*\n\nPreencha seus preços no link:\n${linkVendedor}`;
 
-      alert(`✅ Cotação Salva! Link enviado para o WhatsApp.`);
+      alert(`✅ Cotação Salva! Redirecionando para visualização dos preços...`);
       window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(msg)}`, '_blank');
+      
+      // AVANÇA DIRETO PARA A ETAPA 3 PARA O CLIENTE VER OS PREÇOS DOS VENDEDORES
+      alternarEtapa(3);
     };
 
     window.salvarPrecosVendedor = async function(cotacaoId) {
@@ -542,9 +544,11 @@
       const inputsPreco = document.querySelectorAll('.input-preco');
       const badgesVencedor = document.querySelectorAll('.badge-vencedor');
 
-      document.getElementById('barraEtapas').style.display = cotacaoIdAtual ? 'none' : 'flex';
+      // CORREÇÃO: A barra de etapas continua SEMPRE VISÍVEL para navegação do usuário
+      document.getElementById('barraEtapas').style.display = 'flex';
 
       if (etapa === 1) {
+        document.getElementById('textoOrientacao').innerHTML = "📌 <b>Etapa 1:</b> Monte sua lista.";
         document.getElementById('secaoVendedor').style.display = 'none';
         document.getElementById('secaoAtalhos').style.display = 'block';
         document.getElementById('btnAdicionarManual').style.display = 'block';
@@ -560,6 +564,7 @@
         botoesExcluir.forEach(b => b.style.display = 'block');
         badgesVencedor.forEach(b => b.style.display = 'none');
       } else if (etapa === 2) {
+        document.getElementById('textoOrientacao').innerHTML = "💼 <b>Etapa 2:</b> Vendedor, digite seus preços.";
         document.getElementById('secaoVendedor').style.display = 'block';
         document.getElementById('secaoAtalhos').style.display = 'none';
         document.getElementById('btnAdicionarManual').style.display = 'none';
@@ -576,6 +581,7 @@
         botoesExcluir.forEach(b => b.style.display = 'block');
         badgesVencedor.forEach(b => b.style.display = 'none');
       } else if (etapa === 3) {
+        document.getElementById('textoOrientacao').innerHTML = "🛒 <b>Etapa 3:</b> Confira as melhores ofertas e faça o pedido.";
         document.getElementById('secaoVendedor').style.display = 'none';
         document.getElementById('secaoAtalhos').style.display = 'none';
         document.getElementById('btnAdicionarManual').style.display = 'none';
