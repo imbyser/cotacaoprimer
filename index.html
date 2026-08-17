@@ -1,4 +1,183 @@
-<script type="module">
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sistema Profissional de Cotação e Pedidos</title>
+
+  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
+  <style>
+    * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 0; }
+    body { background-color: #f0f2f5; padding-bottom: 240px; }
+    
+    #authOverlay, #trialExpiradoOverlay {
+      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(26, 54, 93, 0.95); z-index: 9999;
+      display: flex; justify-content: center; align-items: center; padding: 20px;
+    }
+    .auth-card {
+      background: white; border-radius: 12px; padding: 25px; width: 100%; max-width: 400px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.2); text-align: center;
+    }
+    .auth-card h2 { color: #1a365d; margin-bottom: 8px; font-size: 1.4em; }
+    .auth-card p { font-size: 0.85em; color: #718096; margin-bottom: 20px; }
+    .auth-input {
+      width: 100%; padding: 12px; margin-bottom: 12px; border: 1px solid #cbd5e0;
+      border-radius: 8px; font-size: 0.95em; outline: none;
+    }
+    .btn-auth-primary {
+      width: 100%; padding: 12px; background: #2b6cb0; color: white; border: none;
+      border-radius: 8px; font-weight: bold; font-size: 1em; cursor: pointer; transition: background 0.2s;
+    }
+    .auth-toggle { margin-top: 15px; font-size: 0.85em; color: #4a5568; }
+    .auth-toggle span { color: #2b6cb0; font-weight: bold; cursor: pointer; text-decoration: underline; }
+    .auth-error { color: #e53e3e; font-size: 0.8em; margin-bottom: 10px; display: none; }
+
+    .user-bar { background: #0f2342; color: white; padding: 6px 15px; display: flex; justify-content: space-between; align-items: center; font-size: 0.8em; }
+    .btn-logout { background: #e53e3e; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-weight: bold; }
+
+    header { background: #1a365d; color: white; padding: 15px; text-align: center; }
+    header h1 { font-size: 1.3em; margin-bottom: 5px; }
+    header p { font-size: 0.85em; opacity: 0.9; }
+
+    .etapas-bar { display: flex; justify-content: center; background: #e2e8f0; padding: 8px; gap: 4px; margin-bottom: 15px; }
+    .btn-etapa { flex: 1; max-width: 200px; padding: 10px 6px; border: none; border-radius: 6px; font-weight: bold; font-size: 0.78em; text-align: center; cursor: pointer; color: #4a5568; background: #cbd5e0; }
+    .btn-etapa.ativo { background: #2b6cb0; color: white; box-shadow: 0 2px 4px rgba(0,0,0,0.15); }
+
+    .container { max-width: 650px; margin: 0 auto; padding: 0 15px; }
+    .badge-etapa { background: #ebf8ff; border-left: 4px solid #2b6cb0; color: #2c5282; padding: 10px 12px; border-radius: 6px; margin-bottom: 15px; font-size: 0.85em; line-height: 1.4; }
+
+    .secao-vendedor { background: #f0fff4; border: 1px solid #c6f6d5; padding: 12px; border-radius: 10px; margin-bottom: 15px; display: none; }
+    .secao-vendedor h4 { color: #22543d; font-size: 0.9em; margin-bottom: 8px; }
+
+    .secao-atalhos { background: white; padding: 12px; border-radius: 10px; margin-bottom: 15px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+    .titulo-atalhos { font-size: 0.85em; font-weight: bold; color: #4a5568; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; }
+    .botoes-categorias { display: flex; flex-wrap: wrap; gap: 6px; }
+    .btn-cat { background: #edf2f7; border: 1px solid #cbd5e0; border-radius: 20px; padding: 6px 12px; font-size: 0.8em; font-weight: bold; color: #2d3748; cursor: pointer; }
+
+    .produto-card { background: white; border-radius: 10px; padding: 12px; margin-bottom: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); display: flex; flex-direction: column; gap: 8px; }
+    .linha-inputs { display: flex; gap: 8px; }
+    .input-editavel { border: 1px solid #cbd5e0; border-radius: 6px; padding: 8px; font-size: 0.9em; outline: none; }
+    .input-editavel:disabled { background-color: #edf2f7; color: #4a5568; }
+    
+    .input-nome { flex: 2; font-weight: bold; }
+    .input-embalagem { flex: 1; color: #4a5568; }
+    
+    .linha-acoes { display: flex; justify-content: space-between; align-items: center; border-top: 1px solid #edf2f7; padding-top: 8px; flex-wrap: wrap; gap: 6px; }
+    .bloco-preco { display: flex; align-items: center; gap: 5px; font-weight: bold; color: #2f855a; font-size: 0.85em; }
+    .input-preco { width: 85px; font-weight: bold; color: #2f855a; text-align: right; }
+
+    .badge-vencedor { background: #c6f6d5; color: #22543d; padding: 4px 8px; border-radius: 6px; font-size: 0.78em; font-weight: bold; border: 1px solid #9ae6b4; display: none; }
+
+    .qtd-controle { display: flex; align-items: center; background: #edf2f7; border-radius: 8px; padding: 2px; }
+    .btn-qtd { background: white; border: 1px solid #cbd5e0; color: #2d3748; width: 30px; height: 30px; border-radius: 6px; font-size: 1.1em; font-weight: bold; cursor: pointer; }
+    .qtd-valor { width: 35px; text-align: center; font-weight: bold; font-size: 0.9em; border: none; background: transparent; }
+
+    .btn-excluir { background: #fff5f5; color: #e53e3e; border: 1px solid #fed7d7; border-radius: 6px; padding: 6px 10px; font-size: 0.8em; cursor: pointer; font-weight: bold; }
+    .btn-adicionar { background: #ebf8ff; color: #2b6cb0; border: 2px dashed #90cdf4; border-radius: 10px; width: 100%; padding: 12px; font-size: 0.95em; font-weight: bold; cursor: pointer; margin-top: 5px; }
+
+    .carrinho-bar { position: fixed; bottom: 0; left: 0; right: 0; background: white; border-top: 1px solid #e2e8f0; padding: 15px; box-shadow: 0 -2px 10px rgba(0,0,0,0.1); z-index: 100; max-height: 230px; overflow-y: auto; }
+    .carrinho-conteudo { max-width: 650px; margin: 0 auto; }
+    
+    .linha-dados-cliente { display: flex; gap: 8px; margin-bottom: 8px; }
+    .campo-cliente { flex: 1; padding: 8px 10px; border: 1px solid #cbd5e0; border-radius: 6px; font-size: 0.85em; }
+    .linha-pagamento { display: flex; gap: 8px; margin-bottom: 8px; background: #f7fafc; padding: 8px; border-radius: 6px; border: 1px solid #e2e8f0; flex-wrap: wrap; }
+
+    .resumo-total { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; font-size: 1em; font-weight: bold; color: #1a365d; }
+    .btn-whatsapp { background: #25d366; color: white; border: none; padding: 12px; border-radius: 8px; font-size: 0.9em; font-weight: bold; cursor: pointer; width: 100%; text-align: center; }
+    .card-divisao-vendedor { background: #f0fff4; border: 1px solid #9ae6b4; padding: 10px; border-radius: 8px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; font-size: 0.85em; }
+  </style>
+</head>
+<body>
+
+  <!-- AUTENTICAÇÃO -->
+  <div id="authOverlay">
+    <div class="auth-card">
+      <h2 id="authTitle">Acessar Sistema</h2>
+      <p id="authSubtitle">Entre com seu e-mail e senha para continuar</p>
+      <div id="authError" class="auth-error"></div>
+      <input type="email" id="authEmail" class="auth-input" placeholder="Seu e-mail...">
+      <input type="password" id="authPassword" class="auth-input" placeholder="Sua senha...">
+      <button id="btnAuthSubmit" class="btn-auth-primary" onclick="processarAuth()">Entrar</button>
+      <div class="auth-toggle">
+        <span id="authToggleText">Não tem uma conta? <span onclick="alternarModoAuth()">Cadastre-se</span></span>
+      </div>
+    </div>
+  </div>
+
+  <div class="user-bar" id="userBar" style="display: none;">
+    <span>👤 Usuário: <b id="userEmailDisplay">-</b></span>
+    <button class="btn-logout" onclick="fazerLogout()">Sair</button>
+  </div>
+  
+  <div id="appContainer" style="display: none;">
+    <header>
+      <h1 id="tituloHeader">1. Solicitando Cotação</h1>
+    </header>
+
+    <div class="etapas-bar" id="barraEtapas">
+      <button class="btn-etapa ativo" id="btnEtapa1" onclick="alternarEtapa(1)">1. Lista</button>
+      <button class="btn-etapa" id="btnEtapa2" style="display: none;" onclick="alternarEtapa(2)">2. Preços</button>
+      <button class="btn-etapa" id="btnEtapa3" onclick="alternarEtapa(3)">3. Pedido</button>
+    </div>
+
+    <div class="container">
+      <div class="badge-etapa" id="badgeOrientacao">
+        📌 <b>Etapa 1:</b> Monte sua lista.
+      </div>
+
+      <div class="secao-vendedor" id="secaoVendedor">
+        <h4>💼 Identificação do Vendedor:</h4>
+        <div class="linha-dados-cliente">
+          <input type="text" id="nomeVendedor" class="campo-cliente" placeholder="Seu Nome...">
+          <input type="text" id="empresaVendedor" class="campo-cliente" placeholder="Empresa...">
+        </div>
+      </div>
+
+      <div class="secao-atalhos" id="secaoAtalhos">
+        <div class="titulo-atalhos">⚡ Adicionar Rápido:</div>
+        <div class="botoes-categorias">
+          <button class="btn-cat" onclick="adicionarNovoProduto('Arroz 5kg', 'Fardo c/ 6')">+ Arroz</button>
+          <button class="btn-cat" onclick="adicionarNovoProduto('Feijão 1kg', 'Fardo c/ 10')">+ Feijão</button>
+        </div>
+      </div>
+
+      <div id="listaProdutos" style="margin-top: 10px;"></div>
+      <button class="btn-adicionar" id="btnAdicionarManual" onclick="adicionarNovoProduto('', '')">+ Adicionar Item em Branco</button>
+    </div>
+
+    <div class="carrinho-bar">
+      <div class="carrinho-conteudo">
+        <div class="linha-dados-cliente">
+          <input type="text" id="nomeCliente" class="campo-cliente" placeholder="Nome da Loja...">
+          <input type="tel" id="telCliente" class="campo-cliente" placeholder="WhatsApp...">
+        </div>
+
+        <div class="linha-pagamento" id="secaoPagamento">
+          <select id="tipoCotacao" class="campo-cliente">
+            <option value="Caixa">📦 Por Caixa</option>
+            <option value="Unidade">🏷️ Por Unidade</option>
+          </select>
+          <select id="prazoPagamento" class="campo-cliente">
+            <option value="À vista">⏱️ À vista</option>
+            <option value="7 dias">⏱️ 7 dias</option>
+          </select>
+        </div>
+
+        <div class="resumo-total" id="boxTotal" style="display: none;">
+          <span>Total Geral:</span>
+          <span id="totalDisplay">R$ 0,00</span>
+        </div>
+
+        <div id="painelEnvioDividido" style="display: none; margin-bottom: 8px;"></div>
+        <button class="btn-whatsapp" id="btnAcao" onclick="executarAcaoPrincipal()">Gerar Link e Enviar</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
     import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
     import { getFirestore, doc, setDoc, getDoc, onSnapshot, updateDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
@@ -17,7 +196,6 @@
     const db = getFirestore(app);
 
     let isLoginMode = true;
-    const clientesCompletos = ["thiago.limaflp@hotmail.com"];
 
     onAuthStateChanged(auth, (user) => {
       if (user) {
@@ -57,10 +235,9 @@
 
     window.salvarCotacaoEGerarLink = async function() {
       const cotacaoId = "COT-" + Math.floor(100000 + Math.random() * 900000);
-      const cliente = document.getElementById('nomeCliente').value.trim() || 'Mercadinho';
+      const cliente = document.getElementById('nomeCliente').value.trim() || 'Cliente';
       const tel = document.getElementById('telCliente').value.trim();
       const prazo = document.getElementById('prazoPagamento').value;
-      const pagto = document.getElementById('formaPagamento').value;
       const tipo = document.getElementById('tipoCotacao').value;
 
       const cards = document.querySelectorAll('.produto-card');
@@ -76,22 +253,24 @@
 
       try {
         await setDoc(doc(db, "cotacoes", cotacaoId), {
-          cliente, tel, prazo, pagto, tipo, produtos, ofertas: {}
+          cliente, tel, prazo, pagto: "Combinar", tipo, produtos, ofertas: {}
         });
 
         cotacaoIdAtual = cotacaoId;
-        window.history.pushState({}, '', `?c=${cotacaoId}&e=1`); 
-        window.carregarCotacaoDoBanco(cotacaoId, 1);
+        
+        // MÁGICA 1: Quando o cliente gera o link, ele já é jogado pra Aba 3 ao vivo!
+        window.history.pushState({}, '', `?c=${cotacaoId}&e=3`); 
+        window.carregarCotacaoDoBanco(cotacaoId, 3);
 
         const baseUrl = window.location.href.split('?')[0];
         const linkVendedor = `${baseUrl}?c=${cotacaoId}&e=2`;
 
-        let msg = `🛒 *SOLICITAÇÃO DE COTAÇÃO*\nCliente: *${cliente}*\nModalidade: *${tipo}*\n\nPreencha seus preços no link:\n${linkVendedor}`;
+        let msg = `🛒 *SOLICITAÇÃO DE COTAÇÃO*\nCliente: *${cliente}*\n\nPreencha seus preços no link:\n${linkVendedor}`;
 
-        alert(`✅ Cotação Criada!\nAgora clique na Aba "3. Pedido" para ver os preços chegarem ao vivo!`);
+        alert(`✅ Cotação Criada!\nVocê já está na tela de monitoramento, aguarde os preços chegarem!`);
         window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(msg)}`, '_blank');
       } catch (e) {
-        alert("Erro ao criar: " + e.message);
+        alert("Erro: " + e.message);
       }
     };
 
@@ -107,10 +286,8 @@
       let preenchidos = 0;
 
       cards.forEach((card) => {
-        const inputNome = card.querySelector('.input-nome');
-        const inputPreco = card.querySelector('.input-preco');
-        const nome = inputNome ? inputNome.value.trim() : '';
-        const precoStr = inputPreco ? inputPreco.value.replace(',', '.') : '';
+        const nome = card.querySelector('.input-nome').value.trim();
+        const precoStr = card.querySelector('.input-preco').value.replace(',', '.');
         const preco = parseFloat(precoStr);
 
         if (nome !== "" && !isNaN(preco) && preco > 0) {
@@ -119,7 +296,7 @@
         }
       });
 
-      if (preenchidos === 0) return alert("⚠️ Digite o preço de pelo menos um produto! (Ex: 15,50)");
+      if (preenchidos === 0) return alert("⚠️ Digite o preço de pelo menos um produto!");
 
       try {
         const docRef = doc(db, "cotacoes", cotacaoId);
@@ -129,10 +306,10 @@
           let ofertasAtuais = docSnap.data().ofertas || {};
           ofertasAtuais[nomeIdentificacao] = precos;
           await updateDoc(docRef, { ofertas: ofertasAtuais });
-          alert("✅ Seus preços foram enviados com sucesso ao cliente!");
+          alert("✅ Seus preços foram enviados com sucesso!");
         }
       } catch (error) {
-        alert("❌ Erro ao enviar preços.");
+        alert("❌ Erro ao enviar.");
       }
     };
 
@@ -141,9 +318,8 @@
 
       const montarTela = (data) => {
         document.getElementById('nomeCliente').value = data.cliente || '';
-        document.getElementById('telCliente').value = data.tel || '';
-        
         document.getElementById('listaProdutos').innerHTML = '';
+        
         const ofertas = data.ofertas || {};
 
         data.produtos.forEach(prod => {
@@ -159,28 +335,187 @@
               }
             }
           }
-          // Deixa o campo vazio se não for a aba do cliente, assim o placeholder funciona e não apaga o que o vendedor digitou
+          // MÁGICA 2: Na tela do vendedor, deixa vazio pra não apagar o que ele digita.
           const precoExibicao = (etapa === 3) ? menorPreco : '';
-          adicionarNovoProduto(prod.nome, prod.emb, precoExibicao, 1, vencedor, false);
+          adicionarNovoProduto(prod.nome, prod.emb, precoExibicao, 1, vencedor);
         });
 
         alternarEtapa(etapa);
-        if (etapa === 3) calcularTotalEGerarSplits();
       };
 
       if (etapa === 2) {
-        // VENDEDOR: Carrega do banco apenas uma vez (getDoc). Isso impede que a tela dele "pisque" e apague os números quando ele clicar em salvar.
+        // MÁGICA 3: Vendedor carrega só uma vez (getDoc)
         const docSnap = await getDoc(docRef);
-        if (docSnap.exists()) {
-          montarTela(docSnap.data());
-        }
+        if (docSnap.exists()) montarTela(docSnap.data());
       } else {
-        // CLIENTE: Fica conectado na antena ao vivo (onSnapshot).
+        // MÁGICA 4: Cliente escuta ao vivo (onSnapshot)
         onSnapshot(docRef, (docSnap) => {
-          if (docSnap.exists()) {
-            montarTela(docSnap.data());
-          }
+          if (docSnap.exists()) montarTela(docSnap.data());
         });
       }
     };
   </script>
+
+  <script>
+    let etapaAtual = 1; 
+    let cotacaoIdAtual = null;
+
+    window.onload = function() {
+      const urlParams = new URLSearchParams(window.location.search);
+      cotacaoIdAtual = urlParams.get('c');
+      const eParam = parseInt(urlParams.get('e'));
+
+      if (cotacaoIdAtual) {
+        window.carregarCotacaoDoBanco(cotacaoIdAtual, eParam || 2);
+      } else {
+        adicionarNovoProduto("Margarina Deline 250g", "Cx c/ 24");
+      }
+    };
+
+    function adicionarNovoProduto(nome = '', emb = '', preco = '', qtd = 1, vencedor = 'Pendente') {
+      const container = document.getElementById('listaProdutos');
+      const card = document.createElement('div');
+      card.className = 'produto-card';
+
+      card.innerHTML = `
+        <div class="linha-inputs">
+          <input type="text" class="input-editavel input-nome" placeholder="Nome..." value="${nome}">
+          <input type="text" class="input-editavel input-embalagem" placeholder="Emb..." value="${emb}">
+        </div>
+        <div class="linha-acoes">
+          <div class="bloco-preco">
+            <span>R$</span>
+            <input type="number" step="0.01" class="input-editavel input-preco" placeholder="0,00" value="${preco > 0 ? preco : ''}" onchange="calcularTotalEGerarSplits()">
+          </div>
+          <span class="badge-vencedor" style="${vencedor !== 'Pendente' ? 'display: inline-block;' : 'display: none;'}">🏆 <b class="nome-vencedor">${vencedor}</b></span>
+          <div class="qtd-controle">
+            <button class="btn-qtd" onclick="alterarQtd(this, -1)">-</button>
+            <input type="text" class="qtd-valor" value="${qtd}" readonly>
+            <button class="btn-qtd" onclick="alterarQtd(this, 1)">+</button>
+          </div>
+          <button class="btn-excluir" onclick="removerProduto(this)">🗑️</button>
+        </div>
+      `;
+      container.appendChild(card);
+      if(cotacaoIdAtual) alternarEtapa(etapaAtual);
+    }
+
+    function alterarQtd(btn, delta) {
+      const input = btn.parentElement.querySelector('.qtd-valor');
+      input.value = Math.max(1, parseInt(input.value) + delta);
+      if (etapaAtual === 3) calcularTotalEGerarSplits();
+    }
+
+    function removerProduto(btn) {
+      btn.closest('.produto-card').remove();
+      if (etapaAtual === 3) calcularTotalEGerarSplits();
+    }
+
+    function alternarEtapa(etapa) {
+      etapaAtual = etapa;
+      document.getElementById('btnEtapa1').classList.toggle('ativo', etapa === 1);
+      document.getElementById('btnEtapa2').classList.toggle('ativo', etapa === 2);
+      document.getElementById('btnEtapa3').classList.toggle('ativo', etapa === 3);
+
+      const precos = document.querySelectorAll('.bloco-preco');
+      const quantidades = document.querySelectorAll('.qtd-controle');
+      const botoesExcluir = document.querySelectorAll('.btn-excluir');
+      const inputsNome = document.querySelectorAll('.input-nome');
+      const inputsEmb = document.querySelectorAll('.input-embalagem');
+      const inputsPreco = document.querySelectorAll('.input-preco');
+      const badgesVencedor = document.querySelectorAll('.badge-vencedor');
+
+      document.getElementById('barraEtapas').style.display = cotacaoIdAtual ? 'none' : 'flex';
+
+      if (etapa === 1) {
+        document.getElementById('secaoVendedor').style.display = 'none';
+        document.getElementById('secaoAtalhos').style.display = 'block';
+        document.getElementById('btnAdicionarManual').style.display = 'block';
+        document.getElementById('boxTotal').style.display = 'none';
+        document.getElementById('painelEnvioDividido').style.display = 'none';
+        document.getElementById('btnAcao').style.display = 'block';
+        document.getElementById('btnAcao').innerText = "Gerar Link e Enviar";
+        document.getElementById('badgeOrientacao').innerHTML = "📌 <b>Etapa 1:</b> Monte sua lista.";
+
+        inputsNome.forEach(i => i.disabled = false);
+        inputsEmb.forEach(i => i.disabled = false);
+        precos.forEach(p => p.style.display = 'none');
+        quantidades.forEach(q => q.style.display = 'none');
+        botoesExcluir.forEach(b => b.style.display = 'block');
+        badgesVencedor.forEach(b => b.style.display = 'none');
+      } else if (etapa === 2) {
+        document.getElementById('secaoVendedor').style.display = 'block';
+        document.getElementById('secaoAtalhos').style.display = 'none';
+        document.getElementById('btnAdicionarManual').style.display = 'none';
+        document.getElementById('boxTotal').style.display = 'none';
+        document.getElementById('painelEnvioDividido').style.display = 'none';
+        document.getElementById('btnAcao').style.display = 'block';
+        document.getElementById('btnAcao').innerText = "💾 Salvar e Enviar Preços";
+        document.getElementById('badgeOrientacao').innerHTML = "📌 <b>Etapa 2:</b> Vendedor, insira seus preços e salve.";
+
+        inputsNome.forEach(i => i.disabled = true);
+        inputsEmb.forEach(i => i.disabled = true);
+        inputsPreco.forEach(i => i.disabled = false);
+        precos.forEach(p => p.style.display = 'flex');
+        quantidades.forEach(q => q.style.display = 'none');
+        botoesExcluir.forEach(b => b.style.display = 'none');
+        badgesVencedor.forEach(b => b.style.display = 'none');
+      } else if (etapa === 3) {
+        document.getElementById('secaoVendedor').style.display = 'none';
+        document.getElementById('secaoAtalhos').style.display = 'none';
+        document.getElementById('btnAdicionarManual').style.display = 'none';
+        document.getElementById('boxTotal').style.display = 'flex';
+        document.getElementById('painelEnvioDividido').style.display = 'block';
+        document.getElementById('btnAcao').style.display = 'none';
+        document.getElementById('badgeOrientacao').innerHTML = "📌 <b>Etapa 3:</b> Monitorando preços ao vivo.";
+
+        inputsNome.forEach(i => i.disabled = true);
+        inputsEmb.forEach(i => i.disabled = true);
+        inputsPreco.forEach(i => i.disabled = true);
+        precos.forEach(p => p.style.display = 'flex');
+        quantidades.forEach(q => q.style.display = 'flex');
+        botoesExcluir.forEach(b => b.style.display = 'block');
+        badgesVencedor.forEach(b => b.style.display = 'inline-block');
+        calcularTotalEGerarSplits();
+      }
+    }
+
+    function calcularTotalEGerarSplits() {
+      const cards = document.querySelectorAll('.produto-card');
+      let totalGeral = 0;
+      let pedidosPorVendedor = {};
+
+      cards.forEach(card => {
+        const preco = parseFloat(card.querySelector('.input-preco').value) || 0;
+        const qtd = parseInt(card.querySelector('.qtd-valor').value) || 1;
+        const vencedor = card.querySelector('.nome-vencedor').innerText;
+
+        if (preco > 0) {
+          const subtotal = preco * qtd;
+          totalGeral += subtotal;
+          if (!pedidosPorVendedor[vencedor]) pedidosPorVendedor[vencedor] = 0;
+          pedidosPorVendedor[vencedor] += subtotal;
+        }
+      });
+
+      document.getElementById('totalDisplay').innerText = `R$ ${totalGeral.toFixed(2).replace('.', ',')}`;
+      const containerSplits = document.getElementById('painelEnvioDividido');
+      containerSplits.innerHTML = '';
+
+      for (let vend in pedidosPorVendedor) {
+        if (vend !== 'Pendente') {
+          const div = document.createElement('div');
+          div.className = 'card-divisao-vendedor';
+          div.innerHTML = `<div><b>🏆 ${vend}</b><br><small>Total: <b>R$ ${pedidosPorVendedor[vend].toFixed(2).replace('.', ',')}</b></small></div>`;
+          containerSplits.appendChild(div);
+        }
+      }
+    }
+
+    function executarAcaoPrincipal() {
+      if (etapaAtual === 1) window.salvarCotacaoEGerarLink();
+      else if (etapaAtual === 2) window.salvarPrecosVendedor(cotacaoIdAtual);
+    }
+  </script>
+</body>
+</html>
