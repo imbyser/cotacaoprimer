@@ -149,7 +149,8 @@
       <p id="subtituloHeader">Selecione os produtos e a modalidade de cotação</p>
     </header>
 
-    <div class="etapas-bar">
+    <!-- BARRA DE ETAPAS (Fica oculta para vendedores) -->
+    <div class="etapas-bar" id="barraEtapas">
       <button class="btn-etapa ativo" id="btnEtapa1" onclick="alternarEtapa(1)">
         1. Lista
         <span>Cliente solicita</span>
@@ -382,6 +383,7 @@
 
       const baseUrl = window.location.href.split('?')[0];
       const linkVendedor = `${baseUrl}?c=${cotacaoId}&e=2`;
+      const linkCliente = `${baseUrl}?c=${cotacaoId}&e=3`;
 
       let msg = `🛒 *SOLICITAÇÃO DE COTAÇÃO SIMULTÂNEA*\n`;
       msg += `Cliente: *${cliente}*\n`;
@@ -389,6 +391,7 @@
       msg += `Condição: *${prazo} (${pagto})*\n\n`;
       msg += `Preencha seus preços no link abaixo:\n${linkVendedor}`;
 
+      alert(`✅ Cotação Criada com Sucesso!\n\nLink do Cliente para acompanhar os preços:\n${linkCliente}`);
       window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(msg)}`, '_blank');
     };
 
@@ -443,7 +446,7 @@
 
           data.produtos.forEach(prod => {
             let menorPreco = 0;
-            let vencedor = 'Sem Oferta';
+            let vencedor = 'Pendente';
 
             for (let vend in ofertas) {
               const preco = ofertas[vend][prod.nome];
@@ -507,7 +510,7 @@
 
     // --- RASCUNHO AUTOMÁTICO DA COTAÇÃO ---
     function salvarRascunhoLocal() {
-      if (cotacaoIdAtual) return; // Se estiver vendo cotação do banco, não salva rascunho
+      if (cotacaoIdAtual) return; // Se for cotação salva do banco, não sobrescreve
       
       const cards = document.querySelectorAll('.produto-card');
       let produtos = [];
@@ -600,6 +603,13 @@
       const badgesVencedor = document.querySelectorAll('.badge-vencedor');
       
       const tipoCotacao = document.getElementById('tipoCotacao').value;
+
+      // OCULTA OS BOTÕES DE ETAPAS PARA O VENDEDOR
+      if (etapa === 2 && cotacaoIdAtual) {
+        document.getElementById('barraEtapas').style.display = 'none';
+      } else {
+        document.getElementById('barraEtapas').style.display = 'flex';
+      }
 
       if (etapa === 1) {
         document.getElementById('tituloHeader').innerText = "1. Solicitando Cotação";
