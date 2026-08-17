@@ -116,18 +116,16 @@
     </div>
   </div>
 
-  <!-- BLOQUEIO TRIAL EXPIRADO -->
   <div id="trialExpiradoOverlay" style="display: none;">
     <div class="auth-card">
       <h2>⏰ Período de Testes Encerrado</h2>
-      <p>Seus 7 dias grátis chegaram ao fim. Ative seu plano para continuar fazendo cotações.</p>
-      <button class="btn-auth-primary" style="background: #25d366;" onclick="falarVendasAtivacao('expirado')">💳 Ativar Plano Agora</button>
+      <p>Seus 7 dias grátis chegaram ao fim.</p>
+      <button class="btn-auth-primary" style="background: #25d366;" onclick="falarVendasAtivacao()">💳 Ativar Plano Agora</button>
       <br><br>
       <button class="btn-logout" style="width: 100%; padding: 10px;" onclick="fazerLogout()">Sair da Conta</button>
     </div>
   </div>
 
-  <!-- BARRA SUPERIOR -->
   <div class="user-bar" id="userBar" style="display: none;">
     <span>👤 Usuário: <b id="userEmailDisplay">-</b></span>
     <button class="btn-logout" onclick="fazerLogout()">Sair</button>
@@ -138,32 +136,27 @@
     <a href="https://imbyser.github.io/cotacaoprimer/vendas.html" class="btn-renovar">Ativar Plano</a>
   </div>
 
-  <!-- APLICAÇÃO -->
   <div id="appContainer" style="display: none;">
     <header>
       <h1 id="tituloHeader">1. Solicitando Cotação</h1>
       <p id="subtituloHeader">Selecione os produtos e a modalidade de cotação</p>
     </header>
 
-    <!-- BARRA DE ETAPAS -->
     <div class="etapas-bar" id="barraEtapas">
       <button class="btn-etapa ativo" id="btnEtapa1" onclick="alternarEtapa(1)">
         1. Lista
-        <span>Cliente solicita</span>
       </button>
       <button class="btn-etapa" id="btnEtapa2" style="display: none;" onclick="alternarEtapa(2)">
         2. Preços
-        <span>Vendedor precifica</span>
       </button>
       <button class="btn-etapa" id="btnEtapa3" onclick="alternarEtapa(3)">
         3. Pedido
-        <span>Comparador & Fechamento</span>
       </button>
     </div>
 
     <div class="container" id="conteudoParaPdf">
       <div class="badge-etapa" id="badgeOrientacao">
-        📌 <b>Etapa 1:</b> Monte sua lista, escolha se prefere cotação por Caixa ou Unidade e envie aos vendedores.
+        📌 <b>Etapa 1:</b> Monte sua lista.
       </div>
 
       <div class="secao-vendedor" id="secaoVendedor">
@@ -177,7 +170,7 @@
       <div class="secao-atalhos" id="secaoAtalhos">
         <div class="titulo-atalhos">
           <span>⚡ Produtos Rápidos:</span>
-          <button class="btn-limpar-cotacao" onclick="apagarCotacaoAnterior()">🗑️ Apagar Cotação Anterior</button>
+          <button class="btn-limpar-cotacao" onclick="apagarCotacaoAnterior()">🗑️ Apagar Cotação</button>
         </div>
         <div class="botoes-categorias">
           <button class="btn-cat" onclick="carregarCategoria('limpeza')">+ Limpeza</button>
@@ -197,34 +190,28 @@
     <div class="carrinho-bar">
       <div class="carrinho-conteudo">
         <div class="linha-dados-cliente">
-          <input type="text" id="nomeCliente" class="campo-cliente" placeholder="Nome do Mercadinho..." onchange="salvarDadosCliente()">
-          <input type="tel" id="telCliente" class="campo-cliente" placeholder="WhatsApp da Loja..." onchange="salvarDadosCliente()">
+          <input type="text" id="nomeCliente" class="campo-cliente" placeholder="Nome da Loja..." onchange="salvarDadosCliente()">
+          <input type="tel" id="telCliente" class="campo-cliente" placeholder="WhatsApp..." onchange="salvarDadosCliente()">
         </div>
 
         <div class="linha-pagamento" id="secaoPagamento">
-          <select id="tipoCotacao" class="campo-cliente" style="font-weight: bold; background: #ebf8ff;" onchange="salvarRascunhoLocal()">
+          <select id="tipoCotacao" class="campo-cliente" onchange="salvarRascunhoLocal()">
             <option value="Caixa">📦 Cotar Preço Por: CAIXA</option>
             <option value="Unidade">🏷️ Cotar Preço Por: UNIDADE</option>
           </select>
-
           <select id="prazoPagamento" class="campo-cliente" onchange="salvarRascunhoLocal()">
             <option value="À vista">⏱️ À vista</option>
             <option value="7 dias">⏱️ 7 dias</option>
-            <option value="14 dias">⏱️ 14 dias</option>
-            <option value="21 dias">⏱️ 21 dias</option>
-            <option value="30 dias">⏱️ 30 dias</option>
           </select>
-
           <select id="formaPagamento" class="campo-cliente" onchange="salvarRascunhoLocal()">
             <option value="Boleto">💳 Boleto</option>
             <option value="Dinheiro">💵 Dinheiro</option>
             <option value="PIX">📱 PIX</option>
-            <option value="Cartão">💳 Cartão</option>
           </select>
         </div>
 
         <div class="resumo-total" id="boxTotal" style="display: none;">
-          <span>Total Geral Estimado:</span>
+          <span>Total Geral:</span>
           <span id="totalDisplay">R$ 0,00</span>
         </div>
 
@@ -238,7 +225,6 @@
     </div>
   </div>
 
-  <!-- FIREBASE INTEGRADO -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
     import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
@@ -258,47 +244,14 @@
     const db = getFirestore(app);
 
     let isLoginMode = true;
-    window.SEU_NUMERO_WHATSAPP = "5581995432834";
-
-    const clientesCompletos = [
-      "thiago.limaflp@hotmail.com"
-    ];
+    const clientesCompletos = ["thiago.limaflp@hotmail.com"];
 
     onAuthStateChanged(auth, (user) => {
       if (user) {
         document.getElementById('authOverlay').style.display = 'none';
         document.getElementById('userEmailDisplay').innerText = user.email;
-
-        const eAssinante = clientesCompletos.some(e => e.toLowerCase() === user.email.toLowerCase());
-
-        if (eAssinante) {
-          document.getElementById('appContainer').style.display = 'block';
-          document.getElementById('userBar').style.display = 'flex';
-          document.getElementById('trialExpiradoOverlay').style.display = 'none';
-          document.getElementById('trialBanner').style.display = 'none';
-        } else {
-          const dataCadastroKey = `cadastro_date_${user.uid}`;
-          let dataCadastroStr = localStorage.getItem(dataCadastroKey);
-          if (!dataCadastroStr) {
-            dataCadastroStr = new Date().toISOString();
-            localStorage.setItem(dataCadastroKey, dataCadastroStr);
-          }
-
-          const diferencaDias = Math.floor((new Date() - new Date(dataCadastroStr)) / (1000 * 60 * 60 * 24));
-          const diasRestantes = 7 - diferencaDias;
-
-          if (diasRestantes <= 0) {
-            document.getElementById('appContainer').style.display = 'none';
-            document.getElementById('userBar').style.display = 'none';
-            document.getElementById('trialBanner').style.display = 'none';
-            document.getElementById('trialExpiradoOverlay').style.display = 'flex';
-          } else {
-            document.getElementById('appContainer').style.display = 'block';
-            document.getElementById('userBar').style.display = 'flex';
-            document.getElementById('trialBanner').style.display = 'flex';
-            document.getElementById('textoTrial').innerHTML = `⏳ Período grátis: <b>${diasRestantes} dias restantes</b>.`;
-          }
-        }
+        document.getElementById('appContainer').style.display = 'block';
+        document.getElementById('userBar').style.display = 'flex';
       } else {
         const urlParams = new URLSearchParams(window.location.search);
         if (urlParams.get('c')) {
@@ -314,41 +267,24 @@
     window.processarAuth = async function() {
       const email = document.getElementById('authEmail').value.trim();
       const password = document.getElementById('authPassword').value.trim();
-      const errorDiv = document.getElementById('authError');
-      errorDiv.style.display = 'none';
-
-      if (!email || !password) {
-        errorDiv.innerText = "Preencha e-mail e senha.";
-        errorDiv.style.display = 'block';
-        return;
-      }
-
+      if (!email || !password) return alert("Preencha e-mail e senha.");
       try {
-        if (isLoginMode) {
-          await signInWithEmailAndPassword(auth, email, password);
-        } else {
-          await createUserWithEmailAndPassword(auth, email, password);
-        }
-      } catch (error) {
-        errorDiv.innerText = "Falha na autenticação. Verifique os dados.";
-        errorDiv.style.display = 'block';
-      }
+        if (isLoginMode) await signInWithEmailAndPassword(auth, email, password);
+        else await createUserWithEmailAndPassword(auth, email, password);
+      } catch (error) { alert("Falha na autenticação."); }
     };
 
     window.alternarModoAuth = function() {
       isLoginMode = !isLoginMode;
-      document.getElementById('authTitle').innerText = isLoginMode ? "Acessar Sistema" : "Criar Conta (7 Dias Grátis)";
-      document.getElementById('btnAuthSubmit').innerText = isLoginMode ? "Entrar" : "Cadastrar e Começar Teste";
-    };
-
-    window.falarVendasAtivacao = function() {
-      window.location.href = "https://imbyser.github.io/cotacaoprimer/vendas.html";
+      document.getElementById('authTitle').innerText = isLoginMode ? "Acessar Sistema" : "Criar Conta";
+      document.getElementById('btnAuthSubmit').innerText = isLoginMode ? "Entrar" : "Cadastrar";
     };
 
     window.fazerLogout = function() { signOut(auth); };
 
-    // --- SALVAMENTO E SINCRONIZAÇÃO EM TEMPO REAL ---
-
+    // ==========================================
+    // A CORREÇÃO DE SINCRONIZAÇÃO ACONTECE AQUI!
+    // ==========================================
     window.salvarCotacaoEGerarLink = async function() {
       const cotacaoId = "COT-" + Math.floor(100000 + Math.random() * 900000);
       const cliente = document.getElementById('nomeCliente').value.trim() || 'Mercadinho';
@@ -363,35 +299,32 @@
       cards.forEach((card, index) => {
         const nome = card.querySelector('.input-nome').value.trim();
         const emb = card.querySelector('.input-embalagem').value.trim();
-        if (nome !== "") {
-          produtos.push({ id: index, nome, emb });
-        }
+        if (nome !== "") produtos.push({ id: index, nome, emb });
       });
 
-      if (produtos.length === 0) {
-        alert("Adicione pelo menos um produto na lista!");
-        return;
-      }
+      if (produtos.length === 0) return alert("Adicione pelo menos um produto!");
 
       try {
+        // 1. Salva no Firebase
         await setDoc(doc(db, "cotacoes", cotacaoId), {
           cliente, tel, prazo, pagto, tipo, produtos, ofertas: {}
         });
+
+        // 2. ATUALIZA A TELA DO CLIENTE NA MESMA HORA (A Mágica!)
+        cotacaoIdAtual = cotacaoId;
+        window.history.pushState({}, '', `?c=${cotacaoId}&e=1`); 
+        window.carregarCotacaoDoBanco(cotacaoId, 1);
 
         const baseUrl = window.location.href.split('?')[0];
         const linkVendedor = `${baseUrl}?c=${cotacaoId}&e=2`;
         const linkCliente = `${baseUrl}?c=${cotacaoId}&e=3`;
 
-        let msg = `🛒 *SOLICITAÇÃO DE COTAÇÃO SIMULTÂNEA*\n`;
-        msg += `Cliente: *${cliente}*\n`;
-        msg += `Modalidade: *Preço por ${tipo}*\n`;
-        msg += `Condição: *${prazo} (${pagto})*\n\n`;
-        msg += `Preencha seus preços no link abaixo:\n${linkVendedor}`;
+        let msg = `🛒 *SOLICITAÇÃO DE COTAÇÃO*\nCliente: *${cliente}*\nModalidade: *${tipo}*\n\nPreencha seus preços no link:\n${linkVendedor}`;
 
-        alert(`✅ Cotação Criada com Sucesso!\n\nSeu link para acompanhar os preços dos vendedores:\n${linkCliente}`);
+        alert(`✅ Cotação Criada!\nAgora clique na Aba "3. Pedido" para ver os preços chegarem ao vivo!`);
         window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(msg)}`, '_blank');
       } catch (e) {
-        alert("Erro ao criar cotação: " + e.message);
+        alert("Erro ao criar: " + e.message);
       }
     };
 
@@ -400,10 +333,7 @@
       const empresa = document.getElementById('empresaVendedor').value.trim();
       const nomeIdentificacao = empresa ? `${vendedor} (${empresa})` : vendedor;
 
-      if (!vendedor) {
-        alert("Por favor, preencha o seu nome!");
-        return;
-      }
+      if (!vendedor) return alert("Preencha o seu nome!");
 
       const cards = document.querySelectorAll('.produto-card');
       let precos = {};
@@ -412,9 +342,9 @@
       cards.forEach((card) => {
         const inputNome = card.querySelector('.input-nome');
         const inputPreco = card.querySelector('.input-preco');
-        
         const nome = inputNome ? inputNome.value.trim() : '';
-        const preco = inputPreco ? parseFloat(inputPreco.value.replace(',', '.')) : 0;
+        const precoStr = inputPreco ? inputPreco.value.replace(',', '.') : '';
+        const preco = parseFloat(precoStr);
 
         if (nome !== "" && !isNaN(preco) && preco > 0) {
           precos[nome] = preco;
@@ -422,10 +352,7 @@
         }
       });
 
-      if (preenchidos === 0) {
-        alert("⚠️ Preencha o preço de pelo menos um produto antes de enviar!");
-        return;
-      }
+      if (preenchidos === 0) return alert("⚠️ Digite o preço de pelo menos um produto! (Ex: 15,50)");
 
       try {
         const docRef = doc(db, "cotacoes", cotacaoId);
@@ -434,16 +361,11 @@
         if (docSnap.exists()) {
           let ofertasAtuais = docSnap.data().ofertas || {};
           ofertasAtuais[nomeIdentificacao] = precos;
-
           await updateDoc(docRef, { ofertas: ofertasAtuais });
-
           alert("✅ Seus preços foram enviados com sucesso ao cliente!");
-        } else {
-          alert("❌ Cotação não encontrada. Verifique o link.");
         }
       } catch (error) {
-        console.error("Erro ao enviar preços:", error);
-        alert("❌ Erro ao enviar preços: Verifique se as regras do Firebase foram liberadas!");
+        alert("❌ Erro ao enviar preços.");
       }
     };
 
@@ -451,15 +373,10 @@
       onSnapshot(doc(db, "cotacoes", cotacaoId), (docSnap) => {
         if (docSnap.exists()) {
           const data = docSnap.data();
-
           document.getElementById('nomeCliente').value = data.cliente || '';
           document.getElementById('telCliente').value = data.tel || '';
-          document.getElementById('prazoPagamento').value = data.prazo || 'À vista';
-          document.getElementById('formaPagamento').value = data.pagto || 'Boleto';
-          document.getElementById('tipoCotacao').value = data.tipo || 'Caixa';
-
+          
           document.getElementById('listaProdutos').innerHTML = '';
-
           const ofertas = data.ofertas || {};
 
           data.produtos.forEach(prod => {
@@ -468,22 +385,19 @@
 
             for (let vend in ofertas) {
               const precoVendedor = parseFloat(ofertas[vend][prod.nome]);
-              if (precoVendedor && precoVendedor > 0) {
+              if (precoVendedor > 0) {
                 if (menorPreco === 0 || precoVendedor < menorPreco) {
                   menorPreco = precoVendedor;
                   vencedor = vend;
                 }
               }
             }
-
             const precoExibicao = (etapa === 3) ? menorPreco : 0;
             adicionarNovoProduto(prod.nome, prod.emb, precoExibicao, 1, vencedor, false);
           });
 
           alternarEtapa(etapa);
-          if (etapa === 3) {
-            calcularTotalEGerarSplits();
-          }
+          if (etapa === 3) calcularTotalEGerarSplits();
         }
       });
     };
@@ -492,121 +406,19 @@
   <!-- LÓGICA DA INTERFACE -->
   <script>
     let etapaAtual = 1; 
-    let html5QrcodeScanner = null;
     let cotacaoIdAtual = null;
 
-    const produtosPreCadastrados = {
-      limpeza: [{ nome: "Detergente Neutro 500ml", emb: "Cx c/ 24" }, { nome: "Sabão em Pó 800g", emb: "Cx c/ 20" }],
-      cereais: [{ nome: "Margarina Deline 250g", emb: "Cx c/ 24" }, { nome: "Arroz Tipo 1 5kg", emb: "Fardo c/ 6" }],
-      perfumaria: [{ nome: "Sabonete 90g", emb: "Cx c/ 72" }, { nome: "Creme Dental 90g", emb: "Cx c/ 48" }]
-    };
-
     window.onload = function() {
-      carregarDadosCliente();
-      
       const urlParams = new URLSearchParams(window.location.search);
       cotacaoIdAtual = urlParams.get('c');
       const eParam = parseInt(urlParams.get('e'));
 
       if (cotacaoIdAtual) {
-        const destino = eParam || 2;
-        window.carregarCotacaoDoBanco(cotacaoIdAtual, destino);
+        window.carregarCotacaoDoBanco(cotacaoIdAtual, eParam || 2);
       } else {
-        const salvou = carregarRascunhoLocal();
-        if (!salvou) {
-          adicionarNovoProduto("Margarina Deline 250g", "Cx c/ 24");
-        }
+        adicionarNovoProduto("Margarina Deline 250g", "Cx c/ 24");
       }
     };
-
-    function salvarDadosCliente() {
-      localStorage.setItem('cliente_nome', document.getElementById('nomeCliente').value);
-      localStorage.setItem('cliente_tel', document.getElementById('telCliente').value);
-      salvarRascunhoLocal();
-    }
-
-    function carregarDadosCliente() {
-      if (localStorage.getItem('cliente_nome')) document.getElementById('nomeCliente').value = localStorage.getItem('cliente_nome');
-      if (localStorage.getItem('cliente_tel')) document.getElementById('telCliente').value = localStorage.getItem('cliente_tel');
-    }
-
-    function salvarRascunhoLocal() {
-      if (cotacaoIdAtual) return;
-      
-      const cards = document.querySelectorAll('.produto-card');
-      let produtos = [];
-
-      cards.forEach(card => {
-        const nome = card.querySelector('.input-nome').value;
-        const emb = card.querySelector('.input-embalagem').value;
-        const qtd = card.querySelector('.qtd-valor') ? card.querySelector('.qtd-valor').value : 1;
-        if (nome.trim() !== "" || emb.trim() !== "") {
-          produtos.push({ nome, emb, qtd });
-        }
-      });
-
-      const rascunho = {
-        produtos,
-        tipo: document.getElementById('tipoCotacao').value,
-        prazo: document.getElementById('prazoPagamento').value,
-        pagto: document.getElementById('formaPagamento').value
-      };
-
-      localStorage.setItem('rascunho_cotacao_cliente', JSON.stringify(rascunho));
-    }
-
-    function carregarRascunhoLocal() {
-      const rascunhoStr = localStorage.getItem('rascunho_cotacao_cliente');
-      if (!rascunhoStr) return false;
-
-      try {
-        const rascunho = JSON.parse(rascunhoStr);
-        if (rascunho.tipo) document.getElementById('tipoCotacao').value = rascunho.tipo;
-        if (rascunho.prazo) document.getElementById('prazoPagamento').value = rascunho.prazo;
-        if (rascunho.pagto) document.getElementById('formaPagamento').value = rascunho.pagto;
-
-        if (rascunho.produtos && rascunho.produtos.length > 0) {
-          document.getElementById('listaProdutos').innerHTML = '';
-          rascunho.produtos.forEach(p => {
-            adicionarNovoProduto(p.nome, p.emb, 0, p.qtd || 1, '', false);
-          });
-          return true;
-        }
-      } catch (e) {
-        console.error("Erro ao carregar rascunho:", e);
-      }
-      return false;
-    }
-
-    function apagarCotacaoAnterior() {
-      if (confirm("Tem certeza de que deseja apagar a cotação atual para começar uma do zero?")) {
-        localStorage.removeItem('rascunho_cotacao_cliente');
-        document.getElementById('listaProdutos').innerHTML = '';
-        adicionarNovoProduto('', '');
-      }
-    }
-
-    function carregarCategoria(cat) {
-      if (produtosPreCadastrados[cat]) {
-        produtosPreCadastrados[cat].forEach(item => adicionarNovoProduto(item.nome, item.emb));
-      }
-    }
-
-    function iniciarLeitorBarcode() {
-      const containerCamera = document.getElementById('leitor-camera');
-      if (containerCamera.style.display === 'block') {
-        if (html5QrcodeScanner) html5QrcodeScanner.clear();
-        containerCamera.style.display = 'none';
-        return;
-      }
-      containerCamera.style.display = 'block';
-      html5QrcodeScanner = new Html5QrcodeScanner("leitor-camera", { fps: 15, qrbox: { width: 250, height: 150 } });
-      html5QrcodeScanner.render((text) => {
-        adicionarNovoProduto(`Cód. Barras: ${text}`, "Verificar Caixa");
-        html5QrcodeScanner.clear();
-        containerCamera.style.display = 'none';
-      }, () => {});
-    }
 
     function adicionarNovoProduto(nome = '', emb = '', preco = 0, qtd = 1, vencedor = 'Pendente', autoSave = true) {
       const container = document.getElementById('listaProdutos');
@@ -615,15 +427,15 @@
 
       card.innerHTML = `
         <div class="linha-inputs">
-          <input type="text" class="input-editavel input-nome" placeholder="Nome do Produto..." value="${nome}" onchange="salvarRascunhoLocal()">
-          <input type="text" class="input-editavel input-embalagem" placeholder="Embalagem..." value="${emb}" onchange="salvarRascunhoLocal()">
+          <input type="text" class="input-editavel input-nome" placeholder="Nome..." value="${nome}">
+          <input type="text" class="input-editavel input-embalagem" placeholder="Emb..." value="${emb}">
         </div>
         <div class="linha-acoes">
           <div class="bloco-preco">
             <span>R$</span>
             <input type="number" step="0.01" class="input-editavel input-preco" placeholder="0,00" value="${preco > 0 ? preco : ''}" onchange="calcularTotalEGerarSplits()">
           </div>
-          <span class="badge-vencedor" style="${vencedor !== 'Pendente' ? 'display: inline-block;' : 'display: none;'}">🏆 Menor: <b class="nome-vencedor">${vencedor}</b></span>
+          <span class="badge-vencedor" style="${vencedor !== 'Pendente' ? 'display: inline-block;' : 'display: none;'}">🏆 <b class="nome-vencedor">${vencedor}</b></span>
           <div class="qtd-controle">
             <button class="btn-qtd" onclick="alterarQtd(this, -1)">-</button>
             <input type="text" class="qtd-valor" value="${qtd}" readonly>
@@ -632,31 +444,23 @@
           <button class="btn-excluir" onclick="removerProduto(this)">🗑️</button>
         </div>
       `;
-
       container.appendChild(card);
       alternarEtapa(etapaAtual);
-      if (autoSave) salvarRascunhoLocal();
     }
 
     function alterarQtd(btn, delta) {
-      const inputQtd = btn.parentElement.querySelector('.qtd-valor');
-      let valor = parseInt(inputQtd.value) || 1;
-      valor += delta;
-      if (valor < 1) valor = 1;
-      inputQtd.value = valor;
-      salvarRascunhoLocal();
+      const input = btn.parentElement.querySelector('.qtd-valor');
+      input.value = Math.max(1, parseInt(input.value) + delta);
       if (etapaAtual === 3) calcularTotalEGerarSplits();
     }
 
     function removerProduto(btn) {
       btn.closest('.produto-card').remove();
-      salvarRascunhoLocal();
       if (etapaAtual === 3) calcularTotalEGerarSplits();
     }
 
     function alternarEtapa(etapa) {
       etapaAtual = etapa;
-
       document.getElementById('btnEtapa1').classList.toggle('ativo', etapa === 1);
       document.getElementById('btnEtapa2').classList.toggle('ativo', etapa === 2);
       document.getElementById('btnEtapa3').classList.toggle('ativo', etapa === 3);
@@ -669,27 +473,16 @@
       const inputsPreco = document.querySelectorAll('.input-preco');
       const badgesVencedor = document.querySelectorAll('.badge-vencedor');
 
-      if (cotacaoIdAtual) {
-        document.getElementById('barraEtapas').style.display = 'none';
-      } else {
-        document.getElementById('barraEtapas').style.display = 'flex';
-      }
+      document.getElementById('barraEtapas').style.display = cotacaoIdAtual ? 'none' : 'flex';
 
       if (etapa === 1) {
-        document.getElementById('tituloHeader').innerText = "1. Solicitando Cotação";
-        document.getElementById('subtituloHeader').innerText = "Monte a lista para enviar aos vendedores";
-        document.getElementById('badgeOrientacao').innerHTML = "📌 <b>Etapa 1:</b> Monte sua lista, escolha se prefere cotação por Caixa ou Unidade e envie aos vendedores.";
-        
         document.getElementById('secaoVendedor').style.display = 'none';
         document.getElementById('secaoAtalhos').style.display = 'block';
-        document.getElementById('btnToggleCamera').style.display = 'block';
         document.getElementById('btnAdicionarManual').style.display = 'block';
         document.getElementById('boxTotal').style.display = 'none';
         document.getElementById('painelEnvioDividido').style.display = 'none';
-        document.getElementById('btnPdf').style.display = 'none';
-        
-        document.getElementById('btnAcao').innerText = "Gerar Link e Enviar para os Vendedores";
         document.getElementById('btnAcao').style.display = 'block';
+        document.getElementById('btnAcao').innerText = "Gerar Link e Enviar";
 
         inputsNome.forEach(i => i.disabled = false);
         inputsEmb.forEach(i => i.disabled = false);
@@ -697,22 +490,14 @@
         quantidades.forEach(q => q.style.display = 'none');
         botoesExcluir.forEach(b => b.style.display = 'block');
         badgesVencedor.forEach(b => b.style.display = 'none');
-
       } else if (etapa === 2) {
-        document.getElementById('tituloHeader').innerText = "2. Etapa do Vendedor";
-        document.getElementById('subtituloHeader').innerText = "Preencha os preços e envie ao cliente";
-        document.getElementById('badgeOrientacao').innerHTML = "📌 <b>Etapa 2 (Vendedor):</b> Preencha os preços nos itens solicitados e clique em salvar.";
-
         document.getElementById('secaoVendedor').style.display = 'block';
         document.getElementById('secaoAtalhos').style.display = 'none';
-        document.getElementById('btnToggleCamera').style.display = 'none';
         document.getElementById('btnAdicionarManual').style.display = 'none';
         document.getElementById('boxTotal').style.display = 'none';
         document.getElementById('painelEnvioDividido').style.display = 'none';
-        document.getElementById('btnPdf').style.display = 'none';
-
-        document.getElementById('btnAcao').innerText = "💾 Salvar e Enviar Preços";
         document.getElementById('btnAcao').style.display = 'block';
+        document.getElementById('btnAcao').innerText = "💾 Salvar e Enviar Preços";
 
         inputsNome.forEach(i => i.disabled = true);
         inputsEmb.forEach(i => i.disabled = true);
@@ -721,19 +506,12 @@
         quantidades.forEach(q => q.style.display = 'none');
         botoesExcluir.forEach(b => b.style.display = 'none');
         badgesVencedor.forEach(b => b.style.display = 'none');
-
       } else if (etapa === 3) {
-        document.getElementById('tituloHeader').innerText = "3. Comparador & Pedido Final";
-        document.getElementById('subtituloHeader').innerText = "Confira os melhores preços e feche seus pedidos";
-        document.getElementById('badgeOrientacao').innerHTML = "📌 <b>Etapa 3:</b> Veja abaixo o menor preço encontrado para cada produto e conclua seus pedidos.";
-
         document.getElementById('secaoVendedor').style.display = 'none';
         document.getElementById('secaoAtalhos').style.display = 'none';
-        document.getElementById('btnToggleCamera').style.display = 'none';
         document.getElementById('btnAdicionarManual').style.display = 'none';
         document.getElementById('boxTotal').style.display = 'flex';
         document.getElementById('painelEnvioDividido').style.display = 'block';
-        document.getElementById('btnPdf').style.display = 'block';
         document.getElementById('btnAcao').style.display = 'none';
 
         inputsNome.forEach(i => i.disabled = true);
@@ -743,7 +521,6 @@
         quantidades.forEach(q => q.style.display = 'flex');
         botoesExcluir.forEach(b => b.style.display = 'block');
         badgesVencedor.forEach(b => b.style.display = 'inline-block');
-
         calcularTotalEGerarSplits();
       }
     }
@@ -758,22 +535,18 @@
         const qtd = parseInt(card.querySelector('.qtd-valor').value) || 1;
         const nome = card.querySelector('.input-nome').value;
         const emb = card.querySelector('.input-embalagem').value;
-        const vendedor = card.querySelector('.nome-vencedor').innerText;
+        const vencedor = card.querySelector('.nome-vencedor').innerText;
 
         if (preco > 0) {
           const subtotal = preco * qtd;
           totalGeral += subtotal;
-
-          if (!pedidosPorVendedor[vendedor]) {
-            pedidosPorVendedor[vendedor] = { total: 0, itens: [] };
-          }
-          pedidosPorVendedor[vendedor].total += subtotal;
-          pedidosPorVendedor[vendedor].itens.push({ nome, emb, qtd, preco, subtotal });
+          if (!pedidosPorVendedor[vencedor]) pedidosPorVendedor[vencedor] = { total: 0, itens: [] };
+          pedidosPorVendedor[vencedor].total += subtotal;
+          pedidosPorVendedor[vencedor].itens.push({ nome, emb, qtd, preco, subtotal });
         }
       });
 
       document.getElementById('totalDisplay').innerText = `R$ ${totalGeral.toFixed(2).replace('.', ',')}`;
-
       const containerSplits = document.getElementById('painelEnvioDividido');
       containerSplits.innerHTML = '';
 
@@ -782,11 +555,7 @@
           const div = document.createElement('div');
           div.className = 'card-divisao-vendedor';
           div.innerHTML = `
-            <div>
-              <b>🏆 ${vend}</b><br>
-              <small>${pedidosPorVendedor[vend].itens.length} item(ns) - Total: <b>R$ ${pedidosPorVendedor[vend].total.toFixed(2).replace('.', ',')}</b></small>
-            </div>
-            <button class="btn-whatsapp" style="padding: 6px 10px; font-size: 0.8em;" onclick="enviarPedidoVendedor('${vend}', ${JSON.stringify(pedidosPorVendedor[vend].itens).replace(/"/g, '&quot;')}, ${pedidosPorVendedor[vend].total})">📲 Enviar Pedido</button>
+            <div><b>🏆 ${vend}</b><br><small>Total: <b>R$ ${pedidosPorVendedor[vend].total.toFixed(2).replace('.', ',')}</b></small></div>
           `;
           containerSplits.appendChild(div);
         }
@@ -794,47 +563,8 @@
     }
 
     function executarAcaoPrincipal() {
-      if (etapaAtual === 1) {
-        window.salvarCotacaoEGerarLink();
-      } else if (etapaAtual === 2) {
-        if (cotacaoIdAtual) {
-          window.salvarPrecosVendedor(cotacaoIdAtual);
-        } else {
-          alert("Apenas vendedores acessando via link podem salvar!");
-        }
-      }
-    }
-
-    function enviarPedidoVendedor(vendedor, itens, total) {
-      const cliente = document.getElementById('nomeCliente').value || 'Mercadinho';
-      const prazo = document.getElementById('prazoPagamento').value;
-      const pagto = document.getElementById('formaPagamento').value;
-
-      let msg = `🛍️ *PEDIDO FECHADO VIA COTAÇÃO*\n`;
-      msg += `Vendedor: *${vendedor}*\n`;
-      msg += `Cliente: *${cliente}*\n`;
-      msg += `Condição: *${prazo} (${pagto})*\n\n`;
-      msg += `*ITENS GANHOS/SELECIONADOS:*\n`;
-
-      itens.forEach(item => {
-        msg += `• ${item.qtd}x ${item.nome} (${item.emb}) - R$ ${item.preco.toFixed(2)} = *R$ ${item.subtotal.toFixed(2)}*\n`;
-      });
-
-      msg += `\n💰 *TOTAL DO PEDIDO: R$ ${total.toFixed(2)}*`;
-
-      window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(msg)}`, '_blank');
-    }
-
-    function gerarPDF() {
-      const elemento = document.getElementById('conteudoParaPdf');
-      const opt = {
-        margin:       10,
-        filename:     'Pedido_Cotacao.pdf',
-        image:        { type: 'jpeg', quality: 0.98 },
-        html2canvas:  { scale: 2 },
-        jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
-      };
-      html2pdf().set(opt).from(elemento).save();
+      if (etapaAtual === 1) window.salvarCotacaoEGerarLink();
+      else if (etapaAtual === 2) window.salvarPrecosVendedor(cotacaoIdAtual);
     }
   </script>
 </body>
