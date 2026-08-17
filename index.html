@@ -138,7 +138,7 @@
   
   <div class="trial-banner" id="trialBanner" style="display: none;">
     <span id="textoTrial">⏳ Teste ativo: 7 dias restantes.</span>
-    <a href="https://imbyser.github.io/supercotacao/vendas.html" class="btn-renovar">Ativar Plano</a>
+    <a href="https://imbyser.github.io/cotacaoprimer/vendas.html" class="btn-renovar">Ativar Plano</a>
   </div>
 
   <!-- APLICAÇÃO -->
@@ -323,7 +323,7 @@
     };
 
     window.falarVendasAtivacao = function(motivo) {
-      window.location.href = "https://imbyser.github.io/supercotacao/vendas.html";
+      window.location.href = "https://imbyser.github.io/cotacaoprimer/vendas.html";
     };
 
     window.fazerLogout = function() { signOut(auth); };
@@ -333,7 +333,6 @@
   <script>
     let etapaAtual = 1; 
     let html5QrcodeScanner = null;
-    let propostasFornecedores = {}; // Armazena as ofertas enviadas pelos vários vendedores
 
     const produtosPreCadastrados = {
       limpeza: [{ nome: "Detergente Neutro 500ml", emb: "Cx c/ 24" }, { nome: "Sabão em Pó 800g", emb: "Cx c/ 20" }],
@@ -363,6 +362,54 @@
         adicionarNovoProduto("Margarina Deline 250g", "Cx c/ 24");
       }
     };
+
+    function carregarItensViaUrl(strDados) {
+      document.getElementById('listaProdutos').innerHTML = '';
+      const itens = strDados.split(';');
+
+      if (etapaAtual === 3 || new URLSearchParams(window.location.search).get('e') === '3') {
+        let mapaProdutos = {};
+
+        itens.forEach(item => {
+          const partes = item.split('|');
+          if (partes.length >= 2) {
+            const nome = partes[0];
+            const emb = partes[1];
+            const preco = parseFloat(partes[2]) || 0;
+            const qtd = parseInt(partes[3]) || 1;
+            const vend = partes[4] || 'Sem Vendedor';
+
+            if (!mapaProdutos[nome]) {
+              mapaProdutos[nome] = { emb: emb, qtd: qtd, ofertas: [] };
+            }
+            if (preco > 0) {
+              mapaProdutos[nome].ofertas.push({ preco: preco, vendedor: vend });
+            }
+          }
+        });
+
+        for (let nome in mapaProdutos) {
+          const prod = mapaProdutos[nome];
+          let menorPreco = 0;
+          let vencedor = 'Sem Oferta';
+
+          if (prod.ofertas.length > 0) {
+            prod.ofertas.sort((a, b) => a.preco - b.preco);
+            menorPreco = prod.ofertas[0].preco;
+            vencedor = prod.ofertas[0].vendedor;
+          }
+
+          adicionarNovoProduto(nome, prod.emb, menorPreco, prod.qtd, vencedor);
+        }
+      } else {
+        itens.forEach(item => {
+          const partes = item.split('|');
+          if (partes.length >= 2) {
+            adicionarNovoProduto(partes[0], partes[1], parseFloat(partes[2]) || 0, parseInt(partes[3]) || 1, partes[4] || '');
+          }
+        });
+      }
+    }
 
     function salvarDadosCliente() {
       localStorage.setItem('cliente_nome', document.getElementById('nomeCliente').value);
@@ -486,7 +533,7 @@
 
         document.getElementById('boxTotal').style.display = 'flex';
         document.getElementById('btnPdf').style.display = 'block';
-        document.getElementById('btnAcao').style.display = 'none'; // Substituído pelos botões por vendedor
+        document.getElementById('btnAcao').style.display = 'none';
         
         calcularTotalEGerarSplits();
       }
@@ -537,9 +584,92 @@
       if (etapaAtual === 3) calcularTotalEGerarSplits();
     }
 
+    function calcularTotalEGerarSplits() {
+      const cards = document.querySelectorAll('.produto-card');
+      let totalGeral = 0;
+      let pedidosPorVendedor = {};
+
+      cards.forEach(card => {
+        const nome = card.querySelector('.input-nome').value.trim();
+        const emb = card.querySelector('.input-embalagem').value.trim();
+        const preco = parseFloat(card.querySelector('.input-preco').value) || 0;
+        const qtd = parseInt(card.querySelector('.qtd-valor').value) || 0;
+        const vend = card.getAttribute('data-vendedor') || 'Sem Vendedor';
+
+        if (nome !== "" && qtd > 0 && preco > 0) {
+          const subtotal = preco * qtd;
+          totalGeral += subtotal;
+
+          if (!pedidosPorVendedor[vend]) {
+            pedidosPorVendedor[vend] = { total: 0, itens: [] };
+          }
+          pedidosPorVendedor[vend].total += subtotal;
+          pedidosPorVendedor[vend].itens.push({ nome, emb, preco, qtd, subtotal });
+        }
+      });
+
+      document.getElementById('totalDisplay').innerText = `R$ ${totalGeral.toFixed(2)}`;
+
+      const painel = document.getElementById('painelEnvioDividido');
+      painel.innerHTML = '';
+
+      if (Object.keys(pedidosPorVendedor).length > 0) {
+        painel.style.display = 'block';
+        for (let vend in pedidosPorVendedor) {
+          const div = document.createElement('div');
+          div.className = 'card-divisao-vendedor';
+          div.innerHTML = `
+            <div>
+              <b>🏆 Vendedor: ${vend}</b><br>
+              <span>Subtotal: R$ ${pedidosPorVendedor[vend].total.toFixed(2)} (${pedidosPorVendedor[vend].itens.length} itens)</span>
+            </div>
+            <button class="btn-whatsapp" style="padding: 8px 12px; font-size: 0.8em;" onclick="enviarPedidoVendedor('${vend}')">📱 Enviar Pedido</button>
+          `;
+          painel.appendChild(div);
+        }
+      } else {
+        painel.style.display = 'none';
+      }
+    }
+
+    function enviarPedidoVendedor(vendedor) {
+      const nomeCliente = document.getElementById('nomeCliente').value.trim();
+      const prazo = document.getElementById('prazoPagamento').value;
+      const formaPagto = document.getElementById('formaPagamento').value;
+      const tipo = document.getElementById('tipoCotacao').value;
+
+      const cards = document.querySelectorAll('.produto-card');
+      let itensVencedor = [];
+      let totalVendedor = 0;
+
+      cards.forEach(card => {
+        const vend = card.getAttribute('data-vendedor') || 'Sem Vendedor';
+        if (vend === vendedor) {
+          const nome = card.querySelector('.input-nome').value.trim();
+          const emb = card.querySelector('.input-embalagem').value.trim();
+          const preco = parseFloat(card.querySelector('.input-preco').value) || 0;
+          const qtd = parseInt(card.querySelector('.qtd-valor').value) || 0;
+
+          if (nome !== "" && qtd > 0) {
+            const subtotal = preco * qtd;
+            totalVendedor += subtotal;
+            itensVencedor.push(`• ${qtd}x ${nome} (${emb}) - R$ ${preco.toFixed(2)}/${tipo} = R$ ${subtotal.toFixed(2)}`);
+          }
+        }
+      });
+
+      let msg = `🛍️ *PEDIDO DE COMPRA - CAMPEÃO MENOR PREÇO*\n`;
+      msg += `*Para:* ${vendedor}\n`;
+      if (nomeCliente) msg += `*Mercadinho:* ${nomeCliente}\n`;
+      msg += `*Condição:* ${prazo} - ${formaPagto}\n\n`;
+      msg += `📦 *ITENS GANHOS:*\n${itensVencedor.join('\n')}\n\n`;
+      msg += `💰 *TOTAL DO PEDIDO: R$ ${totalVendedor.toFixed(2)}*`;
+
+      window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(msg)}`, '_blank');
+    }
+
     function enviarWhatsApp() {
       const nomeCliente = document.getElementById('nomeCliente').value.trim();
-      const telCliente = document.getElementById('telCliente').value.trim();
       const nomeVendedor = document.getElementById('nomeVendedor') ? document.getElementById('nomeVendedor').value.trim() : '';
       const empresaVendedor = document.getElementById('empresaVendedor') ? document.getElementById('empresaVendedor').value.trim() : '';
       const prazo = document.getElementById('prazoPagamento').value;
@@ -576,86 +706,28 @@
         mensagem += `🔗 *Acesse o link para preencher seus preços:*\n${urlVendedor}`;
 
       } else if (etapaAtual === 2) {
-        // Concatena a nova proposta recebida com as propostas anteriores na URL
         const urlParams = new URLSearchParams(window.location.search);
         let dadosExistentes = urlParams.get('cotacao') || '';
-        
         let novasPropostas = dadosExistentes ? dadosExistentes + ';' + itensParaUrl.join(';') : itensParaUrl.join(';');
 
         const urlCliente = `${baseUrl}?e=3&tipo=${encodeURIComponent(tipoCotacao)}&prazo=${encodeURIComponent(prazo)}&pagto=${encodeURIComponent(formaPagto)}&cotacao=${encodeURIComponent(novasPropostas)}`;
         
         mensagem = `💰 *PROPOSTA DE PREÇOS ENVIADA*\n`;
-        mensagem += `*Vendedor:* ${nomeVendedor} (${empresaVendedor})\n`;
-        mensagem += `*Cliente:* ${nomeCliente}\n\n`;
-        mensagem += `🔗 *Link atualizado para o cliente comparar ofertas:*\n${urlCliente}`;
+        mensagem += `*Vendedor:* ${nomeVendedor} (${empresaVendedor})\n\n`;
+        mensagem += `🔗 *Acesse o comparador atualizado:*\n${urlCliente}`;
       }
 
       window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(mensagem)}`, '_blank');
     }
 
-    function carregarItensViaUrl(dados) {
-      const lista = document.getElementById('listaProdutos');
-      lista.innerHTML = "";
-      const itens = dados.split(';');
-
-      let propostas = {};
-
-      itens.forEach(itemStr => {
-        const partes = itemStr.split('|');
-        if (partes.length >= 2) {
-          const nome = partes[0];
-          const emb = partes[1];
-          const preco = parseFloat(partes[2]) || 0;
-          const qtd = parseInt(partes[3]) || 1;
-          const vend = partes[4] || '';
-
-          if (!propostas[nome]) {
-            propostas[nome] = { emb: emb, ofertas: [] };
-          }
-          if (preco > 0) {
-            propostas[nome].ofertas.push({ preco: preco, vendedor: vend, qtd: qtd });
-          }
-        }
-      });
-
-      for (let nomeItem in propostas) {
-        const itemData = propostas[nomeItem];
-        let menorPreco = 0;
-        let melhorVendedor = '';
-        let qtd = 1;
-
-        if (itemData.ofertas.length > 0) {
-          itemData.ofertas.sort((a, b) => a.preco - b.preco);
-          menorPreco = itemData.ofertas[0].preco;
-          melhorVendedor = itemData.ofertas[0].vendedor;
-          qtd = itemData.ofertas[0].qtd;
-        }
-
-        adicionarNovoProduto(nomeItem, itemData.emb, menorPreco, qtd, melhorVendedor);
-      }
-    }
-
-    function calcularTotalEGerarSplits() {
-      const cards = document.querySelectorAll('.produto-card');
-      let totalGeral = 0;
-
-      cards.forEach(card => {
-        const preco = parseFloat(card.querySelector('.input-preco').value) || 0;
-        const qtd = parseInt(card.querySelector('.qtd-valor').value) || 0;
-        totalGeral += (preco * qtd);
-      });
-
-      document.getElementById('totalDisplay').innerText = `R$ ${totalGeral.toFixed(2).replace('.', ',')}`;
-    }
-
     function gerarPDF() {
       const elemento = document.getElementById('conteudoParaPdf');
       const opt = {
-        margin: 0.5,
+        margin: 10,
         filename: 'Pedido_Cotacao.pdf',
         image: { type: 'jpeg', quality: 0.98 },
         html2canvas: { scale: 2 },
-        jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' }
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
       };
       html2pdf().set(opt).from(elemento).save();
     }
