@@ -31,8 +31,11 @@
     .auth-toggle { margin-top: 15px; font-size: 0.85em; color: #4a5568; }
     .auth-toggle span { color: #2b6cb0; font-weight: bold; cursor: pointer; text-decoration: underline; }
 
-    .user-bar { background: #0f2342; color: white; padding: 6px 15px; display: flex; justify-content: space-between; align-items: center; font-size: 0.8em; }
+    .user-bar { background: #0f2342; color: white; padding: 8px 15px; display: flex; justify-content: space-between; align-items: center; font-size: 0.8em; flex-wrap: wrap; gap: 8px; }
     .btn-logout { background: #e53e3e; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-weight: bold; }
+
+    .painel-minhas-cotacoes { background: #1a365d; color: white; padding: 10px 15px; font-size: 0.85em; border-bottom: 1px solid #2b6cb0; }
+    .seletor-cotacoes { padding: 6px; border-radius: 6px; border: 1px solid #cbd5e0; font-size: 0.9em; background: white; margin-left: 8px; cursor: pointer; }
 
     header { background: #1a365d; color: white; padding: 15px; text-align: center; }
     header h1 { font-size: 1.3em; margin-bottom: 5px; }
@@ -87,6 +90,7 @@
 </head>
 <body>
 
+  <!-- AUTENTICAÇÃO -->
   <div id="authOverlay">
     <div class="auth-card">
       <h2 id="authTitle">Acessar Sistema</h2>
@@ -100,11 +104,20 @@
     </div>
   </div>
 
+  <!-- BARRA DE USUÁRIO -->
   <div class="user-bar" id="userBar" style="display: none;">
     <span>👤 Usuário: <b id="userEmailDisplay">-</b></span>
     <button class="btn-logout" onclick="fazerLogout()">Sair</button>
   </div>
-  
+
+  <!-- PAINEL DE COTAÇÕES DO CLIENTE -->
+  <div class="painel-minhas-cotacoes" id="painelCotacoes" style="display: none;">
+    <label for="selectCotacoesUsuario">📂 <b>Minhas Cotações Salvas:</b></label>
+    <select id="selectCotacoesUsuario" class="seletor-cotacoes" onchange="selecionarCotacaoSalva(this.value)">
+      <option value="">-- Criar Nova Cotação --</option>
+    </select>
+  </div>
+
   <div id="appContainer" style="display: none;">
     <header>
       <h1 id="tituloHeader">1. Solicitando Cotação</h1>
@@ -173,7 +186,7 @@
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
     import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-    import { getFirestore, doc, setDoc, getDoc, onSnapshot, updateDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+    import { getFirestore, doc, setDoc, getDoc, onSnapshot, updateDoc, collection, query, where, getDocs } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyAPBH_zOO3xrdiyW1qk20b3b1ejMlyYSvg",
@@ -189,18 +202,35 @@
     const db = getFirestore(app);
 
     let isLoginMode = true;
+    let usuarioAtual = null;
+    let listenerSnapshot = null;
 
-    onAuthStateChanged(auth, (user) => {
+    onAuthStateChanged(auth, async (user) => {
       if (user) {
+        usuarioAtual = user;
         document.getElementById('authOverlay').style.display = 'none';
         document.getElementById('userEmailDisplay').innerText = user.email;
         document.getElementById('appContainer').style.display = 'block';
         document.getElementById('userBar').style.display = 'flex';
+        document.getElementById('painelCotacoes').style.display = 'block';
+
+        await carregarListaCotacoesUsuario();
+
+        const urlParams = new URLSearchParams(window.location.search);
+        const cParam = urlParams.get('c');
+        const eParam = parseInt(urlParams.get('e'));
+
+        if (cParam) {
+          window.carregarCotacaoDoBanco(cParam, eParam || 2);
+        }
       } else {
+        usuarioAtual = null;
         const urlParams = new URLSearchParams(window.location.search);
         if (urlParams.get('c')) {
           document.getElementById('authOverlay').style.display = 'none';
           document.getElementById('appContainer').style.display = 'block';
+          document.getElementById('painelCotacoes').style.display = 'none';
+          window.carregarCotacaoDoBanco(urlParams.get('c'), parseInt(urlParams.get('e')) || 2);
         } else {
           document.getElementById('authOverlay').style.display = 'flex';
           document.getElementById('appContainer').style.display = 'none';
@@ -215,7 +245,7 @@
       try {
         if (isLoginMode) await signInWithEmailAndPassword(auth, email, password);
         else await createUserWithEmailAndPassword(auth, email, password);
-      } catch (error) { alert("Falha na autenticação."); }
+      } catch (error) { alert("Falha na autenticação: " + error.message); }
     };
 
     window.alternarModoAuth = function() {
@@ -225,6 +255,42 @@
     };
 
     window.fazerLogout = function() { signOut(auth); };
+
+    // BUSCA AS COTAÇÕES SALVAS DO USUÁRIO LOGADO
+    async function carregarListaCotacoesUsuario() {
+      if (!usuarioAtual) return;
+      const select = document.getElementById('selectCotacoesUsuario');
+      select.innerHTML = '<option value="">-- Criar Nova Cotação --</option>';
+
+      try {
+        const q = query(collection(db, "cotacoes"), where("userId", "==", usuarioAtual.uid));
+        const querySnapshot = await getDocs(q);
+
+        querySnapshot.forEach((docSnap) => {
+          const data = docSnap.data();
+          const option = document.createElement('option');
+          option.value = docSnap.id;
+          option.innerText = `${docSnap.id} - ${data.cliente || 'Sem Nome'}`;
+          select.appendChild(option);
+        });
+      } catch (e) {
+        console.error("Erro ao carregar cotações:", e);
+      }
+    }
+
+    window.selecionarCotacaoSalva = function(id) {
+      if (!id) {
+        cotacaoIdAtual = null;
+        window.history.pushState({}, '', window.location.pathname);
+        document.getElementById('listaProdutos').innerHTML = '';
+        adicionarNovoProduto("Margarina Deline 250g", "Cx c/ 24");
+        alternarEtapa(1);
+        return;
+      }
+      cotacaoIdAtual = id;
+      window.history.pushState({}, '', `?c=${id}&e=3`);
+      window.carregarCotacaoDoBanco(id, 3);
+    };
 
     window.salvarCotacaoEGerarLink = async function() {
       const cotacaoId = "COT-" + Math.floor(100000 + Math.random() * 900000);
@@ -246,10 +312,15 @@
 
       try {
         await setDoc(doc(db, "cotacoes", cotacaoId), {
-          cliente, tel, prazo, pagto: "Combinar", tipo, produtos, ofertas: {}
+          userId: usuarioAtual ? usuarioAtual.uid : "anonimo",
+          cliente, tel, prazo, pagto: "Combinar", tipo, produtos, ofertas: {},
+          criadoEm: new Date()
         });
 
         cotacaoIdAtual = cotacaoId;
+        await carregarListaCotacoesUsuario();
+        document.getElementById('selectCotacoesUsuario').value = cotacaoId;
+
         window.history.pushState({}, '', `?c=${cotacaoId}&e=3`); 
         window.carregarCotacaoDoBanco(cotacaoId, 3);
 
@@ -258,10 +329,10 @@
 
         let msg = `🛒 *SOLICITAÇÃO DE COTAÇÃO*\nCliente: *${cliente}*\n\nPreencha seus preços no link:\n${linkVendedor}`;
 
-        alert(`✅ Cotação Criada! Aguarde os preços no sistema.`);
+        alert(`✅ Cotação Salva com Sucesso!`);
         window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(msg)}`, '_blank');
       } catch (e) {
-        alert("Erro: " + e.message);
+        alert("Erro ao salvar: " + e.message);
       }
     };
 
@@ -298,6 +369,8 @@
           ofertasAtuais[nomeIdentificacao] = precos;
           await updateDoc(docRef, { ofertas: ofertasAtuais });
           alert("✅ Seus preços foram enviados com sucesso!");
+        } else {
+          alert("❌ Cotação não encontrada.");
         }
       } catch (error) {
         alert("❌ Erro ao enviar: " + error.message);
@@ -305,38 +378,34 @@
     };
 
     window.carregarCotacaoDoBanco = function(cotacaoId, etapa) {
+      if (listenerSnapshot) listenerSnapshot(); // Cancela ouvinte anterior
+
       const docRef = doc(db, "cotacoes", cotacaoId);
 
-      onSnapshot(docRef, (docSnap) => {
+      listenerSnapshot = onSnapshot(docRef, (docSnap) => {
         if (docSnap.exists()) {
           const data = docSnap.data();
           document.getElementById('nomeCliente').value = data.cliente || '';
+          document.getElementById('telCliente').value = data.tel || '';
           
           const ofertas = data.ofertas || {};
 
-          if (etapa === 3) {
-            document.getElementById('listaProdutos').innerHTML = '';
-            data.produtos.forEach(prod => {
-              let menorPreco = 0;
-              let vencedor = 'Pendente';
+          document.getElementById('listaProdutos').innerHTML = '';
+          data.produtos.forEach(prod => {
+            let menorPreco = 0;
+            let vencedor = 'Pendente';
 
-              for (let vend in ofertas) {
-                const precoVendedor = parseFloat(ofertas[vend][prod.nome]);
-                if (!isNaN(precoVendedor) && precoVendedor > 0) {
-                  if (menorPreco === 0 || precoVendedor < menorPreco) {
-                    menorPreco = precoVendedor;
-                    vencedor = vend;
-                  }
+            for (let vend in ofertas) {
+              const precoVendedor = parseFloat(ofertas[vend][prod.nome]);
+              if (!isNaN(precoVendedor) && precoVendedor > 0) {
+                if (menorPreco === 0 || precoVendedor < menorPreco) {
+                  menorPreco = precoVendedor;
+                  vencedor = vend;
                 }
               }
-              adicionarNovoProduto(prod.nome, prod.emb, menorPreco, 1, vencedor);
-            });
-          } else if (etapa === 2 && document.querySelectorAll('.produto-card').length === 0) {
-            document.getElementById('listaProdutos').innerHTML = '';
-            data.produtos.forEach(prod => {
-              adicionarNovoProduto(prod.nome, prod.emb, '', 1, 'Pendente');
-            });
-          }
+            }
+            adicionarNovoProduto(prod.nome, prod.emb, menorPreco, 1, vencedor);
+          });
 
           alternarEtapa(etapa);
         }
@@ -353,9 +422,7 @@
       cotacaoIdAtual = urlParams.get('c');
       const eParam = parseInt(urlParams.get('e'));
 
-      if (cotacaoIdAtual) {
-        window.carregarCotacaoDoBanco(cotacaoIdAtual, eParam || 2);
-      } else {
+      if (!cotacaoIdAtual) {
         adicionarNovoProduto("Margarina Deline 250g", "Cx c/ 24");
       }
     };
@@ -386,7 +453,6 @@
       `;
       container.appendChild(card);
       
-      // APLICA REGRA DA ETAPA ATUAL IMEDIATAMENTE AO NOVO PRODUTO
       alternarEtapa(etapaAtual);
     }
 
@@ -429,8 +495,8 @@
 
         inputsNome.forEach(i => i.disabled = false);
         inputsEmb.forEach(i => i.disabled = false);
-        precos.forEach(p => p.style.display = 'none'); // GARANTE OCULTAMENTO NA ETAPA 1
-        quantidades.forEach(q => q.style.display = 'none'); // GARANTE OCULTAMENTO NA ETAPA 1
+        precos.forEach(p => p.style.display = 'none');
+        quantidades.forEach(q => q.style.display = 'none');
         botoesExcluir.forEach(b => b.style.display = 'block');
         badgesVencedor.forEach(b => b.style.display = 'none');
       } else if (etapa === 2) {
