@@ -238,7 +238,7 @@
     </div>
   </div>
 
-  <!-- FIREBASE CORRIGIDO -->
+  <!-- FIREBASE INTEGRADO -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
     import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
@@ -341,13 +341,13 @@
       document.getElementById('btnAuthSubmit').innerText = isLoginMode ? "Entrar" : "Cadastrar e Começar Teste";
     };
 
-    window.falarVendasAtivacao = function(motivo) {
+    window.falarVendasAtivacao = function() {
       window.location.href = "https://imbyser.github.io/cotacaoprimer/vendas.html";
     };
 
     window.fazerLogout = function() { signOut(auth); };
 
-    // --- CORREÇÃO DO SALVAMENTO E COMPARAÇÃO DE OFERTAS ---
+    // --- SALVAMENTO E SINCRONIZAÇÃO EM TEMPO REAL ---
 
     window.salvarCotacaoEGerarLink = async function() {
       const cotacaoId = "COT-" + Math.floor(100000 + Math.random() * 900000);
@@ -373,22 +373,26 @@
         return;
       }
 
-      await setDoc(doc(db, "cotacoes", cotacaoId), {
-        cliente, tel, prazo, pagto, tipo, produtos, ofertas: {}
-      });
+      try {
+        await setDoc(doc(db, "cotacoes", cotacaoId), {
+          cliente, tel, prazo, pagto, tipo, produtos, ofertas: {}
+        });
 
-      const baseUrl = window.location.href.split('?')[0];
-      const linkVendedor = `${baseUrl}?c=${cotacaoId}&e=2`;
-      const linkCliente = `${baseUrl}?c=${cotacaoId}&e=3`;
+        const baseUrl = window.location.href.split('?')[0];
+        const linkVendedor = `${baseUrl}?c=${cotacaoId}&e=2`;
+        const linkCliente = `${baseUrl}?c=${cotacaoId}&e=3`;
 
-      let msg = `🛒 *SOLICITAÇÃO DE COTAÇÃO SIMULTÂNEA*\n`;
-      msg += `Cliente: *${cliente}*\n`;
-      msg += `Modalidade: *Preço por ${tipo}*\n`;
-      msg += `Condição: *${prazo} (${pagto})*\n\n`;
-      msg += `Preencha seus preços no link abaixo:\n${linkVendedor}`;
+        let msg = `🛒 *SOLICITAÇÃO DE COTAÇÃO SIMULTÂNEA*\n`;
+        msg += `Cliente: *${cliente}*\n`;
+        msg += `Modalidade: *Preço por ${tipo}*\n`;
+        msg += `Condição: *${prazo} (${pagto})*\n\n`;
+        msg += `Preencha seus preços no link abaixo:\n${linkVendedor}`;
 
-      alert(`✅ Cotação Criada com Sucesso!\n\nLink do Cliente para acompanhar os preços:\n${linkCliente}`);
-      window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(msg)}`, '_blank');
+        alert(`✅ Cotação Criada com Sucesso!\n\nSeu link para acompanhar os preços dos vendedores:\n${linkCliente}`);
+        window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(msg)}`, '_blank');
+      } catch (e) {
+        alert("Erro ao criar cotação: " + e.message);
+      }
     };
 
     window.salvarPrecosVendedor = async function(cotacaoId) {
@@ -435,11 +439,11 @@
 
           alert("✅ Seus preços foram enviados com sucesso ao cliente!");
         } else {
-          alert("❌ Erro: Cotação não encontrada no banco de dados.");
+          alert("❌ Cotação não encontrada. Verifique o link.");
         }
       } catch (error) {
-        console.error("Erro ao gravar preços:", error);
-        alert("❌ Erro ao gravar preços no banco de dados.");
+        console.error("Erro ao enviar preços:", error);
+        alert("❌ Erro ao enviar preços: Verifique se as regras do Firebase foram liberadas!");
       }
     };
 
@@ -485,7 +489,7 @@
     };
   </script>
 
-  <!-- LÓGICA DE INTERFACE -->
+  <!-- LÓGICA DA INTERFACE -->
   <script>
     let etapaAtual = 1; 
     let html5QrcodeScanner = null;
