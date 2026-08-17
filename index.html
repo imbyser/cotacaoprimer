@@ -34,7 +34,7 @@
     .user-bar { background: #0f2342; color: white; padding: 8px 15px; display: flex; justify-content: space-between; align-items: center; font-size: 0.8em; flex-wrap: wrap; gap: 8px; }
     .btn-logout { background: #e53e3e; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-weight: bold; }
 
-    .painel-minhas-cotacoes { background: #1a365d; color: white; padding: 10px 15px; font-size: 0.85em; border-bottom: 1px solid #2b6cb0; }
+    .painel-minhas-cotacoes { background: #1a365d; color: white; padding: 10px 15px; font-size: 0.85em; border-bottom: 1px solid #2b6cb0; display: flex; justify-content: space-between; align-items: center; }
     .seletor-cotacoes { padding: 6px; border-radius: 6px; border: 1px solid #cbd5e0; font-size: 0.9em; background: white; margin-left: 8px; cursor: pointer; }
 
     header { background: #1a365d; color: white; padding: 15px; text-align: center; }
@@ -45,7 +45,7 @@
     .btn-etapa.ativo { background: #2b6cb0; color: white; }
 
     .container { max-width: 650px; margin: 0 auto; padding: 0 15px; }
-    .badge-etapa { background: #ebf8ff; border-left: 4px solid #2b6cb0; color: #2c5282; padding: 10px 12px; border-radius: 6px; margin-bottom: 15px; font-size: 0.85em; }
+    .badge-etapa { background: #ebf8ff; border-left: 4px solid #2b6cb0; color: #2c5282; padding: 10px 12px; border-radius: 6px; margin-bottom: 15px; font-size: 0.85em; display: flex; justify-content: space-between; align-items: center; }
 
     .secao-vendedor { background: #f0fff4; border: 1px solid #c6f6d5; padding: 12px; border-radius: 10px; margin-bottom: 15px; display: none; }
     .secao-vendedor h4 { color: #22543d; font-size: 0.9em; margin-bottom: 8px; }
@@ -86,6 +86,8 @@
     .resumo-total { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; font-size: 1em; font-weight: bold; color: #1a365d; }
     .btn-whatsapp { background: #25d366; color: white; border: none; padding: 12px; border-radius: 8px; font-size: 0.9em; font-weight: bold; cursor: pointer; width: 100%; text-align: center; }
     .card-divisao-vendedor { background: #f0fff4; border: 1px solid #9ae6b4; padding: 10px; border-radius: 8px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; font-size: 0.85em; }
+
+    #statusSalvamento { font-size: 0.75em; color: #2b6cb0; font-weight: bold; }
   </style>
 </head>
 <body>
@@ -112,10 +114,13 @@
 
   <!-- PAINEL DE COTAÇÕES DO CLIENTE -->
   <div class="painel-minhas-cotacoes" id="painelCotacoes" style="display: none;">
-    <label for="selectCotacoesUsuario">📂 <b>Minhas Cotações Salvas:</b></label>
-    <select id="selectCotacoesUsuario" class="seletor-cotacoes" onchange="selecionarCotacaoSalva(this.value)">
-      <option value="">-- Criar Nova Cotação --</option>
-    </select>
+    <div>
+      <label for="selectCotacoesUsuario">📂 <b>Minhas Cotações Salvas:</b></label>
+      <select id="selectCotacoesUsuario" class="seletor-cotacoes" onchange="selecionarCotacaoSalva(this.value)">
+        <option value="">-- Criar Nova Cotação --</option>
+      </select>
+    </div>
+    <button onclick="novaCotacao()" style="padding: 4px 8px; background: #319795; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 0.8em;">+ Nova Lista</button>
   </div>
 
   <div id="appContainer" style="display: none;">
@@ -131,7 +136,8 @@
 
     <div class="container">
       <div class="badge-etapa" id="badgeOrientacao">
-        📌 <b>Etapa 1:</b> Monte sua lista.
+        <span>📌 <b>Etapa 1:</b> Monte sua lista.</span>
+        <span id="statusSalvamento"></span>
       </div>
 
       <div class="secao-vendedor" id="secaoVendedor">
@@ -157,16 +163,16 @@
     <div class="carrinho-bar">
       <div class="carrinho-conteudo">
         <div class="linha-dados-cliente">
-          <input type="text" id="nomeCliente" class="campo-cliente" placeholder="Nome da Loja...">
-          <input type="tel" id="telCliente" class="campo-cliente" placeholder="WhatsApp...">
+          <input type="text" id="nomeCliente" class="campo-cliente" placeholder="Nome da Loja..." onchange="agendarSalvarAutomatico()">
+          <input type="tel" id="telCliente" class="campo-cliente" placeholder="WhatsApp..." onchange="agendarSalvarAutomatico()">
         </div>
 
         <div class="linha-pagamento" id="secaoPagamento">
-          <select id="tipoCotacao" class="campo-cliente">
+          <select id="tipoCotacao" class="campo-cliente" onchange="agendarSalvarAutomatico()">
             <option value="Caixa">📦 Por Caixa</option>
             <option value="Unidade">🏷️ Por Unidade</option>
           </select>
-          <select id="prazoPagamento" class="campo-cliente">
+          <select id="prazoPagamento" class="campo-cliente" onchange="agendarSalvarAutomatico()">
             <option value="À vista">⏱️ À vista</option>
             <option value="7 dias">⏱️ 7 dias</option>
           </select>
@@ -178,7 +184,7 @@
         </div>
 
         <div id="painelEnvioDividido" style="display: none; margin-bottom: 8px;"></div>
-        <button class="btn-whatsapp" id="btnAcao" onclick="executarAcaoPrincipal()">Gerar Link e Enviar</button>
+        <button class="btn-whatsapp" id="btnAcao" onclick="executarAcaoPrincipal()">Gerar Link e Enviar WhatsApp</button>
       </div>
     </div>
   </div>
@@ -186,7 +192,7 @@
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
     import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-    import { getFirestore, doc, setDoc, getDoc, onSnapshot, updateDoc, collection, query, where, getDocs } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+    import { getFirestore, doc, setDoc, getDoc, onSnapshot, updateDoc, collection, query, where, getDocs, orderBy, limit } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyAPBH_zOO3xrdiyW1qk20b3b1ejMlyYSvg",
@@ -204,6 +210,7 @@
     let isLoginMode = true;
     let usuarioAtual = null;
     let listenerSnapshot = null;
+    let timerSalvarAuto = null;
 
     onAuthStateChanged(auth, async (user) => {
       if (user) {
@@ -212,7 +219,7 @@
         document.getElementById('userEmailDisplay').innerText = user.email;
         document.getElementById('appContainer').style.display = 'block';
         document.getElementById('userBar').style.display = 'flex';
-        document.getElementById('painelCotacoes').style.display = 'block';
+        document.getElementById('painelCotacoes').style.display = 'flex';
 
         await carregarListaCotacoesUsuario();
 
@@ -222,6 +229,14 @@
 
         if (cParam) {
           window.carregarCotacaoDoBanco(cParam, eParam || 2);
+        } else {
+          // SE NÃO HOUVER PARAMETRO NA URL, VERIFICA SE EXISTE UMA COTAÇÃO EM ABERTO SALVA
+          const cotacaoSalvaLocal = localStorage.getItem('cotacaoAtiva_' + user.uid);
+          if (cotacaoSalvaLocal) {
+            window.carregarCotacaoDoBanco(cotacaoSalvaLocal, 1);
+          } else {
+            await buscarUltimaCotacaoDoUsuario();
+          }
         }
       } else {
         usuarioAtual = null;
@@ -256,7 +271,6 @@
 
     window.fazerLogout = function() { signOut(auth); };
 
-    // BUSCA AS COTAÇÕES SALVAS DO USUÁRIO LOGADO
     async function carregarListaCotacoesUsuario() {
       if (!usuarioAtual) return;
       const select = document.getElementById('selectCotacoesUsuario');
@@ -278,22 +292,60 @@
       }
     }
 
-    window.selecionarCotacaoSalva = function(id) {
-      if (!id) {
-        cotacaoIdAtual = null;
-        window.history.pushState({}, '', window.location.pathname);
-        document.getElementById('listaProdutos').innerHTML = '';
-        adicionarNovoProduto("Margarina Deline 250g", "Cx c/ 24");
-        alternarEtapa(1);
-        return;
+    async function buscarUltimaCotacaoDoUsuario() {
+      if (!usuarioAtual) return;
+      try {
+        const q = query(
+          collection(db, "cotacoes"), 
+          where("userId", "==", usuarioAtual.uid),
+          orderBy("criadoEm", "desc"),
+          limit(1)
+        );
+        const querySnapshot = await getDocs(q);
+        if (!querySnapshot.empty) {
+          const docSnap = querySnapshot.docs[0];
+          window.carregarCotacaoDoBanco(docSnap.id, 1);
+        } else {
+          window.novaCotacao();
+        }
+      } catch(e) {
+        window.novaCotacao();
       }
-      cotacaoIdAtual = id;
-      window.history.pushState({}, '', `?c=${id}&e=3`);
-      window.carregarCotacaoDoBanco(id, 3);
+    }
+
+    window.novaCotacao = function() {
+      cotacaoIdAtual = null;
+      if (usuarioAtual) localStorage.removeItem('cotacaoAtiva_' + usuarioAtual.uid);
+      window.history.pushState({}, '', window.location.pathname);
+      document.getElementById('listaProdutos').innerHTML = '';
+      document.getElementById('selectCotacoesUsuario').value = '';
+      adicionarNovoProduto("Margarina Deline 250g", "Cx c/ 24");
+      alternarEtapa(1);
     };
 
-    window.salvarCotacaoEGerarLink = async function() {
-      const cotacaoId = "COT-" + Math.floor(100000 + Math.random() * 900000);
+    window.selecionarCotacaoSalva = function(id) {
+      if (!id) {
+        window.novaCotacao();
+        return;
+      }
+      window.carregarCotacaoDoBanco(id, 1);
+    };
+
+    // AUTO-SALVAMENTO: PERSISTE AUTOMATICAMENTE TUDO DIGITADO PELO CLIENTE
+    window.agendarSalvarAutomatico = function() {
+      if (etapaAtual !== 1) return;
+      document.getElementById('statusSalvamento').innerText = "💾 Salvando...";
+      clearTimeout(timerSalvarAuto);
+      timerSalvarAuto = setTimeout(window.salvarEstadoAutomatico, 1000);
+    };
+
+    window.salvarEstadoAutomatico = async function() {
+      if (!usuarioAtual) return;
+
+      if (!cotacaoIdAtual) {
+        cotacaoIdAtual = "COT-" + Math.floor(100000 + Math.random() * 900000);
+      }
+
       const cliente = document.getElementById('nomeCliente').value.trim() || 'Cliente';
       const tel = document.getElementById('telCliente').value.trim();
       const prazo = document.getElementById('prazoPagamento').value;
@@ -308,32 +360,36 @@
         if (nome !== "") produtos.push({ id: index, nome, emb });
       });
 
-      if (produtos.length === 0) return alert("Adicione pelo menos um produto!");
-
       try {
-        await setDoc(doc(db, "cotacoes", cotacaoId), {
-          userId: usuarioAtual ? usuarioAtual.uid : "anonimo",
-          cliente, tel, prazo, pagto: "Combinar", tipo, produtos, ofertas: {},
+        await setDoc(doc(db, "cotacoes", cotacaoIdAtual), {
+          userId: usuarioAtual.uid,
+          cliente, tel, prazo, pagto: "Combinar", tipo, produtos,
           criadoEm: new Date()
-        });
+        }, { merge: true });
 
-        cotacaoIdAtual = cotacaoId;
-        await carregarListaCotacoesUsuario();
-        document.getElementById('selectCotacoesUsuario').value = cotacaoId;
-
-        window.history.pushState({}, '', `?c=${cotacaoId}&e=3`); 
-        window.carregarCotacaoDoBanco(cotacaoId, 3);
-
-        const baseUrl = window.location.href.split('?')[0];
-        const linkVendedor = `${baseUrl}?c=${cotacaoId}&e=2`;
-
-        let msg = `🛒 *SOLICITAÇÃO DE COTAÇÃO*\nCliente: *${cliente}*\n\nPreencha seus preços no link:\n${linkVendedor}`;
-
-        alert(`✅ Cotação Salva com Sucesso!`);
-        window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(msg)}`, '_blank');
+        localStorage.setItem('cotacaoAtiva_' + usuarioAtual.uid, cotacaoIdAtual);
+        document.getElementById('statusSalvamento').innerText = "✅ Salvo";
+        document.getElementById('selectCotacoesUsuario').value = cotacaoIdAtual;
       } catch (e) {
-        alert("Erro ao salvar: " + e.message);
+        document.getElementById('statusSalvamento').innerText = "⚠️ Erro ao salvar";
       }
+    };
+
+    window.salvarCotacaoEGerarLink = async function() {
+      await window.salvarEstadoAutomatico();
+      if (!cotacaoIdAtual) return alert("Adicione pelo menos um produto válido.");
+
+      await carregarListaCotacoesUsuario();
+      document.getElementById('selectCotacoesUsuario').value = cotacaoIdAtual;
+
+      const baseUrl = window.location.href.split('?')[0];
+      const linkVendedor = `${baseUrl}?c=${cotacaoIdAtual}&e=2`;
+      const cliente = document.getElementById('nomeCliente').value.trim() || 'Cliente';
+
+      let msg = `🛒 *SOLICITAÇÃO DE COTAÇÃO*\nCliente: *${cliente}*\n\nPreencha seus preços no link:\n${linkVendedor}`;
+
+      alert(`✅ Cotação Salva! Link enviado para o WhatsApp.`);
+      window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(msg)}`, '_blank');
     };
 
     window.salvarPrecosVendedor = async function(cotacaoId) {
@@ -378,7 +434,12 @@
     };
 
     window.carregarCotacaoDoBanco = function(cotacaoId, etapa) {
-      if (listenerSnapshot) listenerSnapshot(); // Cancela ouvinte anterior
+      if (listenerSnapshot) listenerSnapshot();
+
+      cotacaoIdAtual = cotacaoId;
+      if (usuarioAtual) {
+        localStorage.setItem('cotacaoAtiva_' + usuarioAtual.uid, cotacaoId);
+      }
 
       const docRef = doc(db, "cotacoes", cotacaoId);
 
@@ -391,21 +452,25 @@
           const ofertas = data.ofertas || {};
 
           document.getElementById('listaProdutos').innerHTML = '';
-          data.produtos.forEach(prod => {
-            let menorPreco = 0;
-            let vencedor = 'Pendente';
+          if (data.produtos && data.produtos.length > 0) {
+            data.produtos.forEach(prod => {
+              let menorPreco = 0;
+              let vencedor = 'Pendente';
 
-            for (let vend in ofertas) {
-              const precoVendedor = parseFloat(ofertas[vend][prod.nome]);
-              if (!isNaN(precoVendedor) && precoVendedor > 0) {
-                if (menorPreco === 0 || precoVendedor < menorPreco) {
-                  menorPreco = precoVendedor;
-                  vencedor = vend;
+              for (let vend in ofertas) {
+                const precoVendedor = parseFloat(ofertas[vend][prod.nome]);
+                if (!isNaN(precoVendedor) && precoVendedor > 0) {
+                  if (menorPreco === 0 || precoVendedor < menorPreco) {
+                    menorPreco = precoVendedor;
+                    vencedor = vend;
+                  }
                 }
               }
-            }
-            adicionarNovoProduto(prod.nome, prod.emb, menorPreco, 1, vencedor);
-          });
+              adicionarNovoProduto(prod.nome, prod.emb, menorPreco, 1, vencedor);
+            });
+          } else {
+            adicionarNovoProduto("Margarina Deline 250g", "Cx c/ 24");
+          }
 
           alternarEtapa(etapa);
         }
@@ -417,16 +482,6 @@
     let etapaAtual = 1; 
     let cotacaoIdAtual = null;
 
-    window.onload = function() {
-      const urlParams = new URLSearchParams(window.location.search);
-      cotacaoIdAtual = urlParams.get('c');
-      const eParam = parseInt(urlParams.get('e'));
-
-      if (!cotacaoIdAtual) {
-        adicionarNovoProduto("Margarina Deline 250g", "Cx c/ 24");
-      }
-    };
-
     function adicionarNovoProduto(nome = '', emb = '', preco = '', qtd = 1, vencedor = 'Pendente') {
       const container = document.getElementById('listaProdutos');
       const card = document.createElement('div');
@@ -434,8 +489,8 @@
 
       card.innerHTML = `
         <div class="linha-inputs">
-          <input type="text" class="input-editavel input-nome" placeholder="Nome..." value="${nome}">
-          <input type="text" class="input-editavel input-embalagem" placeholder="Emb..." value="${emb}">
+          <input type="text" class="input-editavel input-nome" placeholder="Nome..." value="${nome}" onchange="agendarSalvarAutomatico()">
+          <input type="text" class="input-editavel input-embalagem" placeholder="Emb..." value="${emb}" onchange="agendarSalvarAutomatico()">
         </div>
         <div class="linha-acoes">
           <div class="bloco-preco">
@@ -454,6 +509,9 @@
       container.appendChild(card);
       
       alternarEtapa(etapaAtual);
+      if (typeof window.agendarSalvarAutomatico === 'function') {
+        window.agendarSalvarAutomatico();
+      }
     }
 
     function alterarQtd(btn, delta) {
@@ -465,6 +523,9 @@
     function removerProduto(btn) {
       btn.closest('.produto-card').remove();
       if (etapaAtual === 3) calcularTotalEGerarSplits();
+      if (typeof window.agendarSalvarAutomatico === 'function') {
+        window.agendarSalvarAutomatico();
+      }
     }
 
     function alternarEtapa(etapa) {
@@ -490,8 +551,7 @@
         document.getElementById('boxTotal').style.display = 'none';
         document.getElementById('painelEnvioDividido').style.display = 'none';
         document.getElementById('btnAcao').style.display = 'block';
-        document.getElementById('btnAcao').innerText = "Gerar Link e Enviar";
-        document.getElementById('badgeOrientacao').innerHTML = "📌 <b>Etapa 1:</b> Monte sua lista.";
+        document.getElementById('btnAcao').innerText = "Gerar Link e Enviar WhatsApp";
 
         inputsNome.forEach(i => i.disabled = false);
         inputsEmb.forEach(i => i.disabled = false);
@@ -507,7 +567,6 @@
         document.getElementById('painelEnvioDividido').style.display = 'none';
         document.getElementById('btnAcao').style.display = 'block';
         document.getElementById('btnAcao').innerText = "💾 Salvar e Enviar Preços";
-        document.getElementById('badgeOrientacao').innerHTML = "📌 <b>Etapa 2:</b> Vendedor, insira seus preços e salve.";
 
         inputsNome.forEach(i => i.disabled = true);
         inputsEmb.forEach(i => i.disabled = true);
@@ -523,7 +582,6 @@
         document.getElementById('boxTotal').style.display = 'flex';
         document.getElementById('painelEnvioDividido').style.display = 'block';
         document.getElementById('btnAcao').style.display = 'none';
-        document.getElementById('badgeOrientacao').innerHTML = "📌 <b>Etapa 3:</b> Monitorando preços ao vivo.";
 
         inputsNome.forEach(i => i.disabled = true);
         inputsEmb.forEach(i => i.disabled = true);
