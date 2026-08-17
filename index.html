@@ -3,10 +3,10 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Sistema Profissional de Cotação e Pedidos</title>
+  <title>Sistema Profissional de Cotação e Pedidos Simultâneos</title>
 
-  <meta name="description" content="Sistema de cotação online de preços e pedidos para mercadinhos e distribuidores. Faça cotações e envie direto pelo WhatsApp.">
-  <meta name="keywords" content="cotacao de preços, pedidos mercadinho, lista de compras atacado, cotacao whatsapp, distribuidora de alimentos">
+  <meta name="description" content="Sistema de cotação online de preços e pedidos para mercadinhos e distribuidores.">
+  <meta name="keywords" content="cotacao de preços, pedidos mercadinho, lista de compras atacado">
   <meta name="robots" content="index, follow">
 
   <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
@@ -230,17 +230,18 @@
         <div id="painelEnvioDividido" style="display: none; margin-bottom: 8px;"></div>
 
         <div class="botoes-acao-final">
-          <button class="btn-whatsapp" id="btnAcao" onclick="enviarWhatsApp()">Enviar Cotação para os Vendedores</button>
+          <button class="btn-whatsapp" id="btnAcao" onclick="executarAcaoPrincipal()">Gerar Link e Enviar para os Vendedores</button>
           <button class="btn-pdf" id="btnPdf" onclick="gerarPDF()">📄 Baixar PDF do Pedido</button>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- FIREBASE AUTHENTICATION -->
+  <!-- FIREBASE (AUTH & FIRESTORE BANCO DE DADOS) -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
     import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+    import { getFirestore, doc, setDoc, getDoc, onSnapshot, updateDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyAPBH_zOO3xrdiyW1qk20b3b1ejMlyYSvg",
@@ -253,15 +254,13 @@
 
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
+    const db = getFirestore(app);
 
     let isLoginMode = true;
-    window.SEU_NUMERO_WHATSAPP = "5581995432834"; 
-    window.VALOR_PLANO_MENSAL = "R$ 98,90";
+    window.SEU_NUMERO_WHATSAPP = "5581995432834";
 
-    // --- LISTA DE CLIENTES QUE PAGARAM (ISENTOS DA TRAVA DE 7 DIAS) ---
     const clientesCompletos = [
-      "thiago.limaflp@hotmail.com",
-      "emaildacliente@exemplo.com"
+      "thiago.limaflp@hotmail.com"
     ];
 
     onAuthStateChanged(auth, (user) => {
@@ -269,10 +268,7 @@
         document.getElementById('authOverlay').style.display = 'none';
         document.getElementById('userEmailDisplay').innerText = user.email;
 
-        // 1. Verifica se é um assinante ativo
-        const eAssinante = clientesCompletos.some(
-          email => email.toLowerCase() === user.email.toLowerCase()
-        );
+        const eAssinante = clientesCompletos.some(e => e.toLowerCase() === user.email.toLowerCase());
 
         if (eAssinante) {
           document.getElementById('appContainer').style.display = 'block';
@@ -280,7 +276,6 @@
           document.getElementById('trialExpiradoOverlay').style.display = 'none';
           document.getElementById('trialBanner').style.display = 'none';
         } else {
-          // 2. Lógica normal de Trial para novos usuários
           const dataCadastroKey = `cadastro_date_${user.uid}`;
           let dataCadastroStr = localStorage.getItem(dataCadastroKey);
           if (!dataCadastroStr) {
@@ -304,8 +299,14 @@
           }
         }
       } else {
-        document.getElementById('authOverlay').style.display = 'flex';
-        document.getElementById('appContainer').style.display = 'none';
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('c')) {
+          document.getElementById('authOverlay').style.display = 'none';
+          document.getElementById('appContainer').style.display = 'block';
+        } else {
+          document.getElementById('authOverlay').style.display = 'flex';
+          document.getElementById('appContainer').style.display = 'none';
+        }
       }
     });
 
@@ -326,8 +327,6 @@
           await signInWithEmailAndPassword(auth, email, password);
         } else {
           await createUserWithEmailAndPassword(auth, email, password);
-          const msgBoasVindas = `Olá! Vi que você criou sua conta (${email}) no Sistema de Cotações. Seus 7 dias grátis estão liberados!`;
-          window.open(`https://api.whatsapp.com/send?phone=${window.SEU_NUMERO_WHATSAPP}&text=${encodeURIComponent(msgBoasVindas)}`, '_blank');
         }
       } catch (error) {
         errorDiv.innerText = "Falha na autenticação. Verifique os dados.";
@@ -346,12 +345,127 @@
     };
 
     window.fazerLogout = function() { signOut(auth); };
+
+    // --- FIRESTORE TEMPO REAL ---
+
+    window.salvarCotacaoEGerarLink = async function() {
+      const cotacaoId = "COT-" + Math.floor(100000 + Math.random() * 900000);
+      const cliente = document.getElementById('nomeCliente').value.trim() || 'Mercadinho';
+      const tel = document.getElementById('telCliente').value.trim();
+      const prazo = document.getElementById('prazoPagamento').value;
+      const pagto = document.getElementById('formaPagamento').value;
+      const tipo = document.getElementById('tipoCotacao').value;
+
+      const cards = document.querySelectorAll('.produto-card');
+      let produtos = [];
+
+      cards.forEach((card, index) => {
+        const nome = card.querySelector('.input-nome').value.trim();
+        const emb = card.querySelector('.input-embalagem').value.trim();
+        if (nome !== "") {
+          produtos.push({ id: index, nome, emb });
+        }
+      });
+
+      if (produtos.length === 0) {
+        alert("Adicione pelo menos um produto na lista!");
+        return;
+      }
+
+      await setDoc(doc(db, "cotacoes", cotacaoId), {
+        cliente, tel, prazo, pagto, tipo, produtos, ofertas: {}
+      });
+
+      const baseUrl = window.location.href.split('?')[0];
+      const linkVendedor = `${baseUrl}?c=${cotacaoId}&e=2`;
+      const linkPainelCliente = `${baseUrl}?c=${cotacaoId}&e=3`;
+
+      let msg = `🛒 *SOLICITAÇÃO DE COTAÇÃO SIMULTÂNEA*\n`;
+      msg += `Cliente: *${cliente}*\n`;
+      msg += `Modalidade: *Preço por ${tipo}*\n`;
+      msg += `Condição: *${prazo} (${pagto})*\n\n`;
+      msg += `Preencha seus preços no link abaixo:\n${linkVendedor}\n\n`;
+      msg += `📌 *Link do seu painel de acompanhamento (Cliente):*\n${linkPainelCliente}`;
+
+      window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(msg)}`, '_blank');
+    };
+
+    window.salvarPrecosVendedor = async function(cotacaoId) {
+      const vendedor = document.getElementById('nomeVendedor').value.trim();
+      const empresa = document.getElementById('empresaVendedor').value.trim();
+      const nomeIdentificacao = empresa ? `${vendedor} (${empresa})` : vendedor;
+
+      if (!vendedor) {
+        alert("Por favor, preencha o seu nome!");
+        return;
+      }
+
+      const cards = document.querySelectorAll('.produto-card');
+      let precos = {};
+
+      cards.forEach((card) => {
+        const nome = card.querySelector('.input-nome').value.trim();
+        const preco = parseFloat(card.querySelector('.input-preco').value) || 0;
+        if (preco > 0) precos[nome] = preco;
+      });
+
+      const docRef = doc(db, "cotacoes", cotacaoId);
+      const docSnap = await getDoc(docRef);
+
+      if (docSnap.exists()) {
+        let ofertasAtuais = docSnap.data().ofertas || {};
+        ofertasAtuais[nomeIdentificacao] = precos;
+
+        await updateDoc(docRef, { ofertas: ofertasAtuais });
+
+        alert("✅ Seus preços foram enviados com sucesso ao cliente!");
+      }
+    };
+
+    window.carregarCotacaoDoBanco = function(cotacaoId, etapa) {
+      onSnapshot(doc(db, "cotacoes", cotacaoId), (docSnap) => {
+        if (docSnap.exists()) {
+          const data = docSnap.data();
+
+          document.getElementById('nomeCliente').value = data.cliente || '';
+          document.getElementById('telCliente').value = data.tel || '';
+          document.getElementById('prazoPagamento').value = data.prazo || 'À vista';
+          document.getElementById('formaPagamento').value = data.pagto || 'Boleto';
+          document.getElementById('tipoCotacao').value = data.tipo || 'Caixa';
+
+          document.getElementById('listaProdutos').innerHTML = '';
+
+          const ofertas = data.ofertas || {};
+
+          data.produtos.forEach(prod => {
+            let menorPreco = 0;
+            let vencedor = 'Sem Oferta';
+
+            for (let vend in ofertas) {
+              const preco = ofertas[vend][prod.nome];
+              if (preco && (menorPreco === 0 || preco < menorPreco)) {
+                menorPreco = preco;
+                vencedor = vend;
+              }
+            }
+
+            // Se for o vendedor preenchendo (etapa 2), não coloca preço fixo inicial
+            const precoExibicao = (etapa === 2) ? 0 : menorPreco;
+            adicionarNovoProduto(prod.nome, prod.emb, precoExibicao, 1, vencedor);
+          });
+
+          alternarEtapa(etapa);
+          if (etapa === 3) window.calcularTotalEGerarSplits();
+        }
+      });
+    };
   </script>
 
-  <!-- LÓGICA DO SISTEMA -->
+  <!-- LÓGICA DO SISTEMA DA TELA -->
   <script>
     let etapaAtual = 1; 
     let html5QrcodeScanner = null;
+    let cotacaoIdAtual = null;
 
     const produtosPreCadastrados = {
       limpeza: [{ nome: "Detergente Neutro 500ml", emb: "Cx c/ 24" }, { nome: "Sabão em Pó 800g", emb: "Cx c/ 20" }],
@@ -363,72 +477,16 @@
       carregarDadosCliente();
       
       const urlParams = new URLSearchParams(window.location.search);
-      const eParam = urlParams.get('e');
-      const dadosCotacao = urlParams.get('cotacao');
-      const prazoUrl = urlParams.get('prazo');
-      const pagtoUrl = urlParams.get('pagto');
-      const tipoUrl = urlParams.get('tipo');
+      cotacaoIdAtual = urlParams.get('c');
+      const eParam = parseInt(urlParams.get('e'));
 
-      if (prazoUrl) document.getElementById('prazoPagamento').value = prazoUrl;
-      if (pagtoUrl) document.getElementById('formaPagamento').value = pagtoUrl;
-      if (tipoUrl) document.getElementById('tipoCotacao').value = tipoUrl;
-      
-      if (dadosCotacao) {
-        let etapaDestino = parseInt(eParam) || 2;
-        carregarItensViaUrl(dadosCotacao);
-        alternarEtapa(etapaDestino);
+      if (cotacaoIdAtual) {
+        const destino = eParam || 2;
+        window.carregarCotacaoDoBanco(cotacaoIdAtual, destino);
       } else {
         adicionarNovoProduto("Margarina Deline 250g", "Cx c/ 24");
       }
     };
-
-    function carregarItensViaUrl(strDados) {
-      document.getElementById('listaProdutos').innerHTML = '';
-      const itens = strDados.split(';');
-
-      if (etapaAtual === 3 || new URLSearchParams(window.location.search).get('e') === '3') {
-        let mapaProdutos = {};
-
-        itens.forEach(item => {
-          const partes = item.split('|');
-          if (partes.length >= 2) {
-            const nome = partes[0];
-            const emb = partes[1];
-            const preco = parseFloat(partes[2]) || 0;
-            const qtd = parseInt(partes[3]) || 1;
-            const vend = partes[4] || 'Sem Vendedor';
-
-            if (!mapaProdutos[nome]) {
-              mapaProdutos[nome] = { emb: emb, qtd: qtd, ofertas: [] };
-            }
-            if (preco > 0) {
-              mapaProdutos[nome].ofertas.push({ preco: preco, vendedor: vend });
-            }
-          }
-        });
-
-        for (let nome in mapaProdutos) {
-          const prod = mapaProdutos[nome];
-          let menorPreco = 0;
-          let vencedor = 'Sem Oferta';
-
-          if (prod.ofertas.length > 0) {
-            prod.ofertas.sort((a, b) => a.preco - b.preco);
-            menorPreco = prod.ofertas[0].preco;
-            vencedor = prod.ofertas[0].vendedor;
-          }
-
-          adicionarNovoProduto(nome, prod.emb, menorPreco, prod.qtd, vencedor);
-        }
-      } else {
-        itens.forEach(item => {
-          const partes = item.split('|');
-          if (partes.length >= 2) {
-            adicionarNovoProduto(partes[0], partes[1], parseFloat(partes[2]) || 0, parseInt(partes[3]) || 1, partes[4] || '');
-          }
-        });
-      }
-    }
 
     function salvarDadosCliente() {
       localStorage.setItem('cliente_nome', document.getElementById('nomeCliente').value);
@@ -481,12 +539,12 @@
 
       if (etapa === 1) {
         document.getElementById('tituloHeader').innerText = "1. Solicitando Cotação";
-        document.getElementById('subtituloHeader').innerText = "O cliente escolhe os produtos e se quer cotar por CAIXA ou UNIDADE";
-        document.getElementById('btnAcao').innerText = "Enviar Lista para os Vendedores";
+        document.getElementById('subtituloHeader').innerText = "Monte a lista e envie um link único para todos os vendedores";
+        document.getElementById('btnAcao').innerText = "Gerar Link e Enviar para os Vendedores";
         document.getElementById('btnAcao').style.display = 'block';
         document.getElementById('painelEnvioDividido').style.display = 'none';
 
-        document.getElementById('badgeOrientacao').innerHTML = `📌 <b>Etapa 1:</b> Cotação definida para valor por <b>${tipoCotacao.toUpperCase()}</b>. Envie o link para quantos vendedores quiser!`;
+        document.getElementById('badgeOrientacao').innerHTML = `📌 <b>Etapa 1:</b> Monte sua lista. O mesmo link pode ser enviado para múltiplos vendedores simultaneamente!`;
 
         document.getElementById('secaoAtalhos').style.display = 'block';
         document.getElementById('secaoVendedor').style.display = 'none';
@@ -506,12 +564,12 @@
 
       } else if (etapa === 2) {
         document.getElementById('tituloHeader').innerText = "2. Precificação pelo Vendedor";
-        document.getElementById('subtituloHeader').innerText = "Vendedor digita seu nome e seus preços";
-        document.getElementById('btnAcao').innerText = "Gravar e Enviar Meus Preços ao Cliente";
+        document.getElementById('subtituloHeader').innerText = "Digite seu nome e informe seus valores";
+        document.getElementById('btnAcao').innerText = "Gravar Meus Preços";
         document.getElementById('btnAcao').style.display = 'block';
         document.getElementById('painelEnvioDividido').style.display = 'none';
 
-        document.getElementById('badgeOrientacao').innerHTML = `💰 <b>Etapa 2 (Vendedor):</b> Digite seus preços por <b>${tipoCotacao.toUpperCase()}</b>.`;
+        document.getElementById('badgeOrientacao').innerHTML = `💰 <b>Etapa 2 (Vendedor):</b> Informe seus preços por <b>${tipoCotacao.toUpperCase()}</b>.`;
 
         document.getElementById('secaoAtalhos').style.display = 'none';
         document.getElementById('secaoVendedor').style.display = 'block';
@@ -521,7 +579,7 @@
         precos.forEach(p => p.style.display = 'flex');
         quantidades.forEach(q => q.style.display = 'none');
         badgesVencedor.forEach(b => b.style.display = 'none');
-        botoesExcluir.forEach(b => b.style.display = 'block');
+        botoesExcluir.forEach(b => b.style.display = 'none');
 
         inputsNome.forEach(i => i.disabled = true);
         inputsEmb.forEach(i => i.disabled = true);
@@ -531,10 +589,10 @@
         document.getElementById('btnPdf').style.display = 'none';
 
       } else if (etapa === 3) {
-        document.getElementById('tituloHeader').innerText = "3. Comparador e Fechamento";
-        document.getElementById('subtituloHeader').innerText = "O sistema indica automaticamente qual vendedor é mais barato em cada item";
+        document.getElementById('tituloHeader').innerText = "3. Comparador em Tempo Real";
+        document.getElementById('subtituloHeader').innerText = "O sistema junta todas as respostas e aponta o menor preço de cada item";
 
-        document.getElementById('badgeOrientacao').innerHTML = "🏆 <b>Etapa 3:</b> Veja abaixo quem venceu em cada produto. Os pedidos serão enviados separadamente para cada vendedor campeão.";
+        document.getElementById('badgeOrientacao').innerHTML = "🏆 <b>Etapa 3:</b> Acompanhe abaixo os preços dos vendedores em tempo real e emita os pedidos divididos.";
 
         document.getElementById('secaoAtalhos').style.display = 'none';
         document.getElementById('secaoVendedor').style.display = 'none';
@@ -577,30 +635,42 @@
 
       novoCard.innerHTML = `
         <div class="linha-inputs">
-          <input type="text" class="input-editavel input-nome" value="${nome}" placeholder="Nome do Produto">
-          <input type="text" class="input-editavel input-embalagem" value="${embalagem}" placeholder="Embalagem">
+          <input type="text" class="input-editavel input-nome" placeholder="Nome do Produto..." value="${nome}">
+          <input type="text" class="input-editavel input-embalagem" placeholder="Embalagem..." value="${embalagem}">
         </div>
         <div class="linha-acoes">
-          <div class="bloco-preco" style="display: ${etapaAtual >= 2 ? 'flex' : 'none'};">
-            <span>R$/${tipo}:</span>
-            <input type="number" step="0.01" class="input-editavel input-preco" value="${preco.toFixed(2)}" oninput="calcularTotalEGerarSplits()">
+          <div class="bloco-preco">
+            <span>Preço (${tipo}): R$</span>
+            <input type="number" step="0.01" class="input-editavel input-preco" placeholder="0.00" value="${preco > 0 ? preco.toFixed(2) : ''}" onchange="calcularTotalEGerarSplits()">
           </div>
-          <span class="badge-vencedor" style="display: ${etapaAtual === 3 ? 'inline-block' : 'none'};">🏆 Menor Preço: ${vendedor || 'Sem oferta'}</span>
-          <div class="qtd-controle" style="display: ${etapaAtual === 3 ? 'flex' : 'none'};">
+          <span class="badge-vencedor">🥇 Menor: ${vendedor}</span>
+          <div class="qtd-controle">
             <button class="btn-qtd" onclick="alterarQtd(this, -1)">-</button>
             <input type="text" class="qtd-valor" value="${qtd}" readonly>
             <button class="btn-qtd" onclick="alterarQtd(this, 1)">+</button>
           </div>
-          <button class="btn-excluir" style="display: ${etapaAtual <= 2 ? 'block' : 'none'};" onclick="removerProduto(this)">Excluir</button>
+          <button class="btn-excluir" onclick="removerCard(this)">Remover</button>
         </div>
       `;
+
       lista.appendChild(novoCard);
-      if (etapaAtual === 3) calcularTotalEGerarSplits();
+      alternarEtapa(etapaAtual);
     }
 
-    function removerProduto(elemento) {
-      elemento.closest('.produto-card').remove();
-      if (etapaAtual === 3) calcularTotalEGerarSplits();
+    function removerCard(btn) {
+      btn.closest('.produto-card').remove();
+    }
+
+    function executarAcaoPrincipal() {
+      if (etapaAtual === 1) {
+        window.salvarCotacaoEGerarLink();
+      } else if (etapaAtual === 2) {
+        if (cotacaoIdAtual) {
+          window.salvarPrecosVendedor(cotacaoIdAtual);
+        } else {
+          alert("ID de cotação não localizado.");
+        }
+      }
     }
 
     function calcularTotalEGerarSplits() {
@@ -609,162 +679,93 @@
       let pedidosPorVendedor = {};
 
       cards.forEach(card => {
-        const nome = card.querySelector('.input-nome').value.trim();
-        const emb = card.querySelector('.input-embalagem').value.trim();
+        const nome = card.querySelector('.input-nome').value;
+        const emb = card.querySelector('.input-embalagem').value;
         const preco = parseFloat(card.querySelector('.input-preco').value) || 0;
         const qtd = parseInt(card.querySelector('.qtd-valor').value) || 0;
-        const vend = card.getAttribute('data-vendedor') || 'Sem Vendedor';
+        const vendedor = card.getAttribute('data-vendedor') || 'Geral';
 
-        if (nome !== "" && qtd > 0 && preco > 0) {
+        if (preco > 0 && qtd > 0) {
           const subtotal = preco * qtd;
           totalGeral += subtotal;
 
-          if (!pedidosPorVendedor[vend]) {
-            pedidosPorVendedor[vend] = { total: 0, itens: [] };
+          if (!pedidosPorVendedor[vendedor]) {
+            pedidosPorVendedor[vendedor] = { total: 0, itens: [] };
           }
-          pedidosPorVendedor[vend].total += subtotal;
-          pedidosPorVendedor[vend].itens.push({ nome, emb, preco, qtd, subtotal });
+          pedidosPorVendedor[vendedor].total += subtotal;
+          pedidosPorVendedor[vendedor].itens.push({ nome, emb, preco, qtd, subtotal });
         }
       });
 
-      document.getElementById('totalDisplay').innerText = totalGeral.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+      document.getElementById('totalDisplay').innerText = `R$ ${totalGeral.toFixed(2).replace('.', ',')}`;
 
       const painel = document.getElementById('painelEnvioDividido');
       painel.innerHTML = '';
 
-      if (etapaAtual === 3) {
+      if (Object.keys(pedidosPorVendedor).length > 0 && etapaAtual === 3) {
         painel.style.display = 'block';
         for (let vend in pedidosPorVendedor) {
-          const dadosVend = pedidosPorVendedor[vend];
-          const cardDiv = document.createElement('div');
-          cardDiv.className = 'card-divisao-vendedor';
-          cardDiv.innerHTML = `
-            <div>
-              <b>🏆 ${vend}</b>
-              <div style="font-size: 0.8em; color: #4a5568;">Total: R$ ${dadosVend.total.toFixed(2)} (${dadosVend.itens.length} itens)</div>
-            </div>
-            <button class="btn-whatsapp" style="padding: 6px 12px; font-size: 0.8em;" onclick="enviarPedidoVendedorEspecifico('${vend}')">Enviar Pedido</button>
-          `;
-          painel.appendChild(cardDiv);
+          const info = pedidosPorVendedor[vend];
+          if (vend !== 'Sem Oferta') {
+            const card = document.createElement('div');
+            card.className = 'card-divisao-vendedor';
+            card.innerHTML = `
+              <div>
+                <b> Pedido p/ ${vend}</b><br>
+                <small>${info.itens.length} item(ns) | Total: R$ ${info.total.toFixed(2).replace('.', ',')}</small>
+              </div>
+              <button class="btn-renovar" style="background: #25d366;" onclick="enviarPedidoVendedor('${vend}')">Enviar WhatsApp</button>
+            `;
+            painel.appendChild(card);
+          }
         }
+      } else {
+        painel.style.display = 'none';
       }
     }
 
-    function obterStringProdutosUrl() {
-      const cards = document.querySelectorAll('.produto-card');
-      let arrayItens = [];
-
-      cards.forEach(card => {
-        const nome = card.querySelector('.input-nome').value.trim();
-        const emb = card.querySelector('.input-embalagem').value.trim();
-        const preco = card.querySelector('.input-preco').value || 0;
-        const qtd = card.querySelector('.qtd-valor') ? card.querySelector('.qtd-valor').value : 1;
-        const vend = card.getAttribute('data-vendedor') || document.getElementById('nomeVendedor').value.trim();
-
-        if (nome !== "") {
-          arrayItens.push(`${nome}|${emb}|${preco}|${qtd}|${vend}`);
-        }
-      });
-
-      return arrayItens.join(';');
-    }
-
-    function enviarWhatsApp() {
-      const cliente = document.getElementById('nomeCliente').value.trim() || 'Mercadinho';
+    function enviarPedidoVendedor(nomeVendedor) {
+      const cliente = document.getElementById('nomeCliente').value || 'Mercadinho';
       const prazo = document.getElementById('prazoPagamento').value;
       const pagto = document.getElementById('formaPagamento').value;
-      const tipo = document.getElementById('tipoCotacao').value;
-
-      const strProdutos = obterStringProdutosUrl();
-      const baseUrl = window.location.href.split('?')[0];
-
-      if (etapaAtual === 1) {
-        const linkParaVendedor = `${baseUrl}?e=2&tipo=${encodeURIComponent(tipo)}&prazo=${encodeURIComponent(prazo)}&pagto=${encodeURIComponent(pagto)}&cotacao=${encodeURIComponent(strProdutos)}`;
-        
-        let msg = `🛒 *SOLICITAÇÃO DE COTAÇÃO*\n`;
-        msg += `Cliente: *${cliente}*\n`;
-        msg += `Modalidade: *Preço por ${tipo}*\n`;
-        msg += `Condição Desejada: *${prazo} (${pagto})*\n\n`;
-        msg += `Por favor, clique no link abaixo para preencher seus preços:\n${linkParaVendedor}`;
-
-        window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(msg)}`, '_blank');
-
-      } else if (etapaAtual === 2) {
-        const vendedor = document.getElementById('nomeVendedor').value.trim();
-        const empresa = document.getElementById('empresaVendedor').value.trim();
-        const nomeIdentificacao = empresa ? `${vendedor} (${empresa})` : (vendedor || 'Vendedor');
-
-        if (!vendedor) {
-          alert("Por favor, preencha seu nome na identificação do vendedor.");
-          return;
-        }
-
-        const urlParams = new URLSearchParams(window.location.search);
-        let cotacaoExistente = urlParams.get('cotacao') || '';
-        
-        let novaCotacao = cotacaoExistente ? `${cotacaoExistente};${strProdutos}` : strProdutos;
-
-        const linkRetornoCliente = `${baseUrl}?e=3&tipo=${encodeURIComponent(tipo)}&prazo=${encodeURIComponent(prazo)}&pagto=${encodeURIComponent(pagto)}&cotacao=${encodeURIComponent(novaCotacao)}`;
-
-        let msg = `💰 *COTAÇÃO PREENCHIDA*\n`;
-        msg += `Vendedor: *${nomeIdentificacao}*\n`;
-        msg += `Cliente: *${cliente}*\n\n`;
-        msg += `Acesse o comparador atualizado no link abaixo:\n${linkRetornoCliente}`;
-
-        const telLoja = document.getElementById('telCliente').value.trim();
-        const linkWa = telLoja ? `https://api.whatsapp.com/send?phone=${telLoja}&text=${encodeURIComponent(msg)}` : `https://api.whatsapp.com/send?text=${encodeURIComponent(msg)}`;
-        
-        window.open(linkWa, '_blank');
-      }
-    }
-
-    function enviarPedidoVendedorEspecifico(vendedorDestino) {
-      const cliente = document.getElementById('nomeCliente').value.trim() || 'Mercadinho';
-      const prazo = document.getElementById('prazoPagamento').value;
-      const pagto = document.getElementById('formaPagamento').value;
-      const tipo = document.getElementById('tipoCotacao').value;
 
       const cards = document.querySelectorAll('.produto-card');
-      let textoItens = "";
-      let totalVendedor = 0;
+      let msg = `📦 *PEDIDO DE COMPRA - ${cliente.toUpperCase()}*\n`;
+      msg += `Vendedor: *${nomeVendedor}*\n`;
+      msg += `Condição: *${prazo} (${pagto})*\n\n`;
+      msg += `*ITENS CONFIRMADOS:*\n`;
 
+      let total = 0;
       cards.forEach(card => {
         const vend = card.getAttribute('data-vendedor');
-        if (vend === vendedorDestino) {
+        if (vend === nomeVendedor) {
           const nome = card.querySelector('.input-nome').value;
           const emb = card.querySelector('.input-embalagem').value;
           const preco = parseFloat(card.querySelector('.input-preco').value) || 0;
           const qtd = parseInt(card.querySelector('.qtd-valor').value) || 0;
+          const subtotal = preco * qtd;
 
           if (qtd > 0) {
-            const subtotal = preco * qtd;
-            totalVendedor += subtotal;
-            textoItens += `- ${qtd}x ${nome} (${emb}) a R$ ${preco.toFixed(2)}/${tipo} = R$ ${subtotal.toFixed(2)}\n`;
+            total += subtotal;
+            msg += `• ${qtd}x ${nome} (${emb}) - R$ ${preco.toFixed(2)} = *R$ ${subtotal.toFixed(2)}*\n`;
           }
         }
       });
 
-      let msg = `📦 *PEDIDO DE COMPRA - GANHADOR COTAÇÃO*\n`;
-      msg += `Para: *${vendedorDestino}*\n`;
-      msg += `Cliente: *${cliente}*\n`;
-      msg += `Condição: *${prazo} - ${pagto}*\n\n`;
-      msg += `*ITENS CONFIRMADOS:*\n${textoItens}\n`;
-      msg += `*TOTAL DO PEDIDO:* R$ ${totalVendedor.toFixed(2)}\n\n`;
-      msg += `Por favor, confirme o recebimento e o prazo de entrega.`;
-
+      msg += `\n💰 *TOTAL DO PEDIDO: R$ ${total.toFixed(2)}*`;
       window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(msg)}`, '_blank');
     }
 
     function gerarPDF() {
-      const elemento = document.getElementById('conteudoParaPdf');
+      const element = document.getElementById('conteudoParaPdf');
       const opt = {
-        margin:       0.5,
-        filename:     'Pedido_Cotacao.pdf',
+        margin:       10,
+        filename:     `Pedido_Cotacao_${new Date().toISOString().slice(0,10)}.pdf`,
         image:        { type: 'jpeg', quality: 0.98 },
         html2canvas:  { scale: 2 },
-        jsPDF:        { unit: 'in', format: 'letter', orientation: 'portrait' }
+        jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
       };
-      html2pdf().set(opt).from(elemento).save();
+      html2pdf().set(opt).from(element).save();
     }
   </script>
 </body>
