@@ -60,9 +60,10 @@
     .secao-vendedor h4 { color: #22543d; font-size: 0.9em; margin-bottom: 8px; }
 
     .secao-atalhos { background: white; padding: 12px; border-radius: 10px; margin-bottom: 15px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
-    .titulo-atalhos { font-size: 0.85em; font-weight: bold; color: #4a5568; margin-bottom: 8px; }
+    .titulo-atalhos { font-size: 0.85em; font-weight: bold; color: #4a5568; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; }
     .botoes-categorias { display: flex; flex-wrap: wrap; gap: 6px; }
     .btn-cat { background: #edf2f7; border: 1px solid #cbd5e0; border-radius: 20px; padding: 6px 12px; font-size: 0.8em; font-weight: bold; color: #2d3748; cursor: pointer; }
+    .btn-limpar-cotacao { background: #fff5f5; border: 1px solid #fed7d7; color: #e53e3e; border-radius: 6px; padding: 4px 8px; font-size: 0.78em; font-weight: bold; cursor: pointer; }
 
     #leitor-camera { width: 100%; max-width: 400px; margin: 10px auto; display: none; border-radius: 10px; overflow: hidden; border: 2px solid #2b6cb0; }
 
@@ -177,7 +178,10 @@
       </div>
 
       <div class="secao-atalhos" id="secaoAtalhos">
-        <div class="titulo-atalhos">⚡ Produtos Rápidos:</div>
+        <div class="titulo-atalhos">
+          <span>⚡ Produtos Rápidos:</span>
+          <button class="btn-limpar-cotacao" onclick="apagarCotacaoAnterior()">🗑️ Apagar Cotação Anterior</button>
+        </div>
         <div class="botoes-categorias">
           <button class="btn-cat" onclick="carregarCategoria('limpeza')">+ Limpeza</button>
           <button class="btn-cat" onclick="carregarCategoria('cereais')">+ Cereais</button>
@@ -201,12 +205,12 @@
         </div>
 
         <div class="linha-pagamento" id="secaoPagamento">
-          <select id="tipoCotacao" class="campo-cliente" style="font-weight: bold; background: #ebf8ff;">
+          <select id="tipoCotacao" class="campo-cliente" style="font-weight: bold; background: #ebf8ff;" onchange="salvarRascunhoLocal()">
             <option value="Caixa">📦 Cotar Preço Por: CAIXA</option>
             <option value="Unidade">🏷️ Cotar Preço Por: UNIDADE</option>
           </select>
 
-          <select id="prazoPagamento" class="campo-cliente">
+          <select id="prazoPagamento" class="campo-cliente" onchange="salvarRascunhoLocal()">
             <option value="À vista">⏱️ À vista</option>
             <option value="7 dias">⏱️ 7 dias</option>
             <option value="14 dias">⏱️ 14 dias</option>
@@ -214,7 +218,7 @@
             <option value="30 dias">⏱️ 30 dias</option>
           </select>
 
-          <select id="formaPagamento" class="campo-cliente">
+          <select id="formaPagamento" class="campo-cliente" onchange="salvarRascunhoLocal()">
             <option value="Boleto">💳 Boleto</option>
             <option value="Dinheiro">💵 Dinheiro</option>
             <option value="PIX">📱 PIX</option>
@@ -378,14 +382,12 @@
 
       const baseUrl = window.location.href.split('?')[0];
       const linkVendedor = `${baseUrl}?c=${cotacaoId}&e=2`;
-      const linkPainelCliente = `${baseUrl}?c=${cotacaoId}&e=3`;
 
       let msg = `🛒 *SOLICITAÇÃO DE COTAÇÃO SIMULTÂNEA*\n`;
       msg += `Cliente: *${cliente}*\n`;
       msg += `Modalidade: *Preço por ${tipo}*\n`;
       msg += `Condição: *${prazo} (${pagto})*\n\n`;
-      msg += `Preencha seus preços no link abaixo:\n${linkVendedor}\n\n`;
-      msg += `📌 *Link do seu painel de acompanhamento (Cliente):*\n${linkPainelCliente}`;
+      msg += `Preencha seus preços no link abaixo:\n${linkVendedor}`;
 
       window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(msg)}`, '_blank');
     };
@@ -452,7 +454,7 @@
             }
 
             const precoExibicao = (etapa === 2) ? 0 : menorPreco;
-            adicionarNovoProduto(prod.nome, prod.emb, precoExibicao, 1, vencedor);
+            adicionarNovoProduto(prod.nome, prod.emb, precoExibicao, 1, vencedor, false);
           });
 
           alternarEtapa(etapa);
@@ -485,18 +487,79 @@
         const destino = eParam || 2;
         window.carregarCotacaoDoBanco(cotacaoIdAtual, destino);
       } else {
-        adicionarNovoProduto("Margarina Deline 250g", "Cx c/ 24");
+        const salvou = carregarRascunhoLocal();
+        if (!salvou) {
+          adicionarNovoProduto("Margarina Deline 250g", "Cx c/ 24");
+        }
       }
     };
 
     function salvarDadosCliente() {
       localStorage.setItem('cliente_nome', document.getElementById('nomeCliente').value);
       localStorage.setItem('cliente_tel', document.getElementById('telCliente').value);
+      salvarRascunhoLocal();
     }
 
     function carregarDadosCliente() {
       if (localStorage.getItem('cliente_nome')) document.getElementById('nomeCliente').value = localStorage.getItem('cliente_nome');
       if (localStorage.getItem('cliente_tel')) document.getElementById('telCliente').value = localStorage.getItem('cliente_tel');
+    }
+
+    // --- RASCUNHO AUTOMÁTICO DA COTAÇÃO ---
+    function salvarRascunhoLocal() {
+      if (cotacaoIdAtual) return; // Se estiver vendo cotação do banco, não salva rascunho
+      
+      const cards = document.querySelectorAll('.produto-card');
+      let produtos = [];
+
+      cards.forEach(card => {
+        const nome = card.querySelector('.input-nome').value;
+        const emb = card.querySelector('.input-embalagem').value;
+        const qtd = card.querySelector('.qtd-valor') ? card.querySelector('.qtd-valor').value : 1;
+        if (nome.trim() !== "" || emb.trim() !== "") {
+          produtos.push({ nome, emb, qtd });
+        }
+      });
+
+      const rascunho = {
+        produtos,
+        tipo: document.getElementById('tipoCotacao').value,
+        prazo: document.getElementById('prazoPagamento').value,
+        pagto: document.getElementById('formaPagamento').value
+      };
+
+      localStorage.setItem('rascunho_cotacao_cliente', JSON.stringify(rascunho));
+    }
+
+    function carregarRascunhoLocal() {
+      const rascunhoStr = localStorage.getItem('rascunho_cotacao_cliente');
+      if (!rascunhoStr) return false;
+
+      try {
+        const rascunho = JSON.parse(rascunhoStr);
+        if (rascunho.tipo) document.getElementById('tipoCotacao').value = rascunho.tipo;
+        if (rascunho.prazo) document.getElementById('prazoPagamento').value = rascunho.prazo;
+        if (rascunho.pagto) document.getElementById('formaPagamento').value = rascunho.pagto;
+
+        if (rascunho.produtos && rascunho.produtos.length > 0) {
+          document.getElementById('listaProdutos').innerHTML = '';
+          rascunho.produtos.forEach(p => {
+            adicionarNovoProduto(p.nome, p.emb, 0, p.qtd || 1, '', false);
+          });
+          return true;
+        }
+      } catch (e) {
+        console.error("Erro ao carregar rascunho:", e);
+      }
+      return false;
+    }
+
+    function apagarCotacaoAnterior() {
+      if (confirm("Tem certeza de que deseja apagar a cotação atual para começar uma do zero?")) {
+        localStorage.removeItem('rascunho_cotacao_cliente');
+        document.getElementById('listaProdutos').innerHTML = '';
+        adicionarNovoProduto('', '');
+      }
     }
 
     function carregarCategoria(cat) {
@@ -625,9 +688,10 @@
       if (val < 0) val = 0;
       inputQtd.value = val;
       calcularTotalEGerarSplits();
+      salvarRascunhoLocal();
     }
 
-    function adicionarNovoProduto(nome = '', embalagem = '', preco = 0, qtd = 1, vendedor = '') {
+    function adicionarNovoProduto(nome = '', embalagem = '', preco = 0, qtd = 1, vendedor = '', autoSave = true) {
       const lista = document.getElementById('listaProdutos');
       const novoCard = document.createElement('div');
       novoCard.className = 'produto-card';
@@ -635,8 +699,8 @@
 
       novoCard.innerHTML = `
         <div class="linha-inputs">
-          <input type="text" class="input-editavel input-nome" placeholder="Nome do Produto..." value="${nome}">
-          <input type="text" class="input-editavel input-embalagem" placeholder="Ex: Cx c/ 24" value="${embalagem}">
+          <input type="text" class="input-editavel input-nome" placeholder="Nome do Produto..." value="${nome}" oninput="salvarRascunhoLocal()">
+          <input type="text" class="input-editavel input-embalagem" placeholder="Ex: Cx c/ 24" value="${embalagem}" oninput="salvarRascunhoLocal()">
         </div>
 
         <div class="linha-acoes">
@@ -653,12 +717,13 @@
             <button class="btn-qtd" onclick="alterarQtd(this, 1)">+</button>
           </div>
 
-          <button class="btn-excluir" onclick="this.closest('.produto-card').remove(); calcularTotalEGerarSplits();">Excluir</button>
+          <button class="btn-excluir" onclick="this.closest('.produto-card').remove(); calcularTotalEGerarSplits(); salvarRascunhoLocal();">Excluir</button>
         </div>
       `;
 
       lista.appendChild(novoCard);
       alternarEtapa(etapaAtual);
+      if (autoSave) salvarRascunhoLocal();
     }
 
     function calcularTotalEGerarSplits() {
