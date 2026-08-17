@@ -258,31 +258,50 @@
     window.SEU_NUMERO_WHATSAPP = "5581995432834"; 
     window.VALOR_PLANO_MENSAL = "R$ 98,90";
 
+    // --- LISTA DE CLIENTES QUE PAGARAM (ISENTOS DA TRAVA DE 7 DIAS) ---
+    const clientesCompletos = [
+      "thiago.limaflp@hotmail.com",
+      "emaildacliente@exemplo.com"
+    ];
+
     onAuthStateChanged(auth, (user) => {
       if (user) {
         document.getElementById('authOverlay').style.display = 'none';
         document.getElementById('userEmailDisplay').innerText = user.email;
 
-        const dataCadastroKey = `cadastro_date_${user.uid}`;
-        let dataCadastroStr = localStorage.getItem(dataCadastroKey);
-        if (!dataCadastroStr) {
-          dataCadastroStr = new Date().toISOString();
-          localStorage.setItem(dataCadastroKey, dataCadastroStr);
-        }
+        // 1. Verifica se é um assinante ativo
+        const eAssinante = clientesCompletos.some(
+          email => email.toLowerCase() === user.email.toLowerCase()
+        );
 
-        const diferencaDias = Math.floor((new Date() - new Date(dataCadastroStr)) / (1000 * 60 * 60 * 24));
-        const diasRestantes = 7 - diferencaDias;
-
-        if (diasRestantes <= 0) {
-          document.getElementById('appContainer').style.display = 'none';
-          document.getElementById('userBar').style.display = 'none';
-          document.getElementById('trialBanner').style.display = 'none';
-          document.getElementById('trialExpiradoOverlay').style.display = 'flex';
-        } else {
+        if (eAssinante) {
           document.getElementById('appContainer').style.display = 'block';
           document.getElementById('userBar').style.display = 'flex';
-          document.getElementById('trialBanner').style.display = 'flex';
-          document.getElementById('textoTrial').innerHTML = `⏳ Período grátis: <b>${diasRestantes} dias restantes</b>.`;
+          document.getElementById('trialExpiradoOverlay').style.display = 'none';
+          document.getElementById('trialBanner').style.display = 'none';
+        } else {
+          // 2. Lógica normal de Trial para novos usuários
+          const dataCadastroKey = `cadastro_date_${user.uid}`;
+          let dataCadastroStr = localStorage.getItem(dataCadastroKey);
+          if (!dataCadastroStr) {
+            dataCadastroStr = new Date().toISOString();
+            localStorage.setItem(dataCadastroKey, dataCadastroStr);
+          }
+
+          const diferencaDias = Math.floor((new Date() - new Date(dataCadastroStr)) / (1000 * 60 * 60 * 24));
+          const diasRestantes = 7 - diferencaDias;
+
+          if (diasRestantes <= 0) {
+            document.getElementById('appContainer').style.display = 'none';
+            document.getElementById('userBar').style.display = 'none';
+            document.getElementById('trialBanner').style.display = 'none';
+            document.getElementById('trialExpiradoOverlay').style.display = 'flex';
+          } else {
+            document.getElementById('appContainer').style.display = 'block';
+            document.getElementById('userBar').style.display = 'flex';
+            document.getElementById('trialBanner').style.display = 'flex';
+            document.getElementById('textoTrial').innerHTML = `⏳ Período grátis: <b>${diasRestantes} dias restantes</b>.`;
+          }
         }
       } else {
         document.getElementById('authOverlay').style.display = 'flex';
@@ -608,126 +627,142 @@
         }
       });
 
-      document.getElementById('totalDisplay').innerText = `R$ ${totalGeral.toFixed(2)}`;
+      document.getElementById('totalDisplay').innerText = totalGeral.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
       const painel = document.getElementById('painelEnvioDividido');
       painel.innerHTML = '';
 
-      if (Object.keys(pedidosPorVendedor).length > 0) {
+      if (etapaAtual === 3) {
         painel.style.display = 'block';
         for (let vend in pedidosPorVendedor) {
-          const div = document.createElement('div');
-          div.className = 'card-divisao-vendedor';
-          div.innerHTML = `
+          const dadosVend = pedidosPorVendedor[vend];
+          const cardDiv = document.createElement('div');
+          cardDiv.className = 'card-divisao-vendedor';
+          cardDiv.innerHTML = `
             <div>
-              <b>🏆 Vendedor: ${vend}</b><br>
-              <span>Subtotal: R$ ${pedidosPorVendedor[vend].total.toFixed(2)} (${pedidosPorVendedor[vend].itens.length} itens)</span>
+              <b>🏆 ${vend}</b>
+              <div style="font-size: 0.8em; color: #4a5568;">Total: R$ ${dadosVend.total.toFixed(2)} (${dadosVend.itens.length} itens)</div>
             </div>
-            <button class="btn-whatsapp" style="padding: 8px 12px; font-size: 0.8em;" onclick="enviarPedidoVendedor('${vend}')">📱 Enviar Pedido</button>
+            <button class="btn-whatsapp" style="padding: 6px 12px; font-size: 0.8em;" onclick="enviarPedidoVendedorEspecifico('${vend}')">Enviar Pedido</button>
           `;
-          painel.appendChild(div);
+          painel.appendChild(cardDiv);
         }
-      } else {
-        painel.style.display = 'none';
       }
     }
 
-    function enviarPedidoVendedor(vendedor) {
-      const nomeCliente = document.getElementById('nomeCliente').value.trim();
-      const prazo = document.getElementById('prazoPagamento').value;
-      const formaPagto = document.getElementById('formaPagamento').value;
-      const tipo = document.getElementById('tipoCotacao').value;
-
+    function obterStringProdutosUrl() {
       const cards = document.querySelectorAll('.produto-card');
-      let itensVencedor = [];
-      let totalVendedor = 0;
-
-      cards.forEach(card => {
-        const vend = card.getAttribute('data-vendedor') || 'Sem Vendedor';
-        if (vend === vendedor) {
-          const nome = card.querySelector('.input-nome').value.trim();
-          const emb = card.querySelector('.input-embalagem').value.trim();
-          const preco = parseFloat(card.querySelector('.input-preco').value) || 0;
-          const qtd = parseInt(card.querySelector('.qtd-valor').value) || 0;
-
-          if (nome !== "" && qtd > 0) {
-            const subtotal = preco * qtd;
-            totalVendedor += subtotal;
-            itensVencedor.push(`• ${qtd}x ${nome} (${emb}) - R$ ${preco.toFixed(2)}/${tipo} = R$ ${subtotal.toFixed(2)}`);
-          }
-        }
-      });
-
-      let msg = `🛍️ *PEDIDO DE COMPRA - CAMPEÃO MENOR PREÇO*\n`;
-      msg += `*Para:* ${vendedor}\n`;
-      if (nomeCliente) msg += `*Mercadinho:* ${nomeCliente}\n`;
-      msg += `*Condição:* ${prazo} - ${formaPagto}\n\n`;
-      msg += `📦 *ITENS GANHOS:*\n${itensVencedor.join('\n')}\n\n`;
-      msg += `💰 *TOTAL DO PEDIDO: R$ ${totalVendedor.toFixed(2)}*`;
-
-      window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(msg)}`, '_blank');
-    }
-
-    function enviarWhatsApp() {
-      const nomeCliente = document.getElementById('nomeCliente').value.trim();
-      const nomeVendedor = document.getElementById('nomeVendedor') ? document.getElementById('nomeVendedor').value.trim() : '';
-      const empresaVendedor = document.getElementById('empresaVendedor') ? document.getElementById('empresaVendedor').value.trim() : '';
-      const prazo = document.getElementById('prazoPagamento').value;
-      const formaPagto = document.getElementById('formaPagamento').value;
-      const tipoCotacao = document.getElementById('tipoCotacao').value;
-
-      const cards = document.querySelectorAll('.produto-card');
-      const baseUrl = window.location.href.split('?')[0];
-
-      let itensParaUrl = [];
+      let arrayItens = [];
 
       cards.forEach(card => {
         const nome = card.querySelector('.input-nome').value.trim();
-        const embalagem = card.querySelector('.input-embalagem').value.trim();
-        const preco = parseFloat(card.querySelector('.input-preco').value) || 0;
-        const vend = card.getAttribute('data-vendedor') || nomeVendedor;
+        const emb = card.querySelector('.input-embalagem').value.trim();
+        const preco = card.querySelector('.input-preco').value || 0;
+        const qtd = card.querySelector('.qtd-valor') ? card.querySelector('.qtd-valor').value : 1;
+        const vend = card.getAttribute('data-vendedor') || document.getElementById('nomeVendedor').value.trim();
 
         if (nome !== "") {
-          if (etapaAtual === 1) {
-            itensParaUrl.push(`${nome}|${embalagem}|0|1|`);
-          } else if (etapaAtual === 2) {
-            itensParaUrl.push(`${nome}|${embalagem}|${preco}|1|${vend}`);
+          arrayItens.push(`${nome}|${emb}|${preco}|${qtd}|${vend}`);
+        }
+      });
+
+      return arrayItens.join(';');
+    }
+
+    function enviarWhatsApp() {
+      const cliente = document.getElementById('nomeCliente').value.trim() || 'Mercadinho';
+      const prazo = document.getElementById('prazoPagamento').value;
+      const pagto = document.getElementById('formaPagamento').value;
+      const tipo = document.getElementById('tipoCotacao').value;
+
+      const strProdutos = obterStringProdutosUrl();
+      const baseUrl = window.location.href.split('?')[0];
+
+      if (etapaAtual === 1) {
+        const linkParaVendedor = `${baseUrl}?e=2&tipo=${encodeURIComponent(tipo)}&prazo=${encodeURIComponent(prazo)}&pagto=${encodeURIComponent(pagto)}&cotacao=${encodeURIComponent(strProdutos)}`;
+        
+        let msg = `🛒 *SOLICITAÇÃO DE COTAÇÃO*\n`;
+        msg += `Cliente: *${cliente}*\n`;
+        msg += `Modalidade: *Preço por ${tipo}*\n`;
+        msg += `Condição Desejada: *${prazo} (${pagto})*\n\n`;
+        msg += `Por favor, clique no link abaixo para preencher seus preços:\n${linkParaVendedor}`;
+
+        window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(msg)}`, '_blank');
+
+      } else if (etapaAtual === 2) {
+        const vendedor = document.getElementById('nomeVendedor').value.trim();
+        const empresa = document.getElementById('empresaVendedor').value.trim();
+        const nomeIdentificacao = empresa ? `${vendedor} (${empresa})` : (vendedor || 'Vendedor');
+
+        if (!vendedor) {
+          alert("Por favor, preencha seu nome na identificação do vendedor.");
+          return;
+        }
+
+        const urlParams = new URLSearchParams(window.location.search);
+        let cotacaoExistente = urlParams.get('cotacao') || '';
+        
+        let novaCotacao = cotacaoExistente ? `${cotacaoExistente};${strProdutos}` : strProdutos;
+
+        const linkRetornoCliente = `${baseUrl}?e=3&tipo=${encodeURIComponent(tipo)}&prazo=${encodeURIComponent(prazo)}&pagto=${encodeURIComponent(pagto)}&cotacao=${encodeURIComponent(novaCotacao)}`;
+
+        let msg = `💰 *COTAÇÃO PREENCHIDA*\n`;
+        msg += `Vendedor: *${nomeIdentificacao}*\n`;
+        msg += `Cliente: *${cliente}*\n\n`;
+        msg += `Acesse o comparador atualizado no link abaixo:\n${linkRetornoCliente}`;
+
+        const telLoja = document.getElementById('telCliente').value.trim();
+        const linkWa = telLoja ? `https://api.whatsapp.com/send?phone=${telLoja}&text=${encodeURIComponent(msg)}` : `https://api.whatsapp.com/send?text=${encodeURIComponent(msg)}`;
+        
+        window.open(linkWa, '_blank');
+      }
+    }
+
+    function enviarPedidoVendedorEspecifico(vendedorDestino) {
+      const cliente = document.getElementById('nomeCliente').value.trim() || 'Mercadinho';
+      const prazo = document.getElementById('prazoPagamento').value;
+      const pagto = document.getElementById('formaPagamento').value;
+      const tipo = document.getElementById('tipoCotacao').value;
+
+      const cards = document.querySelectorAll('.produto-card');
+      let textoItens = "";
+      let totalVendedor = 0;
+
+      cards.forEach(card => {
+        const vend = card.getAttribute('data-vendedor');
+        if (vend === vendedorDestino) {
+          const nome = card.querySelector('.input-nome').value;
+          const emb = card.querySelector('.input-embalagem').value;
+          const preco = parseFloat(card.querySelector('.input-preco').value) || 0;
+          const qtd = parseInt(card.querySelector('.qtd-valor').value) || 0;
+
+          if (qtd > 0) {
+            const subtotal = preco * qtd;
+            totalVendedor += subtotal;
+            textoItens += `- ${qtd}x ${nome} (${emb}) a R$ ${preco.toFixed(2)}/${tipo} = R$ ${subtotal.toFixed(2)}\n`;
           }
         }
       });
 
-      let mensagem = "";
+      let msg = `📦 *PEDIDO DE COMPRA - GANHADOR COTAÇÃO*\n`;
+      msg += `Para: *${vendedorDestino}*\n`;
+      msg += `Cliente: *${cliente}*\n`;
+      msg += `Condição: *${prazo} - ${pagto}*\n\n`;
+      msg += `*ITENS CONFIRMADOS:*\n${textoItens}\n`;
+      msg += `*TOTAL DO PEDIDO:* R$ ${totalVendedor.toFixed(2)}\n\n`;
+      msg += `Por favor, confirme o recebimento e o prazo de entrega.`;
 
-      if (etapaAtual === 1) {
-        const urlVendedor = `${baseUrl}?e=2&tipo=${encodeURIComponent(tipoCotacao)}&prazo=${encodeURIComponent(prazo)}&pagto=${encodeURIComponent(formaPagto)}&cotacao=${encodeURIComponent(itensParaUrl.join(';'))}`;
-        mensagem = `📋 *SOLICITAÇÃO DE COTAÇÃO POR ${tipoCotacao.toUpperCase()}*\n`;
-        if (nomeCliente) mensagem += `*Cliente:* ${nomeCliente}\n`;
-        mensagem += `*Condição:* ${prazo} - ${formaPagto}\n\n`;
-        mensagem += `🔗 *Acesse o link para preencher seus preços:*\n${urlVendedor}`;
-
-      } else if (etapaAtual === 2) {
-        const urlParams = new URLSearchParams(window.location.search);
-        let dadosExistentes = urlParams.get('cotacao') || '';
-        let novasPropostas = dadosExistentes ? dadosExistentes + ';' + itensParaUrl.join(';') : itensParaUrl.join(';');
-
-        const urlCliente = `${baseUrl}?e=3&tipo=${encodeURIComponent(tipoCotacao)}&prazo=${encodeURIComponent(prazo)}&pagto=${encodeURIComponent(formaPagto)}&cotacao=${encodeURIComponent(novasPropostas)}`;
-        
-        mensagem = `💰 *PROPOSTA DE PREÇOS ENVIADA*\n`;
-        mensagem += `*Vendedor:* ${nomeVendedor} (${empresaVendedor})\n\n`;
-        mensagem += `🔗 *Acesse o comparador atualizado:*\n${urlCliente}`;
-      }
-
-      window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(mensagem)}`, '_blank');
+      window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(msg)}`, '_blank');
     }
 
     function gerarPDF() {
       const elemento = document.getElementById('conteudoParaPdf');
       const opt = {
-        margin: 10,
-        filename: 'Pedido_Cotacao.pdf',
-        image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: { scale: 2 },
-        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+        margin:       0.5,
+        filename:     'Pedido_Cotacao.pdf',
+        image:        { type: 'jpeg', quality: 0.98 },
+        html2canvas:  { scale: 2 },
+        jsPDF:        { unit: 'in', format: 'letter', orientation: 'portrait' }
       };
       html2pdf().set(opt).from(elemento).save();
     }
