@@ -149,13 +149,13 @@
       <p id="subtituloHeader">Selecione os produtos e a modalidade de cotação</p>
     </header>
 
-    <!-- BARRA DE ETAPAS (Fica oculta para vendedores) -->
+    <!-- BARRA DE ETAPAS (Apenas para o Cliente) -->
     <div class="etapas-bar" id="barraEtapas">
       <button class="btn-etapa ativo" id="btnEtapa1" onclick="alternarEtapa(1)">
         1. Lista
         <span>Cliente solicita</span>
       </button>
-      <button class="btn-etapa" id="btnEtapa2" onclick="alternarEtapa(2)">
+      <button class="btn-etapa" id="btnEtapa2" style="display: none;" onclick="alternarEtapa(2)">
         2. Preços
         <span>Vendedor precifica</span>
       </button>
@@ -448,7 +448,6 @@
             let menorPreco = 0;
             let vencedor = 'Pendente';
 
-            // Compara os preços fornecidos por todos os vendedores
             for (let vend in ofertas) {
               const preco = parseFloat(ofertas[vend][prod.nome]);
               if (preco && preco > 0 && (menorPreco === 0 || preco < menorPreco)) {
@@ -513,7 +512,7 @@
 
     // --- RASCUNHO AUTOMÁTICO DA COTAÇÃO ---
     function salvarRascunhoLocal() {
-      if (cotacaoIdAtual) return; // Se for cotação salva do banco, não sobrescreve
+      if (cotacaoIdAtual) return;
       
       const cards = document.querySelectorAll('.produto-card');
       let produtos = [];
@@ -653,87 +652,88 @@
       
       const tipoCotacao = document.getElementById('tipoCotacao').value;
 
-      if (etapa === 2 && cotacaoIdAtual) {
+      // EXIBIÇÃO DA BARRA DE ETAPAS
+      if (cotacaoIdAtual) {
         document.getElementById('barraEtapas').style.display = 'none';
       } else {
         document.getElementById('barraEtapas').style.display = 'flex';
+        document.getElementById('btnEtapa2').style.display = 'none';
       }
 
       if (etapa === 1) {
         document.getElementById('tituloHeader').innerText = "1. Solicitando Cotação";
-        document.getElementById('subtituloHeader').innerText = "Monte a lista e envie um link único para todos os vendedores";
-        document.getElementById('btnAcao').innerText = "Gerar Link e Enviar para os Vendedores";
-        document.getElementById('btnAcao').style.display = 'block';
-        document.getElementById('painelEnvioDividido').style.display = 'none';
-
-        document.getElementById('badgeOrientacao').innerHTML = `📌 <b>Etapa 1:</b> Monte sua lista. O mesmo link pode ser enviado para múltiplos vendedores simultaneamente!`;
-
-        document.getElementById('secaoAtalhos').style.display = 'block';
+        document.getElementById('subtituloHeader').innerText = "Selecione os produtos e a modalidade de cotação";
+        document.getElementById('badgeOrientacao').innerHTML = "📌 <b>Etapa 1:</b> Monte sua lista, escolha se prefere cotação por Caixa ou Unidade e envie aos vendedores.";
+        
         document.getElementById('secaoVendedor').style.display = 'none';
+        document.getElementById('secaoAtalhos').style.display = 'block';
         document.getElementById('btnToggleCamera').style.display = 'block';
         document.getElementById('btnAdicionarManual').style.display = 'block';
-
-        precos.forEach(p => p.style.display = 'none');
-        quantidades.forEach(q => q.style.display = 'none');
-        badgesVencedor.forEach(b => b.style.display = 'none');
-        botoesExcluir.forEach(b => b.style.display = 'block');
+        document.getElementById('secaoPagamento').style.display = 'flex';
+        document.getElementById('boxTotal').style.display = 'none';
+        document.getElementById('painelEnvioDividido').style.display = 'none';
+        document.getElementById('btnPdf').style.display = 'none';
         
+        document.getElementById('btnAcao').innerText = "Gerar Link e Enviar para os Vendedores";
+        document.getElementById('btnAcao').style.background = "#25d366";
+
         inputsNome.forEach(i => i.disabled = false);
         inputsEmb.forEach(i => i.disabled = false);
-
-        document.getElementById('boxTotal').style.display = 'none';
-        document.getElementById('btnPdf').style.display = 'none';
+        inputsPreco.forEach(i => i.disabled = true);
+        precos.forEach(p => p.style.display = 'none');
+        quantidades.forEach(q => q.style.display = 'none');
+        botoesExcluir.forEach(b => b.style.display = 'block');
+        badgesVencedor.forEach(b => b.style.display = 'none');
 
       } else if (etapa === 2) {
-        document.getElementById('tituloHeader').innerText = "2. Precificação pelo Vendedor";
-        document.getElementById('subtituloHeader').innerText = "Digite seu nome e informe seus valores";
-        document.getElementById('btnAcao').innerText = "Gravar Meus Preços";
-        document.getElementById('btnAcao').style.display = 'block';
-        document.getElementById('painelEnvioDividido').style.display = 'none';
+        document.getElementById('tituloHeader').innerText = "2. Precificação de Vendas";
+        document.getElementById('subtituloHeader').innerText = `Informe seus preços por ${tipoCotacao.toUpperCase()}`;
+        document.getElementById('badgeOrientacao').innerHTML = `📌 <b>Etapa 2 (Vendedor):</b> Preencha os preços unitários ou por caixa em cada item e clique em salvar para enviar de volta ao cliente.`;
 
-        document.getElementById('badgeOrientacao').innerHTML = `💰 <b>Etapa 2 (Vendedor):</b> Preencha com os preços negociados por <b>${tipoCotacao.toUpperCase()}</b> e grave as ofertas.`;
-
-        document.getElementById('secaoAtalhos').style.display = 'none';
         document.getElementById('secaoVendedor').style.display = 'block';
+        document.getElementById('secaoAtalhos').style.display = 'none';
         document.getElementById('btnToggleCamera').style.display = 'none';
         document.getElementById('btnAdicionarManual').style.display = 'none';
+        document.getElementById('secaoPagamento').style.display = 'none';
+        document.getElementById('boxTotal').style.display = 'none';
+        document.getElementById('painelEnvioDividido').style.display = 'none';
+        document.getElementById('btnPdf').style.display = 'none';
 
-        precos.forEach(p => p.style.display = 'flex');
-        quantidades.forEach(q => q.style.display = 'none');
-        badgesVencedor.forEach(b => b.style.display = 'none');
-        botoesExcluir.forEach(b => b.style.display = 'none');
-        
+        document.getElementById('btnAcao').innerText = "Enviar Preços ao Cliente";
+        document.getElementById('btnAcao').style.background = "#2b6cb0";
+
         inputsNome.forEach(i => i.disabled = true);
         inputsEmb.forEach(i => i.disabled = true);
         inputsPreco.forEach(i => i.disabled = false);
-
-        document.getElementById('boxTotal').style.display = 'none';
-        document.getElementById('btnPdf').style.display = 'none';
+        precos.forEach(p => p.style.display = 'flex');
+        quantidades.forEach(q => q.style.display = 'none');
+        botoesExcluir.forEach(b => b.style.display = 'none');
+        badgesVencedor.forEach(b => b.style.display = 'none');
 
       } else if (etapa === 3) {
-        document.getElementById('tituloHeader').innerText = "3. Fechamento do Pedido";
-        document.getElementById('subtituloHeader').innerText = "Comparador Inteligente & Divisão de Pedidos";
-        document.getElementById('btnAcao').style.display = 'none';
-        document.getElementById('painelEnvioDividido').style.display = 'block';
+        document.getElementById('tituloHeader').innerText = "3. Comparador & Fechamento";
+        document.getElementById('subtituloHeader').innerText = "Divisão automática dos menores preços por distribuidor";
+        document.getElementById('badgeOrientacao').innerHTML = "📌 <b>Etapa 3:</b> Confira a divisão otimizada dos pedidos pelo menor preço global e envie direto ao WhatsApp de cada vendedor.";
 
-        document.getElementById('badgeOrientacao').innerHTML = `🛒 <b>Etapa 3:</b> Confira o menor preço consolidado de cada item e envie o pedido fracionado diretamente a cada fornecedor.`;
-
-        document.getElementById('secaoAtalhos').style.display = 'none';
         document.getElementById('secaoVendedor').style.display = 'none';
+        document.getElementById('secaoAtalhos').style.display = 'none';
         document.getElementById('btnToggleCamera').style.display = 'none';
         document.getElementById('btnAdicionarManual').style.display = 'none';
+        document.getElementById('secaoPagamento').style.display = 'flex';
+        document.getElementById('boxTotal').style.display = 'flex';
+        document.getElementById('painelEnvioDividido').style.display = 'block';
+        document.getElementById('btnPdf').style.display = 'block';
 
-        precos.forEach(p => p.style.display = 'flex');
-        quantidades.forEach(q => q.style.display = 'flex');
-        badgesVencedor.forEach(b => b.style.display = 'inline-block');
-        botoesExcluir.forEach(b => b.style.display = 'none');
+        document.getElementById('btnAcao').innerText = "Atualizar Tabela e Totais";
+        document.getElementById('btnAcao').style.background = "#4a5568";
 
         inputsNome.forEach(i => i.disabled = true);
         inputsEmb.forEach(i => i.disabled = true);
         inputsPreco.forEach(i => i.disabled = true);
-
-        document.getElementById('boxTotal').style.display = 'flex';
-        document.getElementById('btnPdf').style.display = 'block';
+        precos.forEach(p => p.style.display = 'flex');
+        quantidades.forEach(q => q.style.display = 'flex');
+        botoesExcluir.forEach(b => b.style.display = 'block');
+        badgesVencedor.forEach(b => b.style.display = 'inline-block');
 
         calcularTotalEGerarSplits();
       }
@@ -743,18 +743,25 @@
       if (etapaAtual === 1) {
         window.salvarCotacaoEGerarLink();
       } else if (etapaAtual === 2) {
-        if (cotacaoIdAtual) {
-          window.salvarPrecosVendedor(cotacaoIdAtual);
-        } else {
-          alert("Aviso: Esta cotação ainda não possui um código ativo.");
+        if (!cotacaoIdAtual) {
+          alert("Nenhuma cotação vinculada!");
+          return;
         }
+        window.salvarPrecosVendedor(cotacaoIdAtual);
+      } else if (etapaAtual === 3) {
+        calcularTotalEGerarSplits();
       }
     }
 
     function calcularTotalEGerarSplits() {
-      const cards = document.querySelectorAll('.produto-card');
       let totalGeral = 0;
       let pedidosPorVendedor = {};
+
+      const cards = document.querySelectorAll('.produto-card');
+      const cliente = document.getElementById('nomeCliente').value.trim() || 'Mercadinho';
+      const prazo = document.getElementById('prazoPagamento').value;
+      const pagto = document.getElementById('formaPagamento').value;
+      const tipo = document.getElementById('tipoCotacao').value;
 
       cards.forEach(card => {
         const nome = card.querySelector('.input-nome').value.trim();
@@ -763,57 +770,75 @@
         const qtd = parseInt(card.querySelector('.qtd-valor').value) || 1;
         const vencedor = card.querySelector('.nome-vencedor').innerText;
 
-        const subtotal = preco * qtd;
-        totalGeral += subtotal;
-
         if (preco > 0 && vencedor !== 'Pendente') {
-          if (!pedidosPorVendedor[vencedor]) pedidosPorVendedor[vencedor] = [];
-          pedidosPorVendedor[vencedor].push({ nome, emb, preco, qtd, subtotal });
+          const subtotal = preco * qtd;
+          totalGeral += subtotal;
+
+          if (!pedidosPorVendedor[vencedor]) {
+            pedidosPorVendedor[vencedor] = {
+              itens: [],
+              total: 0
+            };
+          }
+
+          pedidosPorVendedor[vencedor].itens.push({ nome, emb, preco, qtd, subtotal });
+          pedidosPorVendedor[vencedor].total += subtotal;
         }
       });
 
-      document.getElementById('totalDisplay').innerText = totalGeral.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+      document.getElementById('totalDisplay').innerText = `R$ ${totalGeral.toFixed(2).replace('.', ',')}`;
 
-      const painel = document.getElementById('painelEnvioDividido');
-      painel.innerHTML = '';
+      const containerSplits = document.getElementById('painelEnvioDividido');
+      containerSplits.innerHTML = '';
 
-      const cliente = document.getElementById('nomeCliente').value || 'Mercadinho';
+      if (Object.keys(pedidosPorVendedor).length === 0) {
+        containerSplits.innerHTML = `<p style="font-size:0.8em; color:#718096; text-align:center;">Aguardando retorno de preços dos vendedores...</p>`;
+        return;
+      }
 
       for (let vend in pedidosPorVendedor) {
-        const itens = pedidosPorVendedor[vend];
-        let totalVend = itens.reduce((acc, item) => acc + item.subtotal, 0);
+        const dados = pedidosPorVendedor[vend];
+        const cardVend = document.createElement('div');
+        cardVend.className = 'card-divisao-vendedor';
 
-        let msg = `📦 *PEDIDO FRACIONADO - ${vend.toUpperCase()}*\n`;
-        msg += `Cliente: *${cliente}*\n\n`;
-        
-        itens.forEach(i => {
-          msg += `• ${i.qtd}x ${i.nome} (${i.emb}) - R$ ${i.preco.toFixed(2)} = R$ ${i.subtotal.toFixed(2)}\n`;
+        let msgWhatsApp = `📦 *PEDIDO FECHADO - COTAÇÃO*\n`;
+        msgWhatsApp += `Cliente: *${cliente}*\n`;
+        msgWhatsApp += `Condição: *${prazo} (${pagto})*\n`;
+        msgWhatsApp += `Modalidade: *Por ${tipo}*\n\n`;
+        msgWhatsApp += `*Itens Vencidos (${vend}):*\n`;
+
+        dados.itens.forEach(i => {
+          msgWhatsApp += `• ${i.qtd}x ${i.nome} (${i.emb}) - R$ ${i.preco.toFixed(2)} = R$ ${i.subtotal.toFixed(2)}\n`;
         });
-        
-        msg += `\n*TOTAL DO PEDIDO: ${totalVend.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}*`;
 
-        const div = document.createElement('div');
-        div.className = 'card-divisao-vendedor';
-        div.innerHTML = `
+        msgWhatsApp += `\n*TOTAL DO PEDIDO: R$ ${dados.total.toFixed(2).replace('.', ',')}*`;
+
+        const linkWa = `https://api.whatsapp.com/send?text=${encodeURIComponent(msgWhatsApp)}`;
+
+        cardVend.innerHTML = `
           <div>
             <b>${vend}</b><br>
-            <span>Total: ${totalVend.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} (${itens.length} itens)</span>
+            <span style="color:#2f855a; font-weight:bold;">Total: R$ ${dados.total.toFixed(2).replace('.', ',')}</span> (${dados.itens.length} itens)
           </div>
-          <button class="btn-whatsapp" style="padding: 6px 12px; font-size: 0.8em;" onclick="window.open('https://api.whatsapp.com/send?text=${encodeURIComponent(msg)}', '_blank')">Enviar Pedido</button>
+          <a href="${linkWa}" target="_blank" class="btn-renovar" style="background:#25d366; font-size:0.75em;">📲 Enviar Pedido</a>
         `;
-        painel.appendChild(div);
+
+        containerSplits.appendChild(cardVend);
       }
     }
 
     function gerarPDF() {
       const elemento = document.getElementById('conteudoParaPdf');
+      const cliente = document.getElementById('nomeCliente').value.trim() || 'Mercadinho';
+      
       const opt = {
         margin:       10,
-        filename:     `Pedido_Cotacao_${new Date().toISOString().slice(0,10)}.pdf`,
+        filename:     `Pedido_Cotacao_${cliente.replace(/\s+/g, '_')}.pdf`,
         image:        { type: 'jpeg', quality: 0.98 },
         html2canvas:  { scale: 2 },
         jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
       };
+
       html2pdf().set(opt).from(elemento).save();
     }
   </script>
