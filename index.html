@@ -351,7 +351,7 @@
 
     window.fazerLogout = function() { signOut(auth); };
 
-    // --- FIRESTORE TEMPO REAL (CORRIGIDO) ---
+    // --- FIRESTORE TEMPO REAL (AJUSTADO E CORRIGIDO) ---
 
     window.salvarCotacaoEGerarLink = async function() {
       const cotacaoId = "COT-" + Math.floor(100000 + Math.random() * 900000);
@@ -530,7 +530,6 @@
       if (localStorage.getItem('cliente_tel')) document.getElementById('telCliente').value = localStorage.getItem('cliente_tel');
     }
 
-    // --- RASCUNHO AUTOMÁTICO DA COTAÇÃO ---
     function salvarRascunhoLocal() {
       if (cotacaoIdAtual) return;
       
@@ -670,7 +669,6 @@
       const inputsPreco = document.querySelectorAll('.input-preco');
       const badgesVencedor = document.querySelectorAll('.badge-vencedor');
 
-      // EXIBIÇÃO DA BARRA DE ETAPAS
       if (cotacaoIdAtual) {
         document.getElementById('barraEtapas').style.display = 'none';
       } else {
