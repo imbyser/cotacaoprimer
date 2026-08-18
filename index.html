@@ -454,7 +454,6 @@
           document.getElementById('nomeCliente').value = data.cliente || '';
           document.getElementById('telCliente').value = data.tel || '';
           
-          // Sincroniza a opção selecionada pelo cliente (Caixa/Unidade e Prazo)
           if (data.tipo) document.getElementById('tipoCotacao').value = data.tipo;
           if (data.prazo) document.getElementById('prazoPagamento').value = data.prazo;
           
@@ -539,6 +538,26 @@
 
     function alternarEtapa(etapa) {
       etapaAtual = etapa;
+      
+      // Checa se quem está acessando é o Vendedor (e=2)
+      const urlParams = new URLSearchParams(window.location.search);
+      const eParam = parseInt(urlParams.get('e'));
+      const eVendedor = (eParam === 2);
+
+      // Controle de exibição dos botões da barra superior
+      if (eVendedor) {
+        document.getElementById('btnEtapa1').style.display = 'none';
+        document.getElementById('btnEtapa3').style.display = 'none';
+        document.getElementById('btnEtapa2').style.display = 'block';
+        document.getElementById('btnEtapa2').style.maxWidth = '100%';
+        document.getElementById('btnEtapa2').style.width = '100%';
+      } else {
+        document.getElementById('btnEtapa1').style.display = 'block';
+        document.getElementById('btnEtapa2').style.display = 'block';
+        document.getElementById('btnEtapa3').style.display = 'block';
+        document.getElementById('btnEtapa2').style.maxWidth = '200px';
+      }
+
       document.getElementById('btnEtapa1').classList.toggle('ativo', etapa === 1);
       document.getElementById('btnEtapa2').classList.toggle('ativo', etapa === 2);
       document.getElementById('btnEtapa3').classList.toggle('ativo', etapa === 3);
@@ -584,7 +603,7 @@
         inputsPreco.forEach(i => i.disabled = false);
         precos.forEach(p => p.style.display = 'flex');
         quantidades.forEach(q => q.style.display = 'none');
-        botoesExcluir.forEach(b => b.style.display = 'block');
+        botoesExcluir.forEach(b => b.style.display = 'none');
         badgesVencedor.forEach(b => b.style.display = 'none');
       } else if (etapa === 3) {
         document.getElementById('textoOrientacao').innerHTML = "🛒 <b>Etapa 3:</b> Menores preços encontrados.";
@@ -660,8 +679,15 @@
     }
 
     function executarAcaoPrincipal() {
-      if (etapaAtual === 1) window.salvarCotacaoEGerarLink();
-      else if (etapaAtual === 2) window.salvarPrecosVendedor(cotacaoIdAtual);
+      if (etapaAtual === 1) {
+        if (typeof window.salvarCotacaoEGerarLink === 'function') {
+          window.salvarCotacaoEGerarLink();
+        }
+      } else if (etapaAtual === 2) {
+        if (typeof window.salvarPrecosVendedor === 'function') {
+          window.salvarPrecosVendedor(cotacaoIdAtual);
+        }
+      }
     }
   </script>
 </body>
