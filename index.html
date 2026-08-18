@@ -454,6 +454,10 @@
           document.getElementById('nomeCliente').value = data.cliente || '';
           document.getElementById('telCliente').value = data.tel || '';
           
+          // Sincroniza a opção selecionada pelo cliente (Caixa/Unidade e Prazo)
+          if (data.tipo) document.getElementById('tipoCotacao').value = data.tipo;
+          if (data.prazo) document.getElementById('prazoPagamento').value = data.prazo;
+          
           const ofertas = data.ofertas || {};
 
           document.getElementById('listaProdutos').innerHTML = '';
