@@ -33,6 +33,9 @@
 
     .user-bar { background: #0f2342; color: white; padding: 8px 15px; display: flex; justify-content: space-between; align-items: center; font-size: 0.8em; flex-wrap: wrap; gap: 8px; }
     .btn-logout { background: #e53e3e; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-weight: bold; }
+    .btn-assinar-topo { background: #25d366; color: white; border: none; padding: 6px 12px; border-radius: 6px; font-weight: bold; font-size: 0.85em; text-decoration: none; display: inline-flex; align-items: center; gap: 4px; }
+    
+    .trial-banner { background: #feebc8; color: #742a2a; border-bottom: 1px solid #fbd38d; padding: 8px 15px; text-align: center; font-size: 0.85em; font-weight: bold; display: flex; justify-content: space-between; align-items: center; }
 
     .painel-minhas-cotacoes { background: #1a365d; color: white; padding: 10px 15px; font-size: 0.85em; border-bottom: 1px solid #2b6cb0; display: flex; justify-content: space-between; align-items: center; }
     .seletor-cotacoes { padding: 6px; border-radius: 6px; border: 1px solid #cbd5e0; font-size: 0.9em; background: white; margin-left: 8px; cursor: pointer; }
@@ -110,7 +113,16 @@
   <!-- BARRA DE USUÁRIO -->
   <div class="user-bar" id="userBar" style="display: none;">
     <span>👤 Usuário: <b id="userEmailDisplay">-</b></span>
-    <button class="btn-logout" onclick="fazerLogout()">Sair</button>
+    <div style="display: flex; gap: 8px; align-items: center;">
+      <a href="https://imbyser.github.io/cotacaoprimer/vendas.html" target="_blank" class="btn-assinar-topo">💳 Assinar / Planos</a>
+      <button class="btn-logout" onclick="fazerLogout()">Sair</button>
+    </div>
+  </div>
+
+  <!-- BANNER DE INCENTIVO À ASSINATURA -->
+  <div class="trial-banner" id="trialBanner" style="display: none;">
+    <span>⚡ Liberte todos os recursos do sistema com o plano Pro!</span>
+    <a href="https://imbyser.github.io/cotacaoprimer/vendas.html" target="_blank" class="btn-assinar-topo">Ver Planos e Ativar</a>
   </div>
 
   <!-- PAINEL DE COTAÇÕES DO CLIENTE -->
@@ -222,6 +234,7 @@
         document.getElementById('userEmailDisplay').innerText = user.email;
         document.getElementById('appContainer').style.display = 'block';
         document.getElementById('userBar').style.display = 'flex';
+        document.getElementById('trialBanner').style.display = 'flex';
         document.getElementById('painelCotacoes').style.display = 'flex';
 
         await carregarListaCotacoesUsuario();
@@ -246,6 +259,8 @@
         if (urlParams.get('c')) {
           document.getElementById('authOverlay').style.display = 'none';
           document.getElementById('appContainer').style.display = 'block';
+          document.getElementById('userBar').style.display = 'none';
+          document.getElementById('trialBanner').style.display = 'none';
           document.getElementById('painelCotacoes').style.display = 'none';
           window.carregarCotacaoDoBanco(urlParams.get('c'), parseInt(urlParams.get('e')) || 2);
         } else {
@@ -625,6 +640,20 @@
       }
     }
 
+    function executarAcaoPrincipal() {
+      if (etapaAtual === 1) {
+        if (typeof window.salvarCotacaoEGerarLink === 'function') {
+          window.salvarCotacaoEGerarLink();
+        }
+      } else if (etapaAtual === 2) {
+        const urlParams = new URLSearchParams(window.location.search);
+        const cParam = urlParams.get('c');
+        if (cParam && typeof window.salvarPrecosVendedor === 'function') {
+          window.salvarPrecosVendedor(cParam);
+        }
+      }
+    }
+
     function calcularTotalEGerarSplits() {
       const cards = document.querySelectorAll('.produto-card');
       let totalGeral = 0;
@@ -661,32 +690,23 @@
         const div = document.createElement('div');
         div.className = 'card-divisao-vendedor';
 
-        let textoWhatsapp = `🛒 *PEDIDO FECHADO*\nCliente: *${cliente}*\nFornecedor: *${vend}*\n\n*ITENS SOLICITADOS:*\n`;
+        let textoWhatsapp = `📦 *PEDIDO FRACIONADO - ${vend.toUpperCase()}*\n`;
+        textoWhatsapp += `Cliente: *${cliente}*\n\n`;
+
         dadosVend.itens.forEach(item => {
-          textoWhatsapp += `• ${item.qtd}x ${item.nome} (${item.emb}) - R$ ${item.preco.toFixed(2)} un = R$ ${item.subtotal.toFixed(2)}\n`;
+          textoWhatsapp += `• ${item.qtd}x ${item.nome} (${item.emb}) - R$ ${item.preco.toFixed(2)} = R$ ${item.subtotal.toFixed(2)}\n`;
         });
-        textoWhatsapp += `\n*TOTAL DO PEDIDO: R$ ${dadosVend.total.toFixed(2)}*`;
+
+        textoWhatsapp += `\n*TOTAL: R$ ${dadosVend.total.toFixed(2).replace('.', ',')}*`;
 
         div.innerHTML = `
           <div>
-            <b>🏆 ${vend}</b><br>
-            <small>Subtotal: <b>R$ ${dadosVend.total.toFixed(2).replace('.', ',')}</b> (${dadosVend.itens.length} itens)</small>
+            <b>${vend}</b><br>
+            <span>Total: R$ ${dadosVend.total.toFixed(2).replace('.', ',')} (${dadosVend.itens.length} itens)</span>
           </div>
-          <button class="btn-send-vendor" onclick="window.open('https://api.whatsapp.com/send?text=${encodeURIComponent(textoWhatsapp)}', '_blank')">📲 Pedir via WhatsApp</button>
+          <button class="btn-send-vendor" onclick="window.open('https://api.whatsapp.com/send?text=${encodeURIComponent(textoWhatsapp)}', '_blank')">Enviar Pedido</button>
         `;
         containerSplits.appendChild(div);
-      }
-    }
-
-    function executarAcaoPrincipal() {
-      if (etapaAtual === 1) {
-        if (typeof window.salvarCotacaoEGerarLink === 'function') {
-          window.salvarCotacaoEGerarLink();
-        }
-      } else if (etapaAtual === 2) {
-        if (typeof window.salvarPrecosVendedor === 'function') {
-          window.salvarPrecosVendedor(cotacaoIdAtual);
-        }
       }
     }
   </script>
