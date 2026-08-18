@@ -99,13 +99,15 @@
 </head>
 <body>
 
-  <!-- AUTENTICAÇÃO POR WHATSAPP / TELEFONE -->
+  <!-- AUTENTICAÇÃO POR WHATSAPP E SENHA -->
   <div id="authOverlay">
     <div class="auth-card">
       <h2>🔑 Acessar Sistema</h2>
-      <p>Digite seu WhatsApp cadastrado para entrar</p>
+      <p>Digite seu WhatsApp e senha cadastrados</p>
       
       <input type="tel" id="authPhone" class="auth-input" placeholder="(81) 99999-9999" maxlength="15" oninput="mascaraTelefone(this)">
+      <input type="password" id="authPassword" class="auth-input" placeholder="Sua Senha">
+      
       <div id="authErrorMsg" class="auth-error"></div>
       
       <button id="btnAuthSubmit" class="btn-auth-primary" onclick="processarAuthWhatsApp()">
@@ -127,7 +129,7 @@
     </div>
   </div>
 
-  <!-- BANNER DE STATUS / ATENÇÃO -->
+  <!-- BANNER DE STATUS -->
   <div class="trial-banner" id="trialBanner" style="display: none;">
     <span id="txtBannerStatus">⚡ Assinatura Ativa e Liberada!</span>
     <a href="https://imbyser.github.io/cotacaoprimer/vendas.html" target="_blank" class="btn-assinar-topo">Renovar / Alterar Plano</a>
@@ -232,7 +234,7 @@
     let timerSalvarAuto = null;
     window.cotacaoDadosGlobais = null;
 
-    // Função de Máscara de Telefone
+    // Máscara de Telefone
     window.mascaraTelefone = function(input) {
       let v = input.value.replace(/\D/g, "");
       if (v.length > 11) v = v.substring(0, 11);
@@ -248,13 +250,12 @@
       input.value = v;
     };
 
-    // Função para verificar sessão salva ao carregar
+    // Auto-login se já tiver logado anteriormente
     window.addEventListener('DOMContentLoaded', async () => {
       const urlParams = new URLSearchParams(window.location.search);
       const cParam = urlParams.get('c');
       const eParam = parseInt(urlParams.get('e'));
 
-      // Se for o vendedor acessando via link enviado
       if (cParam && eParam === 2) {
         document.getElementById('authOverlay').style.display = 'none';
         document.getElementById('appContainer').style.display = 'block';
@@ -266,17 +267,19 @@
       }
 
       const telefoneSalvo = localStorage.getItem('usuario_whatsapp');
-      if (telefoneSalvo) {
-        await validarEEntrar(telefoneSalvo);
+      const senhaSalva = localStorage.getItem('usuario_senha');
+      if (telefoneSalvo && senhaSalva) {
+        await validarEEntrar(telefoneSalvo, senhaSalva, true);
       }
     });
 
-    // Processa a validação do número de telefone
+    // Submissão do login
     window.processarAuthWhatsApp = async function() {
       const errorDiv = document.getElementById('authErrorMsg');
       errorDiv.style.display = 'none';
       
       const phoneInput = document.getElementById('authPhone').value;
+      const passInput = document.getElementById('authPassword').value;
       const phoneClean = phoneInput.replace(/\D/g, "");
 
       if (phoneClean.length < 10) {
@@ -285,14 +288,20 @@
         return;
       }
 
-      await validarEEntrar(phoneClean);
+      if (!passInput || passInput.trim() === "") {
+        errorDiv.innerText = "Digite sua senha.";
+        errorDiv.style.display = 'block';
+        return;
+      }
+
+      await validarEEntrar(phoneClean, passInput.trim(), false);
     };
 
-    async function validarEEntrar(phoneNum) {
+    // Validação com Telefone e Senha no Firestore
+    async function validarEEntrar(phoneNum, senha, isAutoLogin = false) {
       const errorDiv = document.getElementById('authErrorMsg');
       
       try {
-        // Busca na coleção de "assinantes" pelo telefone
         const q = query(collection(db, "assinantes"), where("telefone", "==", phoneNum));
         const querySnapshot = await getDocs(q);
 
@@ -300,8 +309,20 @@
           const dadosAssinante = querySnapshot.docs[0].data();
 
           if (dadosAssinante.statusAssinatura === 'ATIVA') {
+            // Checa a senha
+            if (dadosAssinante.senha && dadosAssinante.senha !== senha) {
+              if (isAutoLogin) {
+                fazerLogout();
+                return;
+              }
+              errorDiv.innerText = "Senha incorreta. Tente novamente.";
+              errorDiv.style.display = 'block';
+              return;
+            }
+
             usuarioTelefone = phoneNum;
             localStorage.setItem('usuario_whatsapp', phoneNum);
+            localStorage.setItem('usuario_senha', senha);
 
             document.getElementById('authOverlay').style.display = 'none';
             document.getElementById('userPhoneDisplay').innerText = document.getElementById('authPhone').value || phoneNum;
@@ -334,6 +355,7 @@
 
     window.fazerLogout = function() {
       localStorage.removeItem('usuario_whatsapp');
+      localStorage.removeItem('usuario_senha');
       location.reload();
     };
 
