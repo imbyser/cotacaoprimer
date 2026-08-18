@@ -22,14 +22,17 @@
     .auth-card p { font-size: 0.85em; color: #718096; margin-bottom: 20px; }
     .auth-input {
       width: 100%; padding: 12px; margin-bottom: 12px; border: 1px solid #cbd5e0;
-      border-radius: 8px; font-size: 0.95em; outline: none;
+      border-radius: 8px; font-size: 1em; outline: none; text-align: center; font-weight: bold;
     }
     .btn-auth-primary {
-      width: 100%; padding: 12px; background: #2b6cb0; color: white; border: none;
-      border-radius: 8px; font-weight: bold; font-size: 1em; cursor: pointer;
+      width: 100%; padding: 12px; background: #25d366; color: white; border: none;
+      border-radius: 8px; font-weight: bold; font-size: 1em; cursor: pointer; display: flex;
+      align-items: center; justify-content: center; gap: 8px;
     }
+    .btn-auth-primary:hover { background: #1eb954; }
     .auth-toggle { margin-top: 15px; font-size: 0.85em; color: #4a5568; }
     .auth-toggle a { color: #2b6cb0; font-weight: bold; text-decoration: underline; }
+    .auth-error { color: #e53e3e; font-size: 0.8em; margin-bottom: 10px; display: none; font-weight: bold; }
 
     .user-bar { background: #0f2342; color: white; padding: 8px 15px; display: flex; justify-content: space-between; align-items: center; font-size: 0.8em; flex-wrap: wrap; gap: 8px; }
     .btn-logout { background: #e53e3e; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-weight: bold; }
@@ -96,35 +99,38 @@
 </head>
 <body>
 
-  <!-- AUTENTICAÇÃO -->
+  <!-- AUTENTICAÇÃO POR WHATSAPP / TELEFONE -->
   <div id="authOverlay">
     <div class="auth-card">
-      <h2 id="authTitle">Acessar Sistema</h2>
-      <p id="authSubtitle">Entre com seu e-mail e senha para continuar</p>
-      <input type="email" id="authEmail" class="auth-input" placeholder="Seu e-mail...">
-      <input type="password" id="authPassword" class="auth-input" placeholder="Sua senha...">
-      <button id="btnAuthSubmit" class="btn-auth-primary" onclick="processarAuth()">Entrar</button>
+      <h2>🔑 Acessar Sistema</h2>
+      <p>Digite seu WhatsApp cadastrado para entrar</p>
       
-      <!-- BOTÃO ALTERADO AQUI -->
+      <input type="tel" id="authPhone" class="auth-input" placeholder="(81) 99999-9999" maxlength="15" oninput="mascaraTelefone(this)">
+      <div id="authErrorMsg" class="auth-error"></div>
+      
+      <button id="btnAuthSubmit" class="btn-auth-primary" onclick="processarAuthWhatsApp()">
+        <span>Entrar no Sistema</span> 📲
+      </button>
+      
       <div class="auth-toggle">
-        <span id="authToggleText">Não tem uma conta? <a href="https://imbyser.github.io/cotacaoprimer/vendas.html" target="_blank">Cadastre-se e Assine</a></span>
+        <span>Ainda não é assinante? <a href="https://imbyser.github.io/cotacaoprimer/vendas.html" target="_blank">Ver Planos e Assinar</a></span>
       </div>
     </div>
   </div>
 
   <!-- BARRA DE USUÁRIO -->
   <div class="user-bar" id="userBar" style="display: none;">
-    <span>👤 Usuário: <b id="userEmailDisplay">-</b></span>
+    <span>👤 WhatsApp: <b id="userPhoneDisplay">-</b></span>
     <div style="display: flex; gap: 8px; align-items: center;">
-      <a href="https://imbyser.github.io/cotacaoprimer/vendas.html" target="_blank" class="btn-assinar-topo">💳 Assinar / Planos</a>
+      <a href="https://imbyser.github.io/cotacaoprimer/vendas.html" target="_blank" class="btn-assinar-topo">💳 Gerenciar Assinatura</a>
       <button class="btn-logout" onclick="fazerLogout()">Sair</button>
     </div>
   </div>
 
-  <!-- BANNER DE INCENTIVO À ASSINATURA -->
+  <!-- BANNER DE STATUS / ATENÇÃO -->
   <div class="trial-banner" id="trialBanner" style="display: none;">
-    <span>⚡ Liberte todos os recursos do sistema com o plano Pro!</span>
-    <a href="https://imbyser.github.io/cotacaoprimer/vendas.html" target="_blank" class="btn-assinar-topo">Ver Planos e Ativar</a>
+    <span id="txtBannerStatus">⚡ Assinatura Ativa e Liberada!</span>
+    <a href="https://imbyser.github.io/cotacaoprimer/vendas.html" target="_blank" class="btn-assinar-topo">Renovar / Alterar Plano</a>
   </div>
 
   <!-- PAINEL DE COTAÇÕES DO CLIENTE -->
@@ -207,7 +213,6 @@
 
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-    import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
     import { getFirestore, doc, setDoc, getDoc, onSnapshot, updateDoc, collection, query, where, getDocs, orderBy, limit } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
     const firebaseConfig = {
@@ -220,75 +225,125 @@
     };
 
     const app = initializeApp(firebaseConfig);
-    const auth = getAuth(app);
     const db = getFirestore(app);
 
-    let usuarioAtual = null;
+    let usuarioTelefone = null;
     let listenerSnapshot = null;
     let timerSalvarAuto = null;
     window.cotacaoDadosGlobais = null;
 
-    onAuthStateChanged(auth, async (user) => {
-      if (user) {
-        usuarioAtual = user;
-        document.getElementById('authOverlay').style.display = 'none';
-        document.getElementById('userEmailDisplay').innerText = user.email;
-        document.getElementById('appContainer').style.display = 'block';
-        document.getElementById('userBar').style.display = 'flex';
-        document.getElementById('trialBanner').style.display = 'flex';
-        document.getElementById('painelCotacoes').style.display = 'flex';
-
-        await carregarListaCotacoesUsuario();
-
-        const urlParams = new URLSearchParams(window.location.search);
-        const cParam = urlParams.get('c');
-        const eParam = parseInt(urlParams.get('e'));
-
-        if (cParam) {
-          window.carregarCotacaoDoBanco(cParam, eParam || 2);
-        } else {
-          const cotacaoSalvaLocal = localStorage.getItem('cotacaoAtiva_' + user.uid);
-          if (cotacaoSalvaLocal) {
-            window.carregarCotacaoDoBanco(cotacaoSalvaLocal, 1);
-          } else {
-            await buscarUltimaCotacaoDoUsuario();
-          }
-        }
+    // Função de Máscara de Telefone
+    window.mascaraTelefone = function(input) {
+      let v = input.value.replace(/\D/g, "");
+      if (v.length > 11) v = v.substring(0, 11);
+      if (v.length > 10) {
+        v = v.replace(/^(\d{2})(\d{5})(\d{4})$/, "($1) $2-$3");
+      } else if (v.length > 6) {
+        v = v.replace(/^(\d{2})(\d{4})(\d{0,4})$/, "($1) $2-$3");
+      } else if (v.length > 2) {
+        v = v.replace(/^(\d{2})(\d{0,5})$/, "($1) $2");
       } else {
-        usuarioAtual = null;
-        const urlParams = new URLSearchParams(window.location.search);
-        if (urlParams.get('c')) {
-          document.getElementById('authOverlay').style.display = 'none';
-          document.getElementById('appContainer').style.display = 'block';
-          document.getElementById('userBar').style.display = 'none';
-          document.getElementById('trialBanner').style.display = 'none';
-          document.getElementById('painelCotacoes').style.display = 'none';
-          window.carregarCotacaoDoBanco(urlParams.get('c'), parseInt(urlParams.get('e')) || 2);
-        } else {
-          document.getElementById('authOverlay').style.display = 'flex';
-          document.getElementById('appContainer').style.display = 'none';
-        }
+        v = v.replace(/^(\d*)/, "($1");
+      }
+      input.value = v;
+    };
+
+    // Função para verificar sessão salva ao carregar
+    window.addEventListener('DOMContentLoaded', async () => {
+      const urlParams = new URLSearchParams(window.location.search);
+      const cParam = urlParams.get('c');
+      const eParam = parseInt(urlParams.get('e'));
+
+      // Se for o vendedor acessando via link enviado
+      if (cParam && eParam === 2) {
+        document.getElementById('authOverlay').style.display = 'none';
+        document.getElementById('appContainer').style.display = 'block';
+        document.getElementById('userBar').style.display = 'none';
+        document.getElementById('trialBanner').style.display = 'none';
+        document.getElementById('painelCotacoes').style.display = 'none';
+        window.carregarCotacaoDoBanco(cParam, 2);
+        return;
+      }
+
+      const telefoneSalvo = localStorage.getItem('usuario_whatsapp');
+      if (telefoneSalvo) {
+        await validarEEntrar(telefoneSalvo);
       }
     });
 
-    window.processarAuth = async function() {
-      const email = document.getElementById('authEmail').value.trim();
-      const password = document.getElementById('authPassword').value.trim();
-      if (!email || !password) return alert("Preencha e-mail e senha.");
-      try {
-        await signInWithEmailAndPassword(auth, email, password);
-      } catch (error) { alert("Falha na autenticação: " + error.message); }
+    // Processa a validação do número de telefone
+    window.processarAuthWhatsApp = async function() {
+      const errorDiv = document.getElementById('authErrorMsg');
+      errorDiv.style.display = 'none';
+      
+      const phoneInput = document.getElementById('authPhone').value;
+      const phoneClean = phoneInput.replace(/\D/g, "");
+
+      if (phoneClean.length < 10) {
+        errorDiv.innerText = "Digite um número de WhatsApp válido com DDD.";
+        errorDiv.style.display = 'block';
+        return;
+      }
+
+      await validarEEntrar(phoneClean);
     };
 
-    window.fazerLogout = function() { signOut(auth); };
+    async function validarEEntrar(phoneNum) {
+      const errorDiv = document.getElementById('authErrorMsg');
+      
+      try {
+        // Busca na coleção de "assinantes" pelo telefone
+        const q = query(collection(db, "assinantes"), where("telefone", "==", phoneNum));
+        const querySnapshot = await getDocs(q);
+
+        if (!querySnapshot.empty) {
+          const dadosAssinante = querySnapshot.docs[0].data();
+
+          if (dadosAssinante.statusAssinatura === 'ATIVA') {
+            usuarioTelefone = phoneNum;
+            localStorage.setItem('usuario_whatsapp', phoneNum);
+
+            document.getElementById('authOverlay').style.display = 'none';
+            document.getElementById('userPhoneDisplay').innerText = document.getElementById('authPhone').value || phoneNum;
+            document.getElementById('appContainer').style.display = 'block';
+            document.getElementById('userBar').style.display = 'flex';
+            document.getElementById('trialBanner').style.display = 'flex';
+            document.getElementById('painelCotacoes').style.display = 'flex';
+
+            await carregarListaCotacoesUsuario();
+
+            const cotacaoSalvaLocal = localStorage.getItem('cotacaoAtiva_' + usuarioTelefone);
+            if (cotacaoSalvaLocal) {
+              window.carregarCotacaoDoBanco(cotacaoSalvaLocal, 1);
+            } else {
+              await buscarUltimaCotacaoDoUsuario();
+            }
+          } else {
+            errorDiv.innerText = "Sua assinatura está suspensa ou pendente de pagamento.";
+            errorDiv.style.display = 'block';
+          }
+        } else {
+          errorDiv.innerText = "Número não cadastrado. Faça sua assinatura na página de vendas!";
+          errorDiv.style.display = 'block';
+        }
+      } catch (err) {
+        errorDiv.innerText = "Erro ao validar: " + err.message;
+        errorDiv.style.display = 'block';
+      }
+    }
+
+    window.fazerLogout = function() {
+      localStorage.removeItem('usuario_whatsapp');
+      location.reload();
+    };
 
     async function carregarListaCotacoesUsuario() {
-      if (!usuarioAtual) return;
+      if (!usuarioTelefone) return;
       const select = document.getElementById('selectCotacoesUsuario');
       select.innerHTML = '<option value="">-- Criar Nova Cotação --</option>';
 
       try {
-        const q = query(collection(db, "cotacoes"), where("userId", "==", usuarioAtual.uid));
+        const q = query(collection(db, "cotacoes"), where("userId", "==", usuarioTelefone));
         const querySnapshot = await getDocs(q);
 
         querySnapshot.forEach((docSnap) => {
@@ -304,11 +359,11 @@
     }
 
     async function buscarUltimaCotacaoDoUsuario() {
-      if (!usuarioAtual) return;
+      if (!usuarioTelefone) return;
       try {
         const q = query(
           collection(db, "cotacoes"), 
-          where("userId", "==", usuarioAtual.uid),
+          where("userId", "==", usuarioTelefone),
           orderBy("criadoEm", "desc"),
           limit(1)
         );
@@ -326,7 +381,7 @@
 
     window.novaCotacao = function() {
       cotacaoIdAtual = null;
-      if (usuarioAtual) localStorage.removeItem('cotacaoAtiva_' + usuarioAtual.uid);
+      if (usuarioTelefone) localStorage.removeItem('cotacaoAtiva_' + usuarioTelefone);
       window.history.pushState({}, '', window.location.pathname);
       document.getElementById('listaProdutos').innerHTML = '';
       document.getElementById('selectCotacoesUsuario').value = '';
@@ -350,7 +405,7 @@
     };
 
     window.salvarEstadoAutomatico = async function() {
-      if (!usuarioAtual) return;
+      if (!usuarioTelefone) return;
 
       if (!cotacaoIdAtual) {
         cotacaoIdAtual = "COT-" + Math.floor(100000 + Math.random() * 900000);
@@ -372,12 +427,12 @@
 
       try {
         await setDoc(doc(db, "cotacoes", cotacaoIdAtual), {
-          userId: usuarioAtual.uid,
+          userId: usuarioTelefone,
           cliente, tel, prazo, pagto: "Combinar", tipo, produtos,
           criadoEm: new Date()
         }, { merge: true });
 
-        localStorage.setItem('cotacaoAtiva_' + usuarioAtual.uid, cotacaoIdAtual);
+        localStorage.setItem('cotacaoAtiva_' + usuarioTelefone, cotacaoIdAtual);
         document.getElementById('statusSalvamento').innerText = "✅ Salvo";
         document.getElementById('selectCotacoesUsuario').value = cotacaoIdAtual;
       } catch (e) {
@@ -449,8 +504,8 @@
       if (listenerSnapshot) listenerSnapshot();
 
       cotacaoIdAtual = cotacaoId;
-      if (usuarioAtual) {
-        localStorage.setItem('cotacaoAtiva_' + usuarioAtual.uid, cotacaoId);
+      if (usuarioTelefone) {
+        localStorage.setItem('cotacaoAtiva_' + usuarioTelefone, cotacaoId);
       }
 
       const docRef = doc(db, "cotacoes", cotacaoId);
