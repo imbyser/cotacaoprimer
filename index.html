@@ -29,7 +29,7 @@
       border-radius: 8px; font-weight: bold; font-size: 1em; cursor: pointer;
     }
     .auth-toggle { margin-top: 15px; font-size: 0.85em; color: #4a5568; }
-    .auth-toggle span { color: #2b6cb0; font-weight: bold; cursor: pointer; text-decoration: underline; }
+    .auth-toggle a { color: #2b6cb0; font-weight: bold; text-decoration: underline; }
 
     .user-bar { background: #0f2342; color: white; padding: 8px 15px; display: flex; justify-content: space-between; align-items: center; font-size: 0.8em; flex-wrap: wrap; gap: 8px; }
     .btn-logout { background: #e53e3e; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-weight: bold; }
@@ -104,8 +104,10 @@
       <input type="email" id="authEmail" class="auth-input" placeholder="Seu e-mail...">
       <input type="password" id="authPassword" class="auth-input" placeholder="Sua senha...">
       <button id="btnAuthSubmit" class="btn-auth-primary" onclick="processarAuth()">Entrar</button>
+      
+      <!-- BOTÃO ALTERADO AQUI -->
       <div class="auth-toggle">
-        <span id="authToggleText">Não tem uma conta? <span onclick="alternarModoAuth()">Cadastre-se</span></span>
+        <span id="authToggleText">Não tem uma conta? <a href="https://imbyser.github.io/cotacaoprimer/vendas.html" target="_blank">Cadastre-se e Assine</a></span>
       </div>
     </div>
   </div>
@@ -205,7 +207,7 @@
 
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-    import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+    import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
     import { getFirestore, doc, setDoc, getDoc, onSnapshot, updateDoc, collection, query, where, getDocs, orderBy, limit } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
     const firebaseConfig = {
@@ -221,7 +223,6 @@
     const auth = getAuth(app);
     const db = getFirestore(app);
 
-    let isLoginMode = true;
     let usuarioAtual = null;
     let listenerSnapshot = null;
     let timerSalvarAuto = null;
@@ -275,15 +276,8 @@
       const password = document.getElementById('authPassword').value.trim();
       if (!email || !password) return alert("Preencha e-mail e senha.");
       try {
-        if (isLoginMode) await signInWithEmailAndPassword(auth, email, password);
-        else await createUserWithEmailAndPassword(auth, email, password);
+        await signInWithEmailAndPassword(auth, email, password);
       } catch (error) { alert("Falha na autenticação: " + error.message); }
-    };
-
-    window.alternarModoAuth = function() {
-      isLoginMode = !isLoginMode;
-      document.getElementById('authTitle').innerText = isLoginMode ? "Acessar Sistema" : "Criar Conta";
-      document.getElementById('btnAuthSubmit').innerText = isLoginMode ? "Entrar" : "Cadastrar";
     };
 
     window.fazerLogout = function() { signOut(auth); };
@@ -554,12 +548,10 @@
     function alternarEtapa(etapa) {
       etapaAtual = etapa;
       
-      // Checa se quem está acessando é o Vendedor (e=2)
       const urlParams = new URLSearchParams(window.location.search);
       const eParam = parseInt(urlParams.get('e'));
       const eVendedor = (eParam === 2);
 
-      // Controle de exibição dos botões da barra superior
       if (eVendedor) {
         document.getElementById('btnEtapa1').style.display = 'none';
         document.getElementById('btnEtapa3').style.display = 'none';
@@ -650,6 +642,8 @@
         const cParam = urlParams.get('c');
         if (cParam && typeof window.salvarPrecosVendedor === 'function') {
           window.salvarPrecosVendedor(cParam);
+        } else {
+          alert("Erro: ID da cotação não encontrado na URL.");
         }
       }
     }
@@ -657,56 +651,73 @@
     function calcularTotalEGerarSplits() {
       const cards = document.querySelectorAll('.produto-card');
       let totalGeral = 0;
-      let pedidosPorVendedor = {};
+      let vendedoresPedidos = {};
 
       cards.forEach(card => {
         const nome = card.querySelector('.input-nome').value.trim();
         const emb = card.querySelector('.input-embalagem').value.trim();
-        const preco = parseFloat(card.querySelector('.input-preco').value) || 0;
+        const precoStr = card.querySelector('.input-preco').value.replace(',', '.');
+        const preco = parseFloat(precoStr) || 0;
         const qtd = parseInt(card.querySelector('.qtd-valor').value) || 1;
-        const vencedorEl = card.querySelector('.nome-vencedor');
-        const vencedor = vencedorEl ? vencedorEl.innerText : 'Sem oferta';
+        const vencedor = card.querySelector('.nome-vencedor') ? card.querySelector('.nome-vencedor').innerText : 'Sem oferta';
 
         if (preco > 0 && vencedor !== 'Sem oferta') {
           const subtotal = preco * qtd;
           totalGeral += subtotal;
 
-          if (!pedidosPorVendedor[vencedor]) {
-            pedidosPorVendedor[vencedor] = { total: 0, itens: [] };
+          if (!vendedoresPedidos[vencedor]) {
+            vendedoresPedidos[vencedor] = {
+              itens: [],
+              total: 0
+            };
           }
-          pedidosPorVendedor[vencedor].total += subtotal;
-          pedidosPorVendedor[vencedor].itens.push({ nome, emb, preco, qtd, subtotal });
+
+          vendedoresPedidos[vencedor].itens.push({ nome, emb, preco, qtd, subtotal });
+          vendedoresPedidos[vencedor].total += subtotal;
         }
       });
 
       document.getElementById('totalDisplay').innerText = `R$ ${totalGeral.toFixed(2).replace('.', ',')}`;
+
       const containerSplits = document.getElementById('painelEnvioDividido');
       containerSplits.innerHTML = '';
 
       const cliente = document.getElementById('nomeCliente').value.trim() || 'Cliente';
+      const prazo = document.getElementById('prazoPagamento').value;
+      const tipo = document.getElementById('tipoCotacao').value;
 
-      for (let vend in pedidosPorVendedor) {
-        const dadosVend = pedidosPorVendedor[vend];
+      Object.keys(vendedoresPedidos).forEach(vendedor => {
+        const dados = vendedoresPedidos[vendedor];
         const div = document.createElement('div');
         div.className = 'card-divisao-vendedor';
 
-        let textoWhatsapp = `📦 *PEDIDO FRACIONADO - ${vend.toUpperCase()}*\n`;
-        textoWhatsapp += `Cliente: *${cliente}*\n\n`;
+        let textoMsg = `📦 *PEDIDO FECHADO - COTAÇÃO*\n`;
+        textoMsg += `👤 Cliente: *${cliente}*\n`;
+        textoMsg += `🏷️ Condição: ${tipo} | ${prazo}\n`;
+        textoMsg += `------------------------------\n`;
 
-        dadosVend.itens.forEach(item => {
-          textoWhatsapp += `• ${item.qtd}x ${item.nome} (${item.emb}) - R$ ${item.preco.toFixed(2)} = R$ ${item.subtotal.toFixed(2)}\n`;
+        dados.itens.forEach(item => {
+          textoMsg += `• ${item.qtd}x ${item.nome} (${item.emb}) - R$ ${item.preco.toFixed(2).replace('.', ',')} = R$ ${item.subtotal.toFixed(2).replace('.', ',')}\n`;
         });
 
-        textoWhatsapp += `\n*TOTAL: R$ ${dadosVend.total.toFixed(2).replace('.', ',')}*`;
+        textoMsg += `------------------------------\n`;
+        textoMsg += `💰 *Total do Pedido: R$ ${dados.total.toFixed(2).replace('.', ',')}*`;
+
+        const urlWhatsapp = `https://api.whatsapp.com/send?text=${encodeURIComponent(textoMsg)}`;
 
         div.innerHTML = `
           <div>
-            <b>${vend}</b><br>
-            <span>Total: R$ ${dadosVend.total.toFixed(2).replace('.', ',')} (${dadosVend.itens.length} itens)</span>
+            <b>🏆 ${vendedor}</b><br>
+            <small>${dados.itens.length} item(ns) - Total: <b>R$ ${dados.total.toFixed(2).replace('.', ',')}</b></small>
           </div>
-          <button class="btn-send-vendor" onclick="window.open('https://api.whatsapp.com/send?text=${encodeURIComponent(textoWhatsapp)}', '_blank')">Enviar Pedido</button>
+          <a href="${urlWhatsapp}" target="_blank" class="btn-send-vendor" style="text-decoration: none; display: inline-block;">Enviar Pedido 📲</a>
         `;
+
         containerSplits.appendChild(div);
+      });
+
+      if (Object.keys(vendedoresPedidos).length === 0) {
+        containerSplits.innerHTML = '<div style="font-size:0.85em; color:#718096; text-align:center; padding:5px;">Nenhum menor preço disponível para fechar pedido.</div>';
       }
     }
   </script>
