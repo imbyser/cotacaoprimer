@@ -3,287 +3,219 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Sistema de Cotação - Agilize suas Compras no Atacado</title>
-  
-  <!-- Fonte Google -->
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
-
+  <title>Super Cotação - Planos de Assinatura</title>
   <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', sans-serif; }
-    body { background-color: #f8fafc; color: #1e293b; line-height: 1.6; }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+    body { background-color: #f7fafc; color: #2d3748; line-height: 1.6; }
 
-    /* HEADER / HERO */
-    .hero {
-      background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 100%);
-      color: white;
-      padding: 60px 20px 80px 20px;
-      text-align: center;
-    }
-    .badge-hero {
-      background: rgba(59, 130, 246, 0.2);
-      border: 1px solid #60a5fa;
-      color: #93c5fd;
-      padding: 6px 16px;
-      border-radius: 20px;
-      font-size: 0.85em;
-      font-weight: 600;
-      display: inline-block;
-      margin-bottom: 20px;
-    }
-    .hero h1 {
-      font-size: 2.3em;
-      font-weight: 800;
-      line-height: 1.2;
-      max-width: 800px;
-      margin: 0 auto 20px auto;
-    }
-    .hero h1 span { color: #38bdf8; }
-    .hero p {
-      font-size: 1.1em;
-      color: #cbd5e1;
-      max-width: 600px;
-      margin: 0 auto 30px auto;
-    }
+    header { background: linear-gradient(135deg, #1a365d 0%, #2b6cb0 100%); color: white; text-align: center; padding: 50px 20px; }
+    header h1 { font-size: 2.2em; margin-bottom: 10px; }
+    header p { font-size: 1.1em; opacity: 0.9; max-width: 600px; margin: 0 auto; }
 
-    /* BOTOES CTA */
-    .btn-cta-principal {
-      background: #22c55e;
-      color: white;
-      padding: 16px 32px;
-      border-radius: 10px;
-      font-size: 1.1em;
-      font-weight: 700;
-      text-decoration: none;
-      display: inline-block;
-      box-shadow: 0 10px 20px rgba(34, 197, 94, 0.3);
-      transition: transform 0.2s, background 0.2s;
-    }
-    .btn-cta-principal:hover {
-      background: #16a34a;
-      transform: translateY(-2px);
-    }
-    .sub-cta {
-      display: block;
-      font-size: 0.8em;
-      color: #94a3b8;
-      margin-top: 10px;
-    }
+    .container { max-width: 1000px; margin: -30px auto 50px; padding: 0 20px; }
 
-    /* CONTAINER GERAL */
-    .container {
-      max-width: 1000px;
-      margin: 0 auto;
-      padding: 60px 20px;
-    }
+    .grid-planos { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; margin-bottom: 40px; }
+    .card-plano { background: white; border-radius: 12px; padding: 30px 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.08); text-align: center; border: 2px solid transparent; transition: transform 0.2s, border-color 0.2s; position: relative; }
+    .card-plano:hover { transform: translateY(-5px); }
+    .card-plano.destaque { border-color: #25d366; }
+    .badge-destaque { position: absolute; top: -12px; left: 50%; transform: translateX(-50%); background: #25d366; color: white; padding: 4px 12px; border-radius: 20px; font-size: 0.8em; font-weight: bold; text-transform: uppercase; }
 
-    /* BENEFICIOS / RECURSOS */
-    .grid-recursos {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-      gap: 25px;
-      margin-top: 40px;
-      max-width: 800px;
-      margin-left: auto;
-      margin-right: auto;
-    }
-    .card-recurso {
-      background: white;
-      padding: 30px;
-      border-radius: 12px;
-      border: 1px solid #e2e8f0;
-      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
-    }
-    .card-recurso .icone {
-      font-size: 2em;
-      margin-bottom: 15px;
-      display: inline-block;
-    }
-    .card-recurso h3 {
-      font-size: 1.2em;
-      margin-bottom: 10px;
-      color: #0f172a;
-    }
-    .card-recurso p {
-      color: #64748b;
-      font-size: 0.95em;
-    }
+    .plano-nome { font-size: 1.4em; color: #1a365d; font-weight: bold; margin-bottom: 10px; }
+    .plano-preco { font-size: 2.2em; color: #2d3748; font-weight: bold; margin-bottom: 15px; }
+    .plano-preco span { font-size: 0.4em; color: #718096; font-weight: normal; }
 
-    /* SEÇÃO OFERTA / PREÇO */
-    .secao-preco {
-      background: white;
-      border: 2px solid #3b82f6;
-      border-radius: 20px;
-      padding: 40px 20px;
-      text-align: center;
-      max-width: 500px;
-      margin: 40px auto 0 auto;
-      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
-      position: relative;
-    }
-    .badge-pop {
-      position: absolute;
-      top: -15px;
-      left: 50%;
-      transform: translateX(-50%);
-      background: #3b82f6;
-      color: white;
-      padding: 4px 16px;
-      border-radius: 20px;
-      font-size: 0.8em;
-      font-weight: 700;
-      text-transform: uppercase;
-    }
-    .preco-valor {
-      font-size: 2.8em;
-      font-weight: 800;
-      color: #0f172a;
-      margin: 15px 0 5px 0;
-    }
-    .preco-periodo {
-      font-size: 0.9em;
-      color: #64748b;
-      margin-bottom: 25px;
-    }
-    .lista-check {
-      text-align: left;
-      margin-bottom: 30px;
-      display: inline-block;
-    }
-    .lista-check li {
-      list-style: none;
-      margin-bottom: 10px;
-      font-size: 0.95em;
-      color: #334155;
-    }
-    .lista-check li::before {
-      content: "✓ ";
-      color: #22c55e;
-      font-weight: bold;
-    }
+    .plano-recursos { list-style: none; text-align: left; margin-bottom: 25px; font-size: 0.95em; }
+    .plano-recursos li { margin-bottom: 10px; display: flex; align-items: center; gap: 8px; }
+    .plano-recursos li::before { content: "✓"; color: #25d366; font-weight: bold; }
 
-    /* BOTÃO FLUTUANTE WHATSAPP */
-    .btn-whatsapp-flutuante {
-      position: fixed;
-      bottom: 25px;
-      right: 25px;
-      background-color: #25d366;
-      color: white;
-      border-radius: 50px;
-      padding: 12px 20px;
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
-      text-decoration: none;
-      font-weight: bold;
-      font-size: 0.95em;
-      z-index: 10000;
-      transition: transform 0.2s, background-color 0.2s;
-    }
+    .btn-assinar { display: block; width: 100%; padding: 12px; background: #2b6cb0; color: white; border: none; border-radius: 8px; font-size: 1em; font-weight: bold; cursor: pointer; text-decoration: none; transition: background 0.2s; }
+    .btn-assinar:hover { background: #2c5282; }
+    .card-plano.destaque .btn-assinar { background: #25d366; }
+    .card-plano.destaque .btn-assinar:hover { background: #1eb954; }
 
-    .btn-whatsapp-flutuante:hover {
-      background-color: #1ebc57;
-      transform: scale(1.05);
-    }
+    .secao-cadastro { background: white; border-radius: 12px; padding: 30px; box-shadow: 0 4px 15px rgba(0,0,0,0.08); max-width: 500px; margin: 0 auto; display: none; }
+    .secao-cadastro h2 { color: #1a365d; margin-bottom: 10px; text-align: center; }
+    .secao-cadastro p { text-align: center; font-size: 0.9em; color: #718096; margin-bottom: 20px; }
 
-    .btn-whatsapp-flutuante svg {
-      width: 24px;
-      height: 24px;
-      fill: white;
-    }
+    .form-group { margin-bottom: 15px; }
+    .form-group label { display: block; font-size: 0.85em; font-weight: bold; margin-bottom: 5px; color: #4a5568; }
+    .form-input { width: 100%; padding: 12px; border: 1px solid #cbd5e0; border-radius: 8px; font-size: 1em; outline: none; }
+    .form-input:focus { border-color: #2b6cb0; }
 
-    /* FOOTER */
-    footer {
-      text-align: center;
-      padding: 40px 20px;
-      background: #0f172a;
-      color: #64748b;
-      font-size: 0.85em;
-    }
+    .btn-finalizar { width: 100%; padding: 14px; background: #25d366; color: white; border: none; border-radius: 8px; font-size: 1.1em; font-weight: bold; cursor: pointer; margin-top: 10px; }
+    .btn-finalizar:hover { background: #1eb954; }
+
+    footer { text-align: center; padding: 20px; font-size: 0.85em; color: #a0aec0; }
   </style>
 </head>
 <body>
 
-  <!-- HERO SECTION -->
-  <header class="hero">
-    <span class="badge-hero">🚀 Feito para Mercados e Atacadistas</span>
-    <h1>Faça Cotações de Compras <span>10x Mais Rápido</span> e Sem Erros</h1>
-    <p>O sistema definitivo para o pequeno comerciante cotar preços com fornecedores e enviar a lista organizada direto no WhatsApp.</p>
-    
-    <!-- BOTÃO 1: CARTÃO -->
-    <a href="https://mpago.la/2MvjRwM" target="_blank" class="btn-cta-principal" style="margin-bottom: 12px; display: block;">
-      💳 Assinar no Cartão (Recorrente)
-    </a>
-
-    <!-- BOTÃO 2: PIX -->
-    <a href="https://mpago.la/2GChgyp" target="_blank" class="btn-cta-principal" style="background-color: #00bdae; display: block;">
-      ⚡ Pagar com PIX
-    </a>
-
-    <span class="sub-cta">🔒 Checkout Seguro Mercado Pago | Cancele quando quiser</span>
+  <header>
+    <h1>🚀 Agilize suas Cotações e Vendas</h1>
+    <p>Escolha o plano ideal para sua empresa e automatize o envio de cotações por WhatsApp.</p>
   </header>
 
-  <!-- RECURSOS / BENEFÍCIOS -->
-  <main class="container">
-    <h2 style="text-align: center; font-size: 1.8em; color: #0f172a;">Tudo o que seu comércio precisa</h2>
-    <p style="text-align: center; color: #64748b; margin-bottom: 30px;">Desenvolvido para simplificar a rotina de compras do seu negócio.</p>
-
-    <div class="grid-recursos">
-      <div class="card-recurso">
-        <span class="icone">💬</span>
-        <h3>Integração com WhatsApp</h3>
-        <p>Envie as cotações e pedidos finais direto para o WhatsApp do seu representante comercial em um único clique.</p>
+  <div class="container">
+    <!-- GRID DE PLANOS -->
+    <div class="grid-planos" id="gridPlanos">
+      
+      <!-- PLANO MENSAL -->
+      <div class="card-plano">
+        <div class="plano-nome">Mensal</div>
+        <div class="plano-preco">R$ 49,90 <span>/mês</span></div>
+        <ul class="plano-recursos">
+          <li>Cotações ilimitadas</li>
+          <li>Compartilhamento via WhatsApp</li>
+          <li>Comparador automático de preços</li>
+          <li>Suporte prioritário</li>
+        </ul>
+        <button class="btn-assinar" onclick="selecionarPlano('Mensal', '49.90')">Assinar Plano Mensal</button>
       </div>
 
-      <div class="card-recurso">
-        <span class="icone">📄</span>
-        <h3>Geração de PDF</h3>
-        <p>Gere documentos em PDF organizados com os totais calculados para manter o controle financeiro do seu estoque.</p>
+      <!-- PLANO TRIMESTRAL (DESTAQUE) -->
+      <div class="card-plano destaque">
+        <div class="badge-destaque">Mais Popular</div>
+        <div class="plano-nome">Trimestral</div>
+        <div class="plano-preco">R$ 129,90 <span>/3 meses</span></div>
+        <ul class="plano-recursos">
+          <li>Economize 13%</li>
+          <li>Cotações ilimitadas</li>
+          <li>Compartilhamento via WhatsApp</li>
+          <li>Comparador automático de preços</li>
+          <li>Suporte prioritário</li>
+        </ul>
+        <button class="btn-assinar" onclick="selecionarPlano('Trimestral', '129.90')">Assinar Trimestral</button>
       </div>
+
+      <!-- PLANO ANUAL -->
+      <div class="card-plano">
+        <div class="plano-nome">Anual</div>
+        <div class="plano-preco">R$ 399,00 <span>/ano</span></div>
+        <ul class="plano-recursos">
+          <li>Economize 33%</li>
+          <li>Cotações ilimitadas</li>
+          <li>Compartilhamento via WhatsApp</li>
+          <li>Comparador automático de preços</li>
+          <li>Suporte VIP</li>
+        </ul>
+        <button class="btn-assinar" onclick="selecionarPlano('Anual', '399.00')">Assinar Anual</button>
+      </div>
+
     </div>
 
-    <!-- CARD DE PREÇO -->
-    <div class="secao-preco">
-      <span class="badge-pop">Acesso Ilimitado</span>
-      <h3 style="font-size: 1.4em; color: #0f172a;">Plano Profissional</h3>
-      <div class="preco-valor">R$ 98,90</div>
-      <div class="preco-periodo">por mês (renovação automática)</div>
+    <!-- FORMULÁRIO DE CADASTRO PARA PAGAMENTO -->
+    <div class="secao-cadastro" id="secaoCadastro">
+      <h2 id="tituloPlanoSelecionado">Dados para Acesso</h2>
+      <p>Preencha os dados abaixo para ativar sua conta no sistema.</p>
 
-      <ul class="lista-check">
-        <li>Cotações Ilimitadas</li>
-        <li>Exportação para PDF e WhatsApp</li>
-        <li>Suporte Prioritário</li>
-        <li>Sem taxa de adesão ou cancelamento</li>
-      </ul>
+      <div class="form-group">
+        <label>Seu Nome ou Nome da Loja:</label>
+        <input type="text" id="cadNome" class="form-input" placeholder="Ex: Mercado Silva">
+      </div>
 
-      <!-- BOTÃO 1: CARTÃO -->
-      <a href="https://mpago.la/2MvjRwM" target="_blank" class="btn-cta-principal" style="margin-bottom: 12px; display: block; width: 100%;">
-        💳 Assinar no Cartão por R$ 98,90/mês
-      </a>
+      <div class="form-group">
+        <label>Seu WhatsApp (será seu login):</label>
+        <input type="tel" id="cadTelefone" class="form-input" placeholder="(81) 99999-9999" maxlength="15" oninput="mascaraTelefone(this)">
+      </div>
 
-      <!-- BOTÃO 2: PIX -->
-      <a href="https://mpago.la/2GChgyp" target="_blank" class="btn-cta-principal" style="background-color: #00bdae; display: block; width: 100%;">
-        ⚡ Pagar com PIX (R$ 98,90)
-      </a>
+      <div class="form-group">
+        <label>Crie uma Senha:</label>
+        <input type="password" id="cadSenha" class="form-input" placeholder="Digite uma senha segura">
+      </div>
+
+      <button class="btn-finalizar" onclick="solicitarAtivacaoWhatsApp()">Ir para Pagamento / Ativação 📲</button>
+      <button style="width: 100%; margin-top: 10px; background: none; border: none; color: #718096; cursor: pointer; text-decoration: underline;" onclick="voltarParaPlanos()">← Escolher outro plano</button>
     </div>
-  </main>
-
-  <!-- BOTÃO FLUTUANTE DO WHATSAPP -->
-  <a href="https://api.whatsapp.com/send?phone=5581995432834&text=Ol%C3%A1!%20Tenho%20d%C3%BAvidas%20sobre%20o%20Sistema%20de%20Cota%C3%A7%C3%B5es." 
-     target="_blank" 
-     class="btn-whatsapp-flutuante" 
-     title="Falar no WhatsApp">
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512">
-      <path d="M380.9 97.1C339 55.1 283.2 32 223.9 32c-122.4 0-222 99.6-222 222 0 39.1 10.2 77.3 29.6 111L0 480l117.7-30.9c32.4 17.7 68.9 27 106.1 27h.1c122.3 0 224.1-99.6 224.1-222 0-59.3-25.2-115-67.1-157zm-157 341.6c-33.2 0-65.7-8.9-94-25.7l-6.7-4-69.8 18.3 18.6-68.1-4.4-7c-18.5-29.4-28.2-63.3-28.2-98.2 0-101.7 82.8-184.5 184.6-184.5 49.3 0 95.6 19.2 130.4 54.1 34.8 34.9 56.2 81.2 56.1 130.5 0 101.8-84.9 184.9-186.6 184.9zm101.2-138.2c-5.5-2.8-32.8-16.2-37.9-18-5.1-1.9-8.8-2.8-12.5 2.8-3.7 5.6-14.3 18-17.6 21.8-3.2 3.7-6.5 4.2-12 1.4-32.6-16.3-54-29.1-75.5-66-5.7-9.8 5.7-9.1 16.3-30.3 1.8-3.7.9-6.9-.5-9.7-1.4-2.8-12.5-30.1-17.1-41.2-4.5-10.8-9.1-9.3-12.5-9.5-3.2-.2-6.9-.2-10.6-.2-3.7 0-9.7 1.4-14.8 6.9-5.1 5.6-19.4 19-19.4 46.3 0 27.3 19.9 53.7 22.6 57.4 2.8 3.7 39.1 59.7 94.8 83.8 35.2 15.2 49 16.5 66.6 13.9 10.7-1.6 32.8-13.4 37.4-26.4 4.6-13 4.6-24.1 3.2-26.4-1.3-2.5-5-3.9-10.5-6.6z"/>
-    </svg>
-    <span>Falar Conosco</span>
-  </a>
+  </div>
 
   <footer>
-    <p>© 2026 Sistema de Cotações. Todos os direitos reservados.</p>
+    &copy; Super Cotação - Todos os direitos reservados.
   </footer>
 
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+    import { getFirestore, collection, addDoc, doc, setDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyAPBH_zOO3xrdiyW1qk20b3b1ejMlyYSvg",
+      authDomain: "supercotacao-6a43c.firebaseapp.com",
+      projectId: "supercotacao-6a43c",
+      storageBucket: "supercotacao-6a43c.firebasestorage.app",
+      messagingSenderId: "360323319589",
+      appId: "1:360323319589:web:b09f3744f1b9a92f11bccc"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    let planoSelecionado = '';
+    let valorPlano = '';
+
+    window.mascaraTelefone = function(input) {
+      let v = input.value.replace(/\D/g, "");
+      if (v.length > 11) v = v.substring(0, 11);
+      if (v.length > 10) {
+        v = v.replace(/^(\d{2})(\d{5})(\d{4})$/, "($1) $2-$3");
+      } else if (v.length > 6) {
+        v = v.replace(/^(\d{2})(\d{4})(\d{0,4})$/, "($1) $2-$3");
+      } else if (v.length > 2) {
+        v = v.replace(/^(\d{2})(\d{0,5})$/, "($1) $2");
+      } else {
+        v = v.replace(/^(\d*)/, "($1");
+      }
+      input.value = v;
+    };
+
+    window.selecionarPlano = function(nome, valor) {
+      planoSelecionado = nome;
+      valorPlano = valor;
+      document.getElementById('gridPlanos').style.display = 'none';
+      document.getElementById('secaoCadastro').style.display = 'block';
+      document.getElementById('tituloPlanoSelecionado').innerText = `Plano ${nome} (R$ ${valor.replace('.', ',')})`;
+    };
+
+    window.voltarParaPlanos = function() {
+      document.getElementById('gridPlanos').style.display = 'grid';
+      document.getElementById('secaoCadastro').style.display = 'none';
+    };
+
+    window.solicitarAtivacaoWhatsApp = async function() {
+      const nome = document.getElementById('cadNome').value.trim();
+      const telefone = document.getElementById('cadTelefone').value.replace(/\D/g, "");
+      const senha = document.getElementById('cadSenha').value.trim();
+
+      if (!nome) return alert("Por favor, preencha o seu nome.");
+      if (telefone.length < 10) return alert("Por favor, digite um número de WhatsApp válido.");
+      if (!senha) return alert("Por favor, defina uma senha.");
+
+      try {
+        // Salva pre-cadastro no Firestore como PENDENTE
+        await addDoc(collection(db, "assinantes"), {
+          nome,
+          telefone,
+          senha,
+          plano: planoSelecionado,
+          valor: valorPlano,
+          statusAssinatura: "PENDENTE",
+          dataSolicitacao: new Date()
+        });
+
+        // Seu número de atendimento para receber a solicitação de assinatura
+        const meuWhatsAppAtendimento = "5581995432834"; 
+
+        let msg = `👋 Olá! Gostaria de assinar o *Super Cotação*.\n\n`;
+        msg += `📌 *Plano:* ${planoSelecionado} (R$ ${valorPlano.replace('.', ',')})\n`;
+        msg += `👤 *Nome/Empresa:* ${nome}\n`;
+        msg += `📲 *WhatsApp Cadastrado:* ${telefone}\n\n`;
+        msg += `Aguardando chave Pix / link de pagamento para liberar o acesso!`;
+
+        const url = `https://api.whatsapp.com/send?phone=${meuWhatsAppAtendimento}&text=${encodeURIComponent(msg)}`;
+        window.open(url, '_blank');
+
+      } catch (e) {
+        alert("Erro ao enviar dados: " + e.message);
+      }
+    };
+  </script>
 </body>
 </html>
