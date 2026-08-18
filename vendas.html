@@ -21,8 +21,9 @@
     .badge-destaque { position: absolute; top: -12px; left: 50%; transform: translateX(-50%); background: #25d366; color: white; padding: 4px 12px; border-radius: 20px; font-size: 0.8em; font-weight: bold; text-transform: uppercase; }
 
     .plano-nome { font-size: 1.4em; color: #1a365d; font-weight: bold; margin-bottom: 10px; }
-    .plano-preco { font-size: 2.2em; color: #2d3748; font-weight: bold; margin-bottom: 15px; }
+    .plano-preco { font-size: 2.2em; color: #2d3748; font-weight: bold; margin-bottom: 5px; }
     .plano-preco span { font-size: 0.4em; color: #718096; font-weight: normal; }
+    .plano-subtexto { font-size: 0.85em; color: #718096; margin-bottom: 15px; font-weight: 500; }
 
     .plano-recursos { list-style: none; text-align: left; margin-bottom: 25px; font-size: 0.95em; }
     .plano-recursos li { margin-bottom: 10px; display: flex; align-items: center; gap: 8px; }
@@ -62,43 +63,46 @@
       <!-- PLANO MENSAL -->
       <div class="card-plano">
         <div class="plano-nome">Mensal</div>
-        <div class="plano-preco">R$ 49,90 <span>/mês</span></div>
+        <div class="plano-preco">R$ 98,90 <span>/mês</span></div>
+        <div class="plano-subtexto">Cobrado mensalmente</div>
         <ul class="plano-recursos">
           <li>Cotações ilimitadas</li>
           <li>Compartilhamento via WhatsApp</li>
           <li>Comparador automático de preços</li>
           <li>Suporte prioritário</li>
         </ul>
-        <button class="btn-assinar" onclick="selecionarPlano('Mensal', '49.90')">Assinar Plano Mensal</button>
+        <button class="btn-assinar" onclick="selecionarPlano('Mensal', '98.90', 'R$ 98,90/mês')">Assinar Plano Mensal</button>
       </div>
 
       <!-- PLANO TRIMESTRAL (DESTAQUE) -->
       <div class="card-plano destaque">
         <div class="badge-destaque">Mais Popular</div>
         <div class="plano-nome">Trimestral</div>
-        <div class="plano-preco">R$ 129,90 <span>/3 meses</span></div>
+        <div class="plano-preco">R$ 91,90 <span>/mês</span></div>
+        <div class="plano-subtexto">Cobrado R$ 275,70 a cada 3 meses</div>
         <ul class="plano-recursos">
-          <li>Economize 13%</li>
+          <li>Economize 7% em relação ao mensal</li>
           <li>Cotações ilimitadas</li>
           <li>Compartilhamento via WhatsApp</li>
           <li>Comparador automático de preços</li>
           <li>Suporte prioritário</li>
         </ul>
-        <button class="btn-assinar" onclick="selecionarPlano('Trimestral', '129.90')">Assinar Trimestral</button>
+        <button class="btn-assinar" onclick="selecionarPlano('Trimestral', '275.70', 'R$ 275,70 (3 meses)')">Assinar Trimestral</button>
       </div>
 
       <!-- PLANO ANUAL -->
       <div class="card-plano">
         <div class="plano-nome">Anual</div>
-        <div class="plano-preco">R$ 399,00 <span>/ano</span></div>
+        <div class="plano-preco">R$ 83,90 <span>/mês</span></div>
+        <div class="plano-subtexto">Cobrado R$ 1.006,80 por ano</div>
         <ul class="plano-recursos">
-          <li>Economize 33%</li>
+          <li>Economize 15% em relação ao mensal</li>
           <li>Cotações ilimitadas</li>
           <li>Compartilhamento via WhatsApp</li>
           <li>Comparador automático de preços</li>
           <li>Suporte VIP</li>
         </ul>
-        <button class="btn-assinar" onclick="selecionarPlano('Anual', '399.00')">Assinar Anual</button>
+        <button class="btn-assinar" onclick="selecionarPlano('Anual', '1006.80', 'R$ 1.006,80/ano')">Assinar Anual</button>
       </div>
 
     </div>
@@ -134,7 +138,7 @@
 
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-    import { getFirestore, collection, addDoc, doc, setDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+    import { getFirestore, collection, addDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyAPBH_zOO3xrdiyW1qk20b3b1ejMlyYSvg",
@@ -150,6 +154,7 @@
 
     let planoSelecionado = '';
     let valorPlano = '';
+    let textoValorExibicao = '';
 
     window.mascaraTelefone = function(input) {
       let v = input.value.replace(/\D/g, "");
@@ -166,12 +171,13 @@
       input.value = v;
     };
 
-    window.selecionarPlano = function(nome, valor) {
+    window.selecionarPlano = function(nome, valor, exibicao) {
       planoSelecionado = nome;
       valorPlano = valor;
+      textoValorExibicao = exibicao;
       document.getElementById('gridPlanos').style.display = 'none';
       document.getElementById('secaoCadastro').style.display = 'block';
-      document.getElementById('tituloPlanoSelecionado').innerText = `Plano ${nome} (R$ ${valor.replace('.', ',')})`;
+      document.getElementById('tituloPlanoSelecionado').innerText = `Plano ${nome} (${exibicao})`;
     };
 
     window.voltarParaPlanos = function() {
@@ -204,7 +210,7 @@
         const meuWhatsAppAtendimento = "5581995432834"; 
 
         let msg = `👋 Olá! Gostaria de assinar o *Super Cotação*.\n\n`;
-        msg += `📌 *Plano:* ${planoSelecionado} (R$ ${valorPlano.replace('.', ',')})\n`;
+        msg += `📌 *Plano:* ${planoSelecionado} (${textoValorExibicao})\n`;
         msg += `👤 *Nome/Empresa:* ${nome}\n`;
         msg += `📲 *WhatsApp Cadastrado:* ${telefone}\n\n`;
         msg += `Aguardando chave Pix / link de pagamento para liberar o acesso!`;
