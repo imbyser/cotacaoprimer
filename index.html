@@ -309,7 +309,6 @@
           const dadosAssinante = querySnapshot.docs[0].data();
 
           if (dadosAssinante.statusAssinatura === 'ATIVA') {
-            // Checa a senha
             if (dadosAssinante.senha && dadosAssinante.senha !== senha) {
               if (isAutoLogin) {
                 fazerLogout();
@@ -402,7 +401,7 @@
     }
 
     window.novaCotacao = function() {
-      cotacaoIdAtual = null;
+      window.cotacaoIdAtual = null;
       if (usuarioTelefone) localStorage.removeItem('cotacaoAtiva_' + usuarioTelefone);
       window.history.pushState({}, '', window.location.pathname);
       document.getElementById('listaProdutos').innerHTML = '';
@@ -421,7 +420,8 @@
 
     window.agendarSalvarAutomatico = function() {
       if (etapaAtual !== 1) return;
-      document.getElementById('statusSalvamento').innerText = "💾 Salvando...";
+      const statusEl = document.getElementById('statusSalvamento');
+      if (statusEl) statusEl.innerText = "💾 Salvando...";
       clearTimeout(timerSalvarAuto);
       timerSalvarAuto = setTimeout(window.salvarEstadoAutomatico, 1000);
     };
@@ -429,8 +429,8 @@
     window.salvarEstadoAutomatico = async function() {
       if (!usuarioTelefone) return;
 
-      if (!cotacaoIdAtual) {
-        cotacaoIdAtual = "COT-" + Math.floor(100000 + Math.random() * 900000);
+      if (!window.cotacaoIdAtual) {
+        window.cotacaoIdAtual = "COT-" + Math.floor(100000 + Math.random() * 900000);
       }
 
       const cliente = document.getElementById('nomeCliente').value.trim() || 'Cliente';
@@ -442,35 +442,42 @@
       let produtos = [];
 
       cards.forEach((card, index) => {
-        const nome = card.querySelector('.input-nome').value.trim();
-        const emb = card.querySelector('.input-embalagem').value.trim();
-        if (nome !== "") produtos.push({ id: index, nome, emb });
+        const nomeInput = card.querySelector('.input-nome');
+        const embInput = card.querySelector('.input-embalagem');
+        if (nomeInput && embInput) {
+          const nome = nomeInput.value.trim();
+          const emb = embInput.value.trim();
+          if (nome !== "") produtos.push({ id: index, nome, emb });
+        }
       });
 
       try {
-        await setDoc(doc(db, "cotacoes", cotacaoIdAtual), {
+        await setDoc(doc(db, "cotacoes", window.cotacaoIdAtual), {
           userId: usuarioTelefone,
           cliente, tel, prazo, pagto: "Combinar", tipo, produtos,
           criadoEm: new Date()
         }, { merge: true });
 
-        localStorage.setItem('cotacaoAtiva_' + usuarioTelefone, cotacaoIdAtual);
-        document.getElementById('statusSalvamento').innerText = "✅ Salvo";
-        document.getElementById('selectCotacoesUsuario').value = cotacaoIdAtual;
+        localStorage.setItem('cotacaoAtiva_' + usuarioTelefone, window.cotacaoIdAtual);
+        const statusEl = document.getElementById('statusSalvamento');
+        if (statusEl) statusEl.innerText = "✅ Salvo";
+        const selectEl = document.getElementById('selectCotacoesUsuario');
+        if (selectEl) selectEl.value = window.cotacaoIdAtual;
       } catch (e) {
-        document.getElementById('statusSalvamento').innerText = "⚠️ Erro ao salvar";
+        const statusEl = document.getElementById('statusSalvamento');
+        if (statusEl) statusEl.innerText = "⚠️ Erro ao salvar";
       }
     };
 
     window.salvarCotacaoEGerarLink = async function() {
       await window.salvarEstadoAutomatico();
-      if (!cotacaoIdAtual) return alert("Adicione pelo menos um produto válido.");
+      if (!window.cotacaoIdAtual) return alert("Adicione pelo menos um produto válido.");
 
       await carregarListaCotacoesUsuario();
-      document.getElementById('selectCotacoesUsuario').value = cotacaoIdAtual;
+      document.getElementById('selectCotacoesUsuario').value = window.cotacaoIdAtual;
 
       const baseUrl = window.location.href.split('?')[0];
-      const linkVendedor = `${baseUrl}?c=${cotacaoIdAtual}&e=2`;
+      const linkVendedor = `${baseUrl}?c=${window.cotacaoIdAtual}&e=2`;
       const cliente = document.getElementById('nomeCliente').value.trim() || 'Cliente';
 
       let msg = `🛒 *SOLICITAÇÃO DE COTAÇÃO*\nCliente: *${cliente}*\n\nPreencha seus preços no link:\n${linkVendedor}`;
@@ -525,7 +532,7 @@
     window.carregarCotacaoDoBanco = function(cotacaoId, etapa) {
       if (listenerSnapshot) listenerSnapshot();
 
-      cotacaoIdAtual = cotacaoId;
+      window.cotacaoIdAtual = cotacaoId;
       if (usuarioTelefone) {
         localStorage.setItem('cotacaoAtiva_' + usuarioTelefone, cotacaoId);
       }
@@ -574,7 +581,6 @@
 
   <script>
     let etapaAtual = 1; 
-    let cotacaoIdAtual = null;
 
     function adicionarNovoProduto(nome = '', emb = '', preco = '', qtd = 1, vencedor = 'Sem oferta') {
       const container = document.getElementById('listaProdutos');
@@ -611,14 +617,20 @@
     function alterarQtd(btn, delta) {
       const input = btn.parentElement.querySelector('.qtd-valor');
       input.value = Math.max(1, parseInt(input.value) + delta);
-      if (etapaAtual === 3) calcularTotalEGerarSplits();
+      if (etapaAtual === 3 && typeof calcularTotalEGerarSplits === 'function') calcularTotalEGerarSplits();
     }
 
     function removerProduto(btn) {
       btn.closest('.produto-card').remove();
-      if (etapaAtual === 3) calcularTotalEGerarSplits();
+      if (etapaAtual === 3 && typeof calcularTotalEGerarSplits === 'function') calcularTotalEGerarSplits();
       if (typeof window.agendarSalvarAutomatico === 'function') {
         window.agendarSalvarAutomatico();
+      }
+    }
+
+    function executarAcaoPrincipal() {
+      if (typeof window.salvarCotacaoEGerarLink === 'function') {
+        window.salvarCotacaoEGerarLink();
       }
     }
 
@@ -651,7 +663,6 @@
       const botoesExcluir = document.querySelectorAll('.btn-excluir');
       const inputsNome = document.querySelectorAll('.input-nome');
       const inputsEmb = document.querySelectorAll('.input-embalagem');
-      const inputsPreco = document.querySelectorAll('.input-preco');
       const badgesVencedor = document.querySelectorAll('.badge-vencedor');
 
       document.getElementById('barraEtapas').style.display = 'flex';
@@ -680,121 +691,17 @@
         document.getElementById('boxTotal').style.display = 'none';
         document.getElementById('painelEnvioDividido').style.display = 'none';
         document.getElementById('btnAcao').style.display = 'block';
-        document.getElementById('btnAcao').innerText = "💾 Salvar e Enviar Preços";
+        document.getElementById('btnAcao').innerText = "Enviar Meus Preços";
+        document.getElementById('btnAcao').onclick = function() {
+          if (window.cotacaoIdAtual) window.salvarPrecosVendedor(window.cotacaoIdAtual);
+        };
 
         inputsNome.forEach(i => i.disabled = true);
         inputsEmb.forEach(i => i.disabled = true);
-        inputsPreco.forEach(i => i.disabled = false);
         precos.forEach(p => p.style.display = 'flex');
         quantidades.forEach(q => q.style.display = 'none');
         botoesExcluir.forEach(b => b.style.display = 'none');
         badgesVencedor.forEach(b => b.style.display = 'none');
-      } else if (etapa === 3) {
-        document.getElementById('textoOrientacao').innerHTML = "🛒 <b>Etapa 3:</b> Menores preços encontrados.";
-        document.getElementById('secaoVendedor').style.display = 'none';
-        document.getElementById('secaoAtalhos').style.display = 'none';
-        document.getElementById('btnAdicionarManual').style.display = 'none';
-        document.getElementById('boxTotal').style.display = 'flex';
-        document.getElementById('painelEnvioDividido').style.display = 'block';
-        document.getElementById('btnAcao').style.display = 'none';
-
-        inputsNome.forEach(i => i.disabled = true);
-        inputsEmb.forEach(i => i.disabled = true);
-        inputsPreco.forEach(i => i.disabled = true);
-        precos.forEach(p => p.style.display = 'flex');
-        quantidades.forEach(q => q.style.display = 'flex');
-        botoesExcluir.forEach(b => b.style.display = 'none');
-        badgesVencedor.forEach(b => b.style.display = 'inline-block');
-        calcularTotalEGerarSplits();
-      }
-    }
-
-    function executarAcaoPrincipal() {
-      if (etapaAtual === 1) {
-        if (typeof window.salvarCotacaoEGerarLink === 'function') {
-          window.salvarCotacaoEGerarLink();
-        }
-      } else if (etapaAtual === 2) {
-        const urlParams = new URLSearchParams(window.location.search);
-        const cParam = urlParams.get('c');
-        if (cParam && typeof window.salvarPrecosVendedor === 'function') {
-          window.salvarPrecosVendedor(cParam);
-        } else {
-          alert("Erro: ID da cotação não encontrado na URL.");
-        }
-      }
-    }
-
-    function calcularTotalEGerarSplits() {
-      const cards = document.querySelectorAll('.produto-card');
-      let totalGeral = 0;
-      let vendedoresPedidos = {};
-
-      cards.forEach(card => {
-        const nome = card.querySelector('.input-nome').value.trim();
-        const emb = card.querySelector('.input-embalagem').value.trim();
-        const precoStr = card.querySelector('.input-preco').value.replace(',', '.');
-        const preco = parseFloat(precoStr) || 0;
-        const qtd = parseInt(card.querySelector('.qtd-valor').value) || 1;
-        const vencedor = card.querySelector('.nome-vencedor') ? card.querySelector('.nome-vencedor').innerText : 'Sem oferta';
-
-        if (preco > 0 && vencedor !== 'Sem oferta') {
-          const subtotal = preco * qtd;
-          totalGeral += subtotal;
-
-          if (!vendedoresPedidos[vencedor]) {
-            vendedoresPedidos[vencedor] = {
-              itens: [],
-              total: 0
-            };
-          }
-
-          vendedoresPedidos[vencedor].itens.push({ nome, emb, preco, qtd, subtotal });
-          vendedoresPedidos[vencedor].total += subtotal;
-        }
-      });
-
-      document.getElementById('totalDisplay').innerText = `R$ ${totalGeral.toFixed(2).replace('.', ',')}`;
-
-      const containerSplits = document.getElementById('painelEnvioDividido');
-      containerSplits.innerHTML = '';
-
-      const cliente = document.getElementById('nomeCliente').value.trim() || 'Cliente';
-      const prazo = document.getElementById('prazoPagamento').value;
-      const tipo = document.getElementById('tipoCotacao').value;
-
-      Object.keys(vendedoresPedidos).forEach(vendedor => {
-        const dados = vendedoresPedidos[vendedor];
-        const div = document.createElement('div');
-        div.className = 'card-divisao-vendedor';
-
-        let textoMsg = `📦 *PEDIDO FECHADO - COTAÇÃO*\n`;
-        textoMsg += `👤 Cliente: *${cliente}*\n`;
-        textoMsg += `🏷️ Condição: ${tipo} | ${prazo}\n`;
-        textoMsg += `------------------------------\n`;
-
-        dados.itens.forEach(item => {
-          textoMsg += `• ${item.qtd}x ${item.nome} (${item.emb}) - R$ ${item.preco.toFixed(2).replace('.', ',')} = R$ ${item.subtotal.toFixed(2).replace('.', ',')}\n`;
-        });
-
-        textoMsg += `------------------------------\n`;
-        textoMsg += `💰 *Total do Pedido: R$ ${dados.total.toFixed(2).replace('.', ',')}*`;
-
-        const urlWhatsapp = `https://api.whatsapp.com/send?text=${encodeURIComponent(textoMsg)}`;
-
-        div.innerHTML = `
-          <div>
-            <b>🏆 ${vendedor}</b><br>
-            <small>${dados.itens.length} item(ns) - Total: <b>R$ ${dados.total.toFixed(2).replace('.', ',')}</b></small>
-          </div>
-          <a href="${urlWhatsapp}" target="_blank" class="btn-send-vendor" style="text-decoration: none; display: inline-block;">Enviar Pedido 📲</a>
-        `;
-
-        containerSplits.appendChild(div);
-      });
-
-      if (Object.keys(vendedoresPedidos).length === 0) {
-        containerSplits.innerHTML = '<div style="font-size:0.85em; color:#718096; text-align:center; padding:5px;">Nenhum menor preço disponível para fechar pedido.</div>';
       }
     }
   </script>
