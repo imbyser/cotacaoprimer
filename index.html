@@ -63,6 +63,7 @@
     .btn-cat.ativo { background: #2b6cb0; color: white; border-color: #2b6cb0; }
     
     .itens-categoria-container { display: flex; flex-wrap: wrap; gap: 6px; background: #f7fafc; padding: 8px; border-radius: 8px; border: 1px solid #e2e8f0; min-height: 45px; align-items: center; }
+    .aviso-vazio { font-size: 0.78em; color: #a0aec0; font-style: italic; width: 100%; text-align: center; }
     .btn-item-rapido { background: white; border: 1px solid #cbd5e0; border-radius: 6px; padding: 5px 10px; font-size: 0.78em; font-weight: bold; color: #2b6cb0; cursor: pointer; }
     .btn-item-rapido:hover { background: #ebf8ff; border-color: #90cdf4; }
 
@@ -179,7 +180,7 @@
         </div>
       </div>
 
-      <!-- SEÇÃO ATALHOS / ADICIONAR RÁPIDO POR CATEGORIAS -->
+      <!-- SEÇÃO ATALHOS / ADICIONAR RÁPIDO POR CATEGORIAS (LIMPADA) -->
       <div class="secao-atalhos" id="secaoAtalhos">
         <div class="titulo-atalhos">⚡ Adicionar Rápido por Categoria:</div>
         <div class="botoes-categorias">
@@ -189,7 +190,7 @@
           <button class="btn-cat" onclick="mudarCategoriaAtiva('frios', this)">🧀 Frios</button>
         </div>
         <div class="itens-categoria-container" id="containerItensCategoria">
-          <!-- Os itens serão injetados dinamicamente via JS -->
+          <!-- Começa vazio. Os itens só aparecem conforme você cadastrar -->
         </div>
       </div>
 
@@ -263,40 +264,15 @@
     let timerSalvarAuto = null;
     window.cotacaoDadosGlobais = null;
 
-    // Catálogo padrão de itens por categoria
+    // Catálogo inicial zerado (sem produtos padrão visíveis)
     let catalogoCategorias = {
-      estiva: [
-        { nome: 'Arroz 5kg', emb: 'Fardo c/ 6' },
-        { nome: 'Feijão 1kg', emb: 'Fardo c/ 10' },
-        { nome: 'Açúcar Refinado 1kg', emb: 'Fardo c/ 10' },
-        { nome: 'Café 250g', emb: 'Pct c/ 20' },
-        { nome: 'Óleo de Soja 900ml', emb: 'Cx c/ 20' },
-        { nome: 'Macarrão Espaguete 500g', emb: 'Fardo c/ 20' }
-      ],
-      perfumaria: [
-        { nome: 'Sabonete 90g', emb: 'Cx c/ 12' },
-        { nome: 'Shampoo 350ml', emb: 'Display c/ 6' },
-        { nome: 'Condicionador 350ml', emb: 'Display c/ 6' },
-        { nome: 'Creme Dental 90g', emb: 'Cx c/ 12' },
-        { nome: 'Desodorante Aerosol', emb: 'Cx c/ 12' }
-      ],
-      limpeza: [
-        { nome: 'Água Sanitária 1L', emb: 'Fardo c/ 12' },
-        { nome: 'Sabão em Pó 1kg', emb: 'Fardo c/ 10' },
-        { nome: 'Detergente Líquido 500ml', emb: 'Cx c/ 24' },
-        { nome: 'Desinfetante 2L', emb: 'Fardo c/ 6' },
-        { nome: 'Esponja de Aço', emb: 'Pct c/ 60' }
-      ],
-      frios: [
-        { nome: 'Mussarela Fatiada 1kg', emb: 'Peça' },
-        { nome: 'Presunto Cozido 1kg', emb: 'Peça' },
-        { nome: 'Margarina 500g', emb: 'Cx c/ 12' },
-        { nome: 'Leite Integral 1L', emb: 'Fardo c/ 12' },
-        { nome: 'Ovos Brancos (Dz)', emb: 'Cx c/ 30 dz' }
-      ]
+      estiva: [],
+      perfumaria: [],
+      limpeza: [],
+      frios: []
     };
 
-    // Carregar itens salvos pelo usuário no localStorage (se houver)
+    // Carregar itens salvos pelo usuário no localStorage
     function carregarCatalogoSalvo() {
       const salvo = localStorage.getItem('catalogo_customizado');
       if (salvo) {
@@ -304,12 +280,7 @@
           const custom = JSON.parse(salvo);
           for (let cat in custom) {
             if (catalogoCategorias[cat]) {
-              // Evita duplicatas exatas pelo nome
-              custom[cat].forEach(itemNovo => {
-                if (!catalogoCategorias[cat].some(i => i.nome.toLowerCase() === itemNovo.nome.toLowerCase())) {
-                  catalogoCategorias[cat].push(itemNovo);
-                }
-              });
+              catalogoCategorias[cat] = custom[cat];
             }
           }
         } catch(e) { console.error(e); }
@@ -328,7 +299,6 @@
         // Atualiza a tela se a categoria ativa for a mesma
         const btnAtivo = document.querySelector('.botoes-categorias .btn-cat.ativo');
         if (btnAtivo) {
-          // Identifica qual categoria está selecionada pelo texto ou atributo
           if (btnAtivo.innerText.toLowerCase().includes(categoria)) {
             window.mudarCategoriaAtiva(categoria, btnAtivo);
           }
@@ -344,6 +314,12 @@
       containerItens.innerHTML = '';
 
       const itens = catalogoCategorias[categoriaKey] || [];
+      
+      if (itens.length === 0) {
+        containerItens.innerHTML = `<span class="aviso-vazio">Nenhum item rápido nesta categoria. Adicione um produto com esta categoria para salvá-lo aqui.</span>`;
+        return;
+      }
+
       itens.forEach(item => {
         const btn = document.createElement('button');
         btn.className = 'btn-item-rapido';
@@ -527,7 +503,7 @@
       window.history.pushState({}, '', window.location.pathname);
       document.getElementById('listaProdutos').innerHTML = '';
       document.getElementById('selectCotacoesUsuario').value = '';
-      adicionarNovoProduto("Arroz 5kg", "Fardo c/ 6");
+      adicionarNovoProduto("", "");
       alternarEtapa(1);
     };
 
@@ -566,7 +542,6 @@
         const emb = card.querySelector('.input-embalagem').value.trim();
         if (nome !== "") {
           produtos.push({ id: index, nome, emb });
-          // Opcional: Se preencheu nome e embalagem manualmente na lista, já cadastra na categoria selecionada padrão (Estiva) caso queira
         }
       });
 
@@ -686,7 +661,7 @@
               adicionarNovoProduto(prod.nome, prod.emb, menorPreco, 1, vencedor);
             });
           } else {
-            adicionarNovoProduto("Arroz 5kg", "Fardo c/ 6");
+            adicionarNovoProduto("", "");
           }
 
           alternarEtapa(etapa);
@@ -733,10 +708,8 @@
 
     function adicionarItemManualComCategoria() {
       const categoriaSelecionada = document.getElementById('selectCategoriaNovo').value;
-      // Adiciona um item vazio na lista
       adicionarNovoProduto('', '');
       
-      // Pega o último card adicionado para observar quando o usuário digitar o nome e salvar automaticamente na categoria escolhida
       const cards = document.querySelectorAll('.produto-card');
       const ultimoCard = cards[cards.length - 1];
       ultimoCard.dataset.categoriaPredefinida = categoriaSelecionada;
