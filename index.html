@@ -7,7 +7,9 @@
 
   <style>
     * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 0; }
-    body { background-color: #f0f2f5; padding-bottom: 260px; }
+    
+    /* CORREÇÃO DE ROLAGEM: Aumentado o espaço no fundo para a rolagem da tela principal */
+    body { background-color: #f0f2f5; padding-bottom: 380px; }
     
     #authOverlay {
       position: fixed; top: 0; left: 0; width: 100%; height: 100%;
@@ -82,7 +84,8 @@
     .btn-excluir { background: #fff5f5; color: #e53e3e; border: 1px solid #fed7d7; border-radius: 6px; padding: 6px 10px; font-size: 0.8em; cursor: pointer; font-weight: bold; display: block; }
     .btn-adicionar { background: #ebf8ff; color: #2b6cb0; border: 2px dashed #90cdf4; border-radius: 10px; width: 100%; padding: 12px; font-size: 0.95em; font-weight: bold; cursor: pointer; margin-top: 5px; }
 
-    .carrinho-bar { position: fixed; bottom: 0; left: 0; right: 0; background: white; border-top: 1px solid #e2e8f0; padding: 15px; box-shadow: 0 -2px 10px rgba(0,0,0,0.1); z-index: 100; max-height: 310px; overflow-y: auto; }
+    /* CORREÇÃO DE ROLAGEM: Ajustada a altura máxima e rolagem do carrinho */
+    .carrinho-bar { position: fixed; bottom: 0; left: 0; right: 0; background: white; border-top: 1px solid #e2e8f0; padding: 15px; box-shadow: 0 -2px 10px rgba(0,0,0,0.1); z-index: 100; max-height: 45vh; overflow-y: auto; }
     .carrinho-conteudo { max-width: 650px; margin: 0 auto; }
     
     .linha-dados-cliente { display: flex; gap: 8px; margin-bottom: 8px; }
@@ -628,6 +631,101 @@
       }
     }
 
+    function calcularTotalEGerarSplits() {
+      const cards = document.querySelectorAll('.produto-card');
+      let totalGeral = 0;
+      let splitsPorVencedor = {};
+
+      cards.forEach(card => {
+        const nome = card.querySelector('.input-nome').value.trim();
+        const precoStr = card.querySelector('.input-preco').value.replace(',', '.');
+        const preco = parseFloat(precoStr) || 0;
+        const qtd = parseInt(card.querySelector('.qtd-valor').value) || 1;
+        const vencedor = card.querySelector('.nome-vencedor') ? card.querySelector('.nome-vencedor').innerText : 'Sem oferta';
+
+        if (preco > 0) {
+          const subtotal = preco * qtd;
+          totalGeral += subtotal;
+
+          if (!splitsPorVencedor[vencedor]) {
+            splitsPorVencedor[vencedor] = { total: 0, itens: [] };
+          }
+          splitsPorVencedor[vencedor].total += subtotal;
+          splitsPorVencedor[vencedor].itens.push(`${nome} (${qtd}x)`);
+        }
+      });
+
+      document.getElementById('totalDisplay').innerText = `R$ ${totalGeral.toFixed(2).replace('.', ',')}`;
+
+      const containerSplit = document.getElementById('painelEnvioDividido');
+      containerSplit.innerHTML = '';
+
+      if (Object.keys(splitsPorVencedor).length > 0) {
+        containerSplit.innerHTML = '<b>⚡ Pedido Dividido por Fornecedor:</b><br><br>';
+        for (let v in splitsPorVencedor) {
+          if (v !== 'Sem oferta') {
+            const div = document.createElement('div');
+            div.className = 'card-divisao-vendedor';
+            div.innerHTML = `
+              <div>
+                <b>${v}</b><br>
+                Total: R$ ${splitsPorVencedor[v].total.toFixed(2).replace('.', ',')}
+              </div>
+              <button class="btn-send-vendor" onclick="enviarWhatsappVencedor('${v}')">Enviar WhatsApp</button>
+            `;
+            containerSplit.appendChild(div);
+          }
+        }
+      }
+    }
+
+    function executarAcaoPrincipal() {
+      if (etapaAtual === 1) {
+        if (typeof window.salvarCotacaoEGerarLink === 'function') {
+          window.salvarCotacaoEGerarLink();
+        }
+      } else if (etapaAtual === 2) {
+        if (typeof window.salvarPrecosVendedor === 'function') {
+          window.salvarPrecosVendedor(cotacaoIdAtual);
+        }
+      } else if (etapaAtual === 3) {
+        alert("Escolha um dos fornecedores abaixo para enviar o pedido diretamente!");
+      }
+    }
+
+    function enviarWhatsappVencedor(vencedor) {
+      const cliente = document.getElementById('nomeCliente').value.trim() || 'Cliente';
+      const prazo = document.getElementById('prazoPagamento').value;
+      const tipo = document.getElementById('tipoCotacao').value;
+
+      const cards = document.querySelectorAll('.produto-card');
+      let msg = `🛒 *PEDIDO FINAL - ${vencedor.toUpperCase()}*\n`;
+      msg += `Cliente: *${cliente}*\n`;
+      msg += `Condição: *${prazo}* (${tipo})\n\n`;
+      msg += `*ITENS:* \n`;
+
+      let totalVencedor = 0;
+
+      cards.forEach(card => {
+        const nome = card.querySelector('.input-nome').value.trim();
+        const emb = card.querySelector('.input-embalagem').value.trim();
+        const precoStr = card.querySelector('.input-preco').value.replace(',', '.');
+        const preco = parseFloat(precoStr) || 0;
+        const qtd = parseInt(card.querySelector('.qtd-valor').value) || 1;
+        const v = card.querySelector('.nome-vencedor') ? card.querySelector('.nome-vencedor').innerText : 'Sem oferta';
+
+        if (v === vencedor && preco > 0) {
+          const subtotal = preco * qtd;
+          totalVencedor += subtotal;
+          msg += `- ${qtd}x ${nome} (${emb}) - R$ ${preco.toFixed(2)} = R$ ${subtotal.toFixed(2)}\n`;
+        }
+      });
+
+      msg += `\n*TOTAL DO PEDIDO: R$ ${totalVencedor.toFixed(2).replace('.', ',')}*`;
+
+      window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(msg)}`, '_blank');
+    }
+
     function alternarEtapa(etapa) {
       etapaAtual = etapa;
       
@@ -676,23 +774,24 @@
         inputsEmb.forEach(i => i.disabled = false);
         precos.forEach(p => p.style.display = 'none');
         quantidades.forEach(q => q.style.display = 'none');
-        botoesExcluir.forEach(b => b.style.display = 'block'); // Exibe botão excluir
+        botoesExcluir.forEach(b => b.style.display = 'block');
         badgesVencedor.forEach(b => b.style.display = 'none');
       } else if (etapa === 2) {
-        document.getElementById('textoOrientacao').innerHTML = "💼 <b>Etapa 2:</b> Vendedor, digite seus preços.";
+        document.getElementById('textoOrientacao').innerHTML = "💼 <b>Etapa 2:</b> Preencha os preços dos produtos.";
         document.getElementById('secaoVendedor').style.display = 'block';
         document.getElementById('secaoAtalhos').style.display = 'none';
         document.getElementById('btnAdicionarManual').style.display = 'none';
         document.getElementById('boxTotal').style.display = 'none';
         document.getElementById('painelEnvioDividido').style.display = 'none';
         document.getElementById('btnAcao').style.display = 'block';
-        document.getElementById('btnAcao').innerText = "Enviar Meus Preços";
+        document.getElementById('btnAcao').innerText = "Salvar e Enviar Preços";
 
         inputsNome.forEach(i => i.disabled = true);
         inputsEmb.forEach(i => i.disabled = true);
+        inputsPreco.forEach(i => i.disabled = false);
         precos.forEach(p => p.style.display = 'flex');
         quantidades.forEach(q => q.style.display = 'none');
-        botoesExcluir.forEach(b => b.style.display = 'block'); // <--- EXIBE O BOTÃO DE EXCLUIR NA ETAPA 2 TAMBÉM
+        botoesExcluir.forEach(b => b.style.display = 'none');
         badgesVencedor.forEach(b => b.style.display = 'none');
       } else if (etapa === 3) {
         document.getElementById('textoOrientacao').innerHTML = "📦 <b>Etapa 3:</b> Monte seu pedido final.";
@@ -700,130 +799,27 @@
         document.getElementById('secaoAtalhos').style.display = 'none';
         document.getElementById('btnAdicionarManual').style.display = 'none';
         document.getElementById('boxTotal').style.display = 'flex';
-        document.getElementById('btnAcao').style.display = 'block';
+        document.getElementById('painelEnvioDividido').style.display = 'block';
+        document.getElementById('btnAcao').style.display = 'none';
 
         inputsNome.forEach(i => i.disabled = true);
         inputsEmb.forEach(i => i.disabled = true);
+        inputsPreco.forEach(i => i.disabled = true);
         precos.forEach(p => p.style.display = 'flex');
-        inputsPreco.forEach(ip => ip.disabled = true);
         quantidades.forEach(q => q.style.display = 'flex');
         botoesExcluir.forEach(b => b.style.display = 'none');
-        badgesVencedor.forEach(b => b.style.display = 'inline-block');
+        
+        cards = document.querySelectorAll('.produto-card');
+        cards.forEach(card => {
+          const v = card.querySelector('.nome-vencedor') ? card.querySelector('.nome-vencedor').innerText : 'Sem oferta';
+          if (v !== 'Sem oferta') {
+            card.querySelector('.badge-vencedor').style.display = 'inline-block';
+          }
+        });
 
         calcularTotalEGerarSplits();
       }
     }
-
-    function calcularTotalEGerarSplits() {
-      const cards = document.querySelectorAll('.produto-card');
-      let totalGeral = 0;
-      let resumoPorVendedor = {};
-
-      cards.forEach(card => {
-        const nome = card.querySelector('.input-nome').value.trim();
-        const preco = parseFloat(card.querySelector('.input-preco').value.replace(',', '.')) || 0;
-        const qtd = parseInt(card.querySelector('.qtd-valor').value) || 1;
-        const vencedorEl = card.querySelector('.nome-vencedor');
-        const vencedor = vencedorEl ? vencedorEl.innerText : 'Sem oferta';
-
-        const subtotal = preco * qtd;
-        totalGeral += subtotal;
-
-        if (vencedor !== 'Sem oferta' && preco > 0) {
-          if (!resumoPorVendedor[vencedor]) {
-            resumoPorVendedor[vencedor] = { itens: [], total: 0 };
-          }
-          resumoPorVendedor[vencedor].itens.push({ nome, qtd, preco, subtotal });
-          resumoPorVendedor[vencedor].total += subtotal;
-        }
-      });
-
-      document.getElementById('totalDisplay').innerText = `R$ ${totalGeral.toFixed(2).replace('.', ',')}`;
-
-      const painel = document.getElementById('painelEnvioDividido');
-      painel.innerHTML = '';
-
-      const qtdVencedores = Object.keys(resumoPorVendedor).length;
-
-      if (qtdVencedores > 1) {
-        painel.style.display = 'block';
-        let htmlCards = `<div style="font-size: 0.8em; font-weight: bold; margin-bottom: 5px; color: #2d3748;">⚡ Pedido Dividido por Fornecedor:</div>`;
-
-        for (let vend in resumoPorVendedor) {
-          const dados = resumoPorVendedor[vend];
-          const totalFormatado = dados.total.toFixed(2).replace('.', ',');
-          htmlCards += `
-            <div class="card-divisao-vendedor">
-              <div>
-                <b>${vend}</b><br>
-                <span>Total: R$ ${totalFormatado}</span>
-              </div>
-              <button class="btn-send-vendor" onclick='enviarPedidoSeparado("${vend}", ${JSON.stringify(dados.itens)})'>Enviar WhatsApp</button>
-            </div>
-          `;
-        }
-        painel.innerHTML = htmlCards;
-        document.getElementById('btnAcao').innerText = "Enviar Pedido Completo (Geral)";
-      } else {
-        painel.style.display = 'none';
-        document.getElementById('btnAcao').innerText = "Enviar Pedido Completo via WhatsApp";
-      }
-    }
-
-    function executarAcaoPrincipal() {
-      if (etapaAtual === 1) {
-        window.salvarCotacaoEGerarLink();
-      } else if (etapaAtual === 2) {
-        window.salvarPrecosVendedor(cotacaoIdAtual);
-      } else if (etapaAtual === 3) {
-        enviarPedidoCompletoGeral();
-      }
-    }
-
-    function enviarPedidoCompletoGeral() {
-      const cliente = document.getElementById('nomeCliente').value.trim() || 'Cliente';
-      const tipo = document.getElementById('tipoCotacao').value;
-      const prazo = document.getElementById('prazoPagamento').value;
-      const cards = document.querySelectorAll('.produto-card');
-      
-      let msg = `🛒 *PEDIDO DE COMPRA*\nCliente: *${cliente}*\nTipo: *${tipo}*\nForma/Prazo: *${prazo}*\n\n`;
-      let totalGeral = 0;
-
-      cards.forEach(card => {
-        const nome = card.querySelector('.input-nome').value.trim();
-        const emb = card.querySelector('.input-embalagem').value.trim();
-        const preco = parseFloat(card.querySelector('.input-preco').value.replace(',', '.')) || 0;
-        const qtd = parseInt(card.querySelector('.qtd-valor').value) || 1;
-        const vencedorEl = card.querySelector('.nome-vencedor');
-        const vencedor = vencedorEl ? vencedorEl.innerText : 'Sem oferta';
-        const subtotal = preco * qtd;
-        
-        if (nome) {
-          totalGeral += subtotal;
-          msg += `• *${nome}* (${emb})\n  Qtd: ${qtd} | Preço: R$ ${preco.toFixed(2).replace('.', ',')} | Subtotal: R$ ${subtotal.toFixed(2).replace('.', ',')}\n  Fornecedor: _${vencedor}_\n\n`;
-        }
-      });
-
-      msg += `💰 *TOTAL GERAL: R$ ${totalGeral.toFixed(2).replace('.', ',')}*`;
-      window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(msg)}`, '_blank');
-    }
-
-    window.enviarPedidoSeparado = function(vencedor, itens) {
-      const cliente = document.getElementById('nomeCliente').value.trim() || 'Cliente';
-      const tipo = document.getElementById('tipoCotacao').value;
-      const prazo = document.getElementById('prazoPagamento').value;
-      
-      let msg = `🛒 *PEDIDO DE COMPRA*\nFornecedor: *${vencedor}*\nCliente: *${cliente}*\nTipo: *${tipo}*\nForma/Prazo: *${prazo}*\n\n`;
-      let total = 0;
-
-      itens.forEach(item => {
-        total += item.subtotal;
-        msg += `• *${item.nome}*\n  Qtd: ${item.qtd} | Preço: R$ ${item.preco.toFixed(2).replace('.', ',')} | Sub: R$ ${item.subtotal.toFixed(2).replace('.', ',')}\n\n`;
-      });
-
-      msg += `💰 *TOTAL: R$ ${total.toFixed(2).replace('.', ',')}*`;
-      window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(msg)}`, '_blank');
-    };
   </script>
 </body>
 </html>
