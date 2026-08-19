@@ -56,10 +56,16 @@
     .secao-vendedor { background: #f0fff4; border: 1px solid #c6f6d5; padding: 12px; border-radius: 10px; margin-bottom: 15px; display: none; }
     .secao-vendedor h4 { color: #22543d; font-size: 0.9em; margin-bottom: 8px; }
 
+    /* Estilização da seção de Atalhos por Categorias */
     .secao-atalhos { background: white; padding: 12px; border-radius: 10px; margin-bottom: 15px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
     .titulo-atalhos { font-size: 0.85em; font-weight: bold; color: #4a5568; margin-bottom: 8px; }
-    .botoes-categorias { display: flex; flex-wrap: wrap; gap: 6px; }
-    .btn-cat { background: #edf2f7; border: 1px solid #cbd5e0; border-radius: 20px; padding: 6px 12px; font-size: 0.8em; font-weight: bold; color: #2d3748; cursor: pointer; }
+    .botoes-categorias { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+    .btn-cat { background: #edf2f7; border: 1px solid #cbd5e0; border-radius: 20px; padding: 6px 12px; font-size: 0.8em; font-weight: bold; color: #2d3748; cursor: pointer; transition: 0.2s; }
+    .btn-cat.ativo { background: #2b6cb0; color: white; border-color: #2b6cb0; }
+    
+    .itens-categoria-container { display: flex; flex-wrap: wrap; gap: 6px; background: #f7fafc; padding: 8px; border-radius: 8px; border: 1px solid #e2e8f0; min-height: 45px; align-items: center; }
+    .btn-item-rapido { background: white; border: 1px solid #cbd5e0; border-radius: 6px; padding: 5px 10px; font-size: 0.78em; font-weight: bold; color: #2b6cb0; cursor: pointer; }
+    .btn-item-rapido:hover { background: #ebf8ff; border-color: #90cdf4; }
 
     .produto-card { background: white; border-radius: 10px; padding: 12px; margin-bottom: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); display: flex; flex-direction: column; gap: 8px; }
     .linha-inputs { display: flex; gap: 8px; }
@@ -172,11 +178,17 @@
         </div>
       </div>
 
+      <!-- SEÇÃO ATALHOS / ADICIONAR RÁPIDO POR CATEGORIAS -->
       <div class="secao-atalhos" id="secaoAtalhos">
-        <div class="titulo-atalhos">⚡ Adicionar Rápido:</div>
+        <div class="titulo-atalhos">⚡ Adicionar Rápido por Categoria:</div>
         <div class="botoes-categorias">
-          <button class="btn-cat" onclick="adicionarNovoProduto('Arroz 5kg', 'Fardo c/ 6')">+ Arroz</button>
-          <button class="btn-cat" onclick="adicionarNovoProduto('Feijão 1kg', 'Fardo c/ 10')">+ Feijão</button>
+          <button class="btn-cat ativo" onclick="mudarCategoriaAtiva('estiva', this)">📦 Estiva</button>
+          <button class="btn-cat" onclick="mudarCategoriaAtiva('perfumaria', this)">🧴 Perfumaria</button>
+          <button class="btn-cat" onclick="mudarCategoriaAtiva('limpeza', this)">🧹 Limpeza</button>
+          <button class="btn-cat" onclick="mudarCategoriaAtiva('frios', this)">🧀 Frios</button>
+        </div>
+        <div class="itens-categoria-container" id="containerItensCategoria">
+          <!-- Os itens serão injetados dinamicamente via JS -->
         </div>
       </div>
 
@@ -239,6 +251,62 @@
     let listenerSnapshot = null;
     let timerSalvarAuto = null;
     window.cotacaoDadosGlobais = null;
+
+    // Catálogo de itens predefinidos por categoria
+    const catalogoCategorias = {
+      estiva: [
+        { nome: 'Arroz 5kg', emb: 'Fardo c/ 6' },
+        { nome: 'Feijão 1kg', emb: 'Fardo c/ 10' },
+        { nome: 'Açúcar Refinado 1kg', emb: 'Fardo c/ 10' },
+        { nome: 'Café 250g', emb: 'Pct c/ 20' },
+        { nome: 'Óleo de Soja 900ml', emb: 'Cx c/ 20' },
+        { nome: 'Macarrão Espaguete 500g', emb: 'Fardo c/ 20' }
+      ],
+      perfumaria: [
+        { nome: 'Sabonete 90g', emb: 'Cx c/ 12' },
+        { nome: 'Shampoo 350ml', emb: 'Display c/ 6' },
+        { nome: 'Condicionador 350ml', emb: 'Display c/ 6' },
+        { nome: 'Creme Dental 90g', emb: 'Cx c/ 12' },
+        { nome: 'Desodorante Aerosol', emb: 'Cx c/ 12' }
+      ],
+      limpeza: [
+        { nome: 'Água Sanitária 1L', emb: 'Fardo c/ 12' },
+        { nome: 'Sabão em Pó 1kg', emb: 'Fardo c/ 10' },
+        { nome: 'Detergente Líquido 500ml', emb: 'Cx c/ 24' },
+        { nome: 'Desinfetante 2L', emb: 'Fardo c/ 6' },
+        { nome: 'Esponja de Aço', emb: 'Pct c/ 60' }
+      ],
+      frios: [
+        { nome: 'Mussarela Fatiada 1kg', emb: 'Peça' },
+        { nome: 'Presunto Cozido 1kg', emb: 'Peça' },
+        { nome: 'Margarina 500g', emb: 'Cx c/ 12' },
+        { nome: 'Leite Integral 1L', emb: 'Fardo c/ 12' },
+        { nome: 'Ovos Brancos (Dz)', emb: 'Cx c/ 30 dz' }
+      ]
+    };
+
+    window.mudarCategoriaAtiva = function(categoriaKey, btnElement) {
+      document.querySelectorAll('.btn-cat').forEach(b => b.classList.remove('ativo'));
+      btnElement.classList.add('ativo');
+
+      const containerItens = document.getElementById('containerItensCategoria');
+      containerItens.innerHTML = '';
+
+      const itens = catalogoCategorias[categoriaKey] || [];
+      itens.forEach(item => {
+        const btn = document.createElement('button');
+        btn.className = 'btn-item-rapido';
+        btn.innerHTML = `+ ${item.nome}`;
+        btn.onclick = () => adicionarNovoProduto(item.nome, item.emb);
+        containerItens.appendChild(btn);
+      });
+    };
+
+    // Inicializa a aba padrão "Estiva" ao carregar
+    window.addEventListener('DOMContentLoaded', () => {
+      const btnEstiva = document.querySelector('.botoes-categorias .btn-cat');
+      if (btnEstiva) window.mudarCategoriaAtiva('estiva', btnEstiva);
+    });
 
     // Máscara de Telefone
     window.mascaraTelefone = function(input) {
@@ -315,7 +383,6 @@
           const dadosAssinante = querySnapshot.docs[0].data();
 
           if (dadosAssinante.statusAssinatura === 'ATIVA') {
-            // Checa a senha
             if (dadosAssinante.senha && dadosAssinante.senha !== senha) {
               if (isAutoLogin) {
                 fazerLogout();
@@ -676,7 +743,7 @@
         inputsEmb.forEach(i => i.disabled = false);
         precos.forEach(p => p.style.display = 'none');
         quantidades.forEach(q => q.style.display = 'none');
-        botoesExcluir.forEach(b => b.style.display = 'block'); // Exibe botão excluir
+        botoesExcluir.forEach(b => b.style.display = 'block');
         badgesVencedor.forEach(b => b.style.display = 'none');
       } else if (etapa === 2) {
         document.getElementById('textoOrientacao').innerHTML = "💼 <b>Etapa 2:</b> Vendedor, digite seus preços.";
@@ -692,7 +759,7 @@
         inputsEmb.forEach(i => i.disabled = true);
         precos.forEach(p => p.style.display = 'flex');
         quantidades.forEach(q => q.style.display = 'none');
-        botoesExcluir.forEach(b => b.style.display = 'block'); // <--- EXIBE O BOTÃO DE EXCLUIR NA ETAPA 2 TAMBÉM
+        botoesExcluir.forEach(b => b.style.display = 'block');
         badgesVencedor.forEach(b => b.style.display = 'none');
       } else if (etapa === 3) {
         document.getElementById('textoOrientacao').innerHTML = "📦 <b>Etapa 3:</b> Monte seu pedido final.";
