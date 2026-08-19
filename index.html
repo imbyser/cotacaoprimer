@@ -164,8 +164,6 @@
         </div>
       </div>
 
-      <!-- SEÇÃO "ADICIONAR RÁPIDO" REMOVIDA DAQUI -->
-
       <div id="listaProdutos" style="margin-top: 10px;"></div>
       <button class="btn-adicionar" id="btnAdicionarManual" onclick="adicionarNovoProduto('', '')">+ Adicionar Item em Branco</button>
     </div>
@@ -672,7 +670,7 @@
         inputsEmb.forEach(i => i.disabled = true);
         precos.forEach(p => p.style.display = 'flex');
         quantidades.forEach(q => q.style.display = 'none');
-        botoesExcluir.forEach(b => b.style.display = 'none');
+        botoesExcluir.forEach(b => b.style.display = 'block'); // Botão de excluir visível para o vendedor
         badgesVencedor.forEach(b => b.style.display = 'none');
 
       } else if (etapa === 3) {
