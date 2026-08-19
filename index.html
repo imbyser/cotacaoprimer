@@ -1,4 +1,628 @@
-function alternarEtapa(etapa) {
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sistema Profissional de Cotação e Pedidos</title>
+
+  <style>
+    * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 0; }
+    body { background-color: #f0f2f5; padding-bottom: 260px; }
+    
+    #authOverlay {
+      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(26, 54, 93, 0.95); z-index: 9999;
+      display: flex; justify-content: center; align-items: center; padding: 20px;
+    }
+    .auth-card {
+      background: white; border-radius: 12px; padding: 25px; width: 100%; max-width: 400px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.2); text-align: center;
+    }
+    .auth-card h2 { color: #1a365d; margin-bottom: 8px; font-size: 1.4em; }
+    .auth-card p { font-size: 0.85em; color: #718096; margin-bottom: 20px; }
+    .auth-input {
+      width: 100%; padding: 12px; margin-bottom: 12px; border: 1px solid #cbd5e0;
+      border-radius: 8px; font-size: 1em; outline: none; text-align: center; font-weight: bold;
+    }
+    .btn-auth-primary {
+      width: 100%; padding: 12px; background: #25d366; color: white; border: none;
+      border-radius: 8px; font-weight: bold; font-size: 1em; cursor: pointer; display: flex;
+      align-items: center; justify-content: center; gap: 8px;
+    }
+    .btn-auth-primary:hover { background: #1eb954; }
+    .auth-toggle { margin-top: 15px; font-size: 0.85em; color: #4a5568; }
+    .auth-toggle a { color: #2b6cb0; font-weight: bold; text-decoration: underline; }
+    .auth-error { color: #e53e3e; font-size: 0.8em; margin-bottom: 10px; display: none; font-weight: bold; }
+
+    .user-bar { background: #0f2342; color: white; padding: 8px 15px; display: flex; justify-content: space-between; align-items: center; font-size: 0.8em; flex-wrap: wrap; gap: 8px; }
+    .btn-logout { background: #e53e3e; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-weight: bold; }
+    .btn-assinar-topo { background: #25d366; color: white; border: none; padding: 6px 12px; border-radius: 6px; font-weight: bold; font-size: 0.85em; text-decoration: none; display: inline-flex; align-items: center; gap: 4px; }
+    
+    .trial-banner { background: #feebc8; color: #742a2a; border-bottom: 1px solid #fbd38d; padding: 8px 15px; text-align: center; font-size: 0.85em; font-weight: bold; display: flex; justify-content: space-between; align-items: center; }
+
+    .painel-minhas-cotacoes { background: #1a365d; color: white; padding: 10px 15px; font-size: 0.85em; border-bottom: 1px solid #2b6cb0; display: flex; justify-content: space-between; align-items: center; }
+    .seletor-cotacoes { padding: 6px; border-radius: 6px; border: 1px solid #cbd5e0; font-size: 0.9em; background: white; margin-left: 8px; cursor: pointer; }
+
+    header { background: #1a365d; color: white; padding: 15px; text-align: center; }
+    header h1 { font-size: 1.3em; margin-bottom: 5px; }
+
+    .etapas-bar { display: flex; justify-content: center; background: #e2e8f0; padding: 8px; gap: 4px; margin-bottom: 15px; }
+    .btn-etapa { flex: 1; max-width: 200px; padding: 10px 6px; border: none; border-radius: 6px; font-weight: bold; font-size: 0.78em; text-align: center; cursor: pointer; color: #4a5568; background: #cbd5e0; }
+    .btn-etapa.ativo { background: #2b6cb0; color: white; }
+
+    .container { max-width: 650px; margin: 0 auto; padding: 0 15px; }
+    .badge-etapa { background: #ebf8ff; border-left: 4px solid #2b6cb0; color: #2c5282; padding: 10px 12px; border-radius: 6px; margin-bottom: 15px; font-size: 0.85em; display: flex; justify-content: space-between; align-items: center; }
+
+    .secao-vendedor { background: #f0fff4; border: 1px solid #c6f6d5; padding: 12px; border-radius: 10px; margin-bottom: 15px; display: none; }
+    .secao-vendedor h4 { color: #22543d; font-size: 0.9em; margin-bottom: 8px; }
+
+    .secao-atalhos { background: white; padding: 12px; border-radius: 10px; margin-bottom: 15px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+    .titulo-atalhos { font-size: 0.85em; font-weight: bold; color: #4a5568; margin-bottom: 8px; }
+    .botoes-categorias { display: flex; flex-wrap: wrap; gap: 6px; }
+    .btn-cat { background: #edf2f7; border: 1px solid #cbd5e0; border-radius: 20px; padding: 6px 12px; font-size: 0.8em; font-weight: bold; color: #2d3748; cursor: pointer; }
+
+    .produto-card { background: white; border-radius: 10px; padding: 12px; margin-bottom: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); display: flex; flex-direction: column; gap: 8px; }
+    .linha-inputs { display: flex; gap: 8px; }
+    .input-editavel { border: 1px solid #cbd5e0; border-radius: 6px; padding: 8px; font-size: 0.9em; outline: none; }
+    .input-editavel:disabled { background-color: #edf2f7; color: #4a5568; }
+    
+    .input-nome { flex: 2; font-weight: bold; }
+    .input-embalagem { flex: 1; color: #4a5568; }
+    
+    .linha-acoes { display: flex; justify-content: space-between; align-items: center; border-top: 1px solid #edf2f7; padding-top: 8px; flex-wrap: wrap; gap: 6px; }
+    .bloco-preco { display: none; align-items: center; gap: 5px; font-weight: bold; color: #2f855a; font-size: 0.85em; }
+    .input-preco { width: 85px; font-weight: bold; color: #2f855a; text-align: right; }
+
+    .badge-vencedor { background: #c6f6d5; color: #22543d; padding: 4px 8px; border-radius: 6px; font-size: 0.78em; font-weight: bold; border: 1px solid #9ae6b4; display: none; }
+
+    .qtd-controle { display: none; align-items: center; background: #edf2f7; border-radius: 8px; padding: 2px; }
+    .btn-qtd { background: white; border: 1px solid #cbd5e0; color: #2d3748; width: 30px; height: 30px; border-radius: 6px; font-size: 1.1em; font-weight: bold; cursor: pointer; }
+    .qtd-valor { width: 35px; text-align: center; font-weight: bold; font-size: 0.9em; border: none; background: transparent; }
+
+    .btn-excluir { background: #fff5f5; color: #e53e3e; border: 1px solid #fed7d7; border-radius: 6px; padding: 6px 10px; font-size: 0.8em; cursor: pointer; font-weight: bold; display: block; }
+    .btn-adicionar { background: #ebf8ff; color: #2b6cb0; border: 2px dashed #90cdf4; border-radius: 10px; width: 100%; padding: 12px; font-size: 0.95em; font-weight: bold; cursor: pointer; margin-top: 5px; }
+
+    .carrinho-bar { position: fixed; bottom: 0; left: 0; right: 0; background: white; border-top: 1px solid #e2e8f0; padding: 15px; box-shadow: 0 -2px 10px rgba(0,0,0,0.1); z-index: 100; max-height: 280px; overflow-y: auto; }
+    .carrinho-conteudo { max-width: 650px; margin: 0 auto; }
+    
+    .linha-dados-cliente { display: flex; gap: 8px; margin-bottom: 8px; }
+    .campo-cliente { flex: 1; padding: 8px 10px; border: 1px solid #cbd5e0; border-radius: 6px; font-size: 0.85em; }
+    .linha-pagamento { display: flex; gap: 8px; margin-bottom: 8px; background: #f7fafc; padding: 8px; border-radius: 6px; border: 1px solid #e2e8f0; flex-wrap: wrap; }
+
+    .resumo-total { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; font-size: 1em; font-weight: bold; color: #1a365d; }
+    .btn-whatsapp { background: #25d366; color: white; border: none; padding: 12px; border-radius: 8px; font-size: 0.9em; font-weight: bold; cursor: pointer; width: 100%; text-align: center; }
+    .card-divisao-vendedor { background: #f0fff4; border: 1px solid #9ae6b4; padding: 10px; border-radius: 8px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; font-size: 0.85em; }
+    .btn-send-vendor { background: #2f855a; color: white; border: none; padding: 6px 10px; border-radius: 6px; font-weight: bold; font-size: 0.8em; cursor: pointer; }
+
+    #statusSalvamento { font-size: 0.75em; color: #2b6cb0; font-weight: bold; }
+  </style>
+</head>
+<body>
+
+  <!-- AUTENTICAÇÃO POR WHATSAPP E SENHA -->
+  <div id="authOverlay">
+    <div class="auth-card">
+      <h2>🔑 Acessar Sistema</h2>
+      <p>Digite seu WhatsApp e senha cadastrados</p>
+      
+      <input type="tel" id="authPhone" class="auth-input" placeholder="(81) 99999-9999" maxlength="15" oninput="mascaraTelefone(this)">
+      <input type="password" id="authPassword" class="auth-input" placeholder="Sua Senha">
+      
+      <div id="authErrorMsg" class="auth-error"></div>
+      
+      <button id="btnAuthSubmit" class="btn-auth-primary" onclick="processarAuthWhatsApp()">
+        <span>Entrar no Sistema</span> 📲
+      </button>
+      
+      <div class="auth-toggle">
+        <span>Ainda não é assinante? <a href="https://imbyser.github.io/cotacaoprimer/vendas.html" target="_blank">Ver Planos e Assinar</a></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- BARRA DE USUÁRIO -->
+  <div class="user-bar" id="userBar" style="display: none;">
+    <span>👤 WhatsApp: <b id="userPhoneDisplay">-</b></span>
+    <div style="display: flex; gap: 8px; align-items: center;">
+      <a href="https://imbyser.github.io/cotacaoprimer/vendas.html" target="_blank" class="btn-assinar-topo">💳 Gerenciar Assinatura</a>
+      <button class="btn-logout" onclick="fazerLogout()">Sair</button>
+    </div>
+  </div>
+
+  <!-- BANNER DE STATUS -->
+  <div class="trial-banner" id="trialBanner" style="display: none;">
+    <span id="txtBannerStatus">⚡ Assinatura Ativa e Liberada!</span>
+    <a href="https://imbyser.github.io/cotacaoprimer/vendas.html" target="_blank" class="btn-assinar-topo">Renovar / Alterar Plano</a>
+  </div>
+
+  <!-- PAINEL DE COTAÇÕES DO CLIENTE -->
+  <div class="painel-minhas-cotacoes" id="painelCotacoes" style="display: none;">
+    <div>
+      <label for="selectCotacoesUsuario">📂 <b>Minhas Cotações Salvas:</b></label>
+      <select id="selectCotacoesUsuario" class="seletor-cotacoes" onchange="selecionarCotacaoSalva(this.value)">
+        <option value="">-- Criar Nova Cotação --</option>
+      </select>
+    </div>
+    <button onclick="novaCotacao()" style="padding: 4px 8px; background: #319795; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 0.8em;">+ Nova Lista</button>
+  </div>
+
+  <div id="appContainer" style="display: none;">
+    <header>
+      <h1 id="tituloHeader">Cotação de Produtos</h1>
+    </header>
+
+    <!-- BARRA DE ETAPAS -->
+    <div class="etapas-bar" id="barraEtapas">
+      <button class="btn-etapa ativo" id="btnEtapa1" onclick="alternarEtapa(1)">1. Lista</button>
+      <button class="btn-etapa" id="btnEtapa2" onclick="alternarEtapa(2)">2. Preços</button>
+      <button class="btn-etapa" id="btnEtapa3" onclick="alternarEtapa(3)">3. Pedido</button>
+    </div>
+
+    <div class="container">
+      <div class="badge-etapa" id="badgeOrientacao">
+        <span id="textoOrientacao">📌 <b>Etapa 1:</b> Monte sua lista.</span>
+        <span id="statusSalvamento"></span>
+      </div>
+
+      <div class="secao-vendedor" id="secaoVendedor">
+        <h4>💼 Identificação do Vendedor:</h4>
+        <div class="linha-dados-cliente">
+          <input type="text" id="nomeVendedor" class="campo-cliente" placeholder="Seu Nome...">
+          <input type="text" id="empresaVendedor" class="campo-cliente" placeholder="Empresa...">
+        </div>
+      </div>
+
+      <div class="secao-atalhos" id="secaoAtalhos">
+        <div class="titulo-atalhos">⚡ Adicionar Rápido:</div>
+        <div class="botoes-categorias">
+          <button class="btn-cat" onclick="adicionarNovoProduto('Arroz 5kg', 'Fardo c/ 6')">+ Arroz</button>
+          <button class="btn-cat" onclick="adicionarNovoProduto('Feijão 1kg', 'Fardo c/ 10')">+ Feijão</button>
+        </div>
+      </div>
+
+      <div id="listaProdutos" style="margin-top: 10px;"></div>
+      <button class="btn-adicionar" id="btnAdicionarManual" onclick="adicionarNovoProduto('', '')">+ Adicionar Item em Branco</button>
+    </div>
+
+    <div class="carrinho-bar">
+      <div class="carrinho-conteudo">
+        <div class="linha-dados-cliente">
+          <input type="text" id="nomeCliente" class="campo-cliente" placeholder="Nome da Loja..." onchange="agendarSalvarAutomatico()">
+          <input type="tel" id="telCliente" class="campo-cliente" placeholder="WhatsApp..." onchange="agendarSalvarAutomatico()">
+        </div>
+
+        <div class="linha-pagamento" id="secaoPagamento">
+          <select id="tipoCotacao" class="campo-cliente" onchange="agendarSalvarAutomatico()">
+            <option value="Caixa">📦 Por Caixa</option>
+            <option value="Unidade">🏷️ Por Unidade</option>
+          </select>
+          <select id="prazoPagamento" class="campo-cliente" onchange="agendarSalvarAutomatico()">
+            <option value="À vista">⏱️ À vista</option>
+            <option value="7 dias">⏱️ 7 dias</option>
+          </select>
+        </div>
+
+        <div class="resumo-total" id="boxTotal" style="display: none;">
+          <span>Total Geral:</span>
+          <span id="totalDisplay">R$ 0,00</span>
+        </div>
+
+        <div id="painelEnvioDividido" style="display: none; margin-bottom: 8px;"></div>
+        <button class="btn-whatsapp" id="btnAcao" onclick="executarAcaoPrincipal()">Gerar Link e Enviar WhatsApp</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+    import { getFirestore, doc, setDoc, getDoc, onSnapshot, updateDoc, collection, query, where, getDocs, orderBy, limit } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyAPBH_zOO3xrdiyW1qk20b3b1ejMlyYSvg",
+      authDomain: "supercotacao-6a43c.firebaseapp.com",
+      projectId: "supercotacao-6a43c",
+      storageBucket: "supercotacao-6a43c.firebasestorage.app",
+      messagingSenderId: "360323319589",
+      appId: "1:360323319589:web:b09f3744f1b9a92f11bccc"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    let usuarioTelefone = null;
+    let listenerSnapshot = null;
+    let timerSalvarAuto = null;
+    window.cotacaoDadosGlobais = null;
+
+    // Máscara de Telefone
+    window.mascaraTelefone = function(input) {
+      let v = input.value.replace(/\D/g, "");
+      if (v.length > 11) v = v.substring(0, 11);
+      if (v.length > 10) {
+        v = v.replace(/^(\d{2})(\d{5})(\d{4})$/, "($1) $2-$3");
+      } else if (v.length > 6) {
+        v = v.replace(/^(\d{2})(\d{4})(\d{0,4})$/, "($1) $2-$3");
+      } else if (v.length > 2) {
+        v = v.replace(/^(\d{2})(\d{0,5})$/, "($1) $2");
+      } else {
+        v = v.replace(/^(\d*)/, "($1");
+      }
+      input.value = v;
+    };
+
+    // Auto-login se já tiver logado anteriormente
+    window.addEventListener('DOMContentLoaded', async () => {
+      const urlParams = new URLSearchParams(window.location.search);
+      const cParam = urlParams.get('c');
+      const eParam = parseInt(urlParams.get('e'));
+
+      if (cParam && eParam === 2) {
+        document.getElementById('authOverlay').style.display = 'none';
+        document.getElementById('appContainer').style.display = 'block';
+        document.getElementById('userBar').style.display = 'none';
+        document.getElementById('trialBanner').style.display = 'none';
+        document.getElementById('painelCotacoes').style.display = 'none';
+        window.carregarCotacaoDoBanco(cParam, 2);
+        return;
+      }
+
+      const telefoneSalvo = localStorage.getItem('usuario_whatsapp');
+      const senhaSalva = localStorage.getItem('usuario_senha');
+      if (telefoneSalvo && senhaSalva) {
+        await validarEEntrar(telefoneSalvo, senhaSalva, true);
+      }
+    });
+
+    // Submissão do login
+    window.processarAuthWhatsApp = async function() {
+      const errorDiv = document.getElementById('authErrorMsg');
+      errorDiv.style.display = 'none';
+      
+      const phoneInput = document.getElementById('authPhone').value;
+      const passInput = document.getElementById('authPassword').value;
+      const phoneClean = phoneInput.replace(/\D/g, "");
+
+      if (phoneClean.length < 10) {
+        errorDiv.innerText = "Digite um número de WhatsApp válido com DDD.";
+        errorDiv.style.display = 'block';
+        return;
+      }
+
+      if (!passInput || passInput.trim() === "") {
+        errorDiv.innerText = "Digite sua senha.";
+        errorDiv.style.display = 'block';
+        return;
+      }
+
+      await validarEEntrar(phoneClean, passInput.trim(), false);
+    };
+
+    // Validação com Telefone e Senha no Firestore
+    async function validarEEntrar(phoneNum, senha, isAutoLogin = false) {
+      const errorDiv = document.getElementById('authErrorMsg');
+      
+      try {
+        const q = query(collection(db, "assinantes"), where("telefone", "==", phoneNum));
+        const querySnapshot = await getDocs(q);
+
+        if (!querySnapshot.empty) {
+          const dadosAssinante = querySnapshot.docs[0].data();
+
+          if (dadosAssinante.statusAssinatura === 'ATIVA') {
+            // Checa a senha
+            if (dadosAssinante.senha && dadosAssinante.senha !== senha) {
+              if (isAutoLogin) {
+                fazerLogout();
+                return;
+              }
+              errorDiv.innerText = "Senha incorreta. Tente novamente.";
+              errorDiv.style.display = 'block';
+              return;
+            }
+
+            usuarioTelefone = phoneNum;
+            localStorage.setItem('usuario_whatsapp', phoneNum);
+            localStorage.setItem('usuario_senha', senha);
+
+            document.getElementById('authOverlay').style.display = 'none';
+            document.getElementById('userPhoneDisplay').innerText = document.getElementById('authPhone').value || phoneNum;
+            document.getElementById('appContainer').style.display = 'block';
+            document.getElementById('userBar').style.display = 'flex';
+            document.getElementById('trialBanner').style.display = 'flex';
+            document.getElementById('painelCotacoes').style.display = 'flex';
+
+            await carregarListaCotacoesUsuario();
+
+            const cotacaoSalvaLocal = localStorage.getItem('cotacaoAtiva_' + usuarioTelefone);
+            if (cotacaoSalvaLocal) {
+              window.carregarCotacaoDoBanco(cotacaoSalvaLocal, 1);
+            } else {
+              await buscarUltimaCotacaoDoUsuario();
+            }
+          } else {
+            errorDiv.innerText = "Sua assinatura está suspensa ou pendente de pagamento.";
+            errorDiv.style.display = 'block';
+          }
+        } else {
+          errorDiv.innerText = "Número não cadastrado. Faça sua assinatura na página de vendas!";
+          errorDiv.style.display = 'block';
+        }
+      } catch (err) {
+        errorDiv.innerText = "Erro ao validar: " + err.message;
+        errorDiv.style.display = 'block';
+      }
+    }
+
+    window.fazerLogout = function() {
+      localStorage.removeItem('usuario_whatsapp');
+      localStorage.removeItem('usuario_senha');
+      location.reload();
+    };
+
+    async function carregarListaCotacoesUsuario() {
+      if (!usuarioTelefone) return;
+      const select = document.getElementById('selectCotacoesUsuario');
+      select.innerHTML = '<option value="">-- Criar Nova Cotação --</option>';
+
+      try {
+        const q = query(collection(db, "cotacoes"), where("userId", "==", usuarioTelefone));
+        const querySnapshot = await getDocs(q);
+
+        querySnapshot.forEach((docSnap) => {
+          const data = docSnap.data();
+          const option = document.createElement('option');
+          option.value = docSnap.id;
+          option.innerText = `${docSnap.id} - ${data.cliente || 'Sem Nome'}`;
+          select.appendChild(option);
+        });
+      } catch (e) {
+        console.error("Erro ao carregar cotações:", e);
+      }
+    }
+
+    async function buscarUltimaCotacaoDoUsuario() {
+      if (!usuarioTelefone) return;
+      try {
+        const q = query(
+          collection(db, "cotacoes"), 
+          where("userId", "==", usuarioTelefone),
+          orderBy("criadoEm", "desc"),
+          limit(1)
+        );
+        const querySnapshot = await getDocs(q);
+        if (!querySnapshot.empty) {
+          const docSnap = querySnapshot.docs[0];
+          window.carregarCotacaoDoBanco(docSnap.id, 1);
+        } else {
+          window.novaCotacao();
+        }
+      } catch(e) {
+        window.novaCotacao();
+      }
+    }
+
+    window.novaCotacao = function() {
+      cotacaoIdAtual = null;
+      if (usuarioTelefone) localStorage.removeItem('cotacaoAtiva_' + usuarioTelefone);
+      window.history.pushState({}, '', window.location.pathname);
+      document.getElementById('listaProdutos').innerHTML = '';
+      document.getElementById('selectCotacoesUsuario').value = '';
+      adicionarNovoProduto("Arroz 5kg", "Fardo c/ 6");
+      alternarEtapa(1);
+    };
+
+    window.selecionarCotacaoSalva = function(id) {
+      if (!id) {
+        window.novaCotacao();
+        return;
+      }
+      window.carregarCotacaoDoBanco(id, 1);
+    };
+
+    window.agendarSalvarAutomatico = function() {
+      if (etapaAtual !== 1) return;
+      document.getElementById('statusSalvamento').innerText = "💾 Salvando...";
+      clearTimeout(timerSalvarAuto);
+      timerSalvarAuto = setTimeout(window.salvarEstadoAutomatico, 1000);
+    };
+
+    window.salvarEstadoAutomatico = async function() {
+      if (!usuarioTelefone) return;
+
+      if (!cotacaoIdAtual) {
+        cotacaoIdAtual = "COT-" + Math.floor(100000 + Math.random() * 900000);
+      }
+
+      const cliente = document.getElementById('nomeCliente').value.trim() || 'Cliente';
+      const tel = document.getElementById('telCliente').value.trim();
+      const prazo = document.getElementById('prazoPagamento').value;
+      const tipo = document.getElementById('tipoCotacao').value;
+
+      const cards = document.querySelectorAll('.produto-card');
+      let produtos = [];
+
+      cards.forEach((card, index) => {
+        const nome = card.querySelector('.input-nome').value.trim();
+        const emb = card.querySelector('.input-embalagem').value.trim();
+        if (nome !== "") produtos.push({ id: index, nome, emb });
+      });
+
+      try {
+        await setDoc(doc(db, "cotacoes", cotacaoIdAtual), {
+          userId: usuarioTelefone,
+          cliente, tel, prazo, pagto: "Combinar", tipo, produtos,
+          criadoEm: new Date()
+        }, { merge: true });
+
+        localStorage.setItem('cotacaoAtiva_' + usuarioTelefone, cotacaoIdAtual);
+        document.getElementById('statusSalvamento').innerText = "✅ Salvo";
+        document.getElementById('selectCotacoesUsuario').value = cotacaoIdAtual;
+      } catch (e) {
+        document.getElementById('statusSalvamento').innerText = "⚠️ Erro ao salvar";
+      }
+    };
+
+    window.salvarCotacaoEGerarLink = async function() {
+      await window.salvarEstadoAutomatico();
+      if (!cotacaoIdAtual) return alert("Adicione pelo menos um produto válido.");
+
+      await carregarListaCotacoesUsuario();
+      document.getElementById('selectCotacoesUsuario').value = cotacaoIdAtual;
+
+      const baseUrl = window.location.href.split('?')[0];
+      const linkVendedor = `${baseUrl}?c=${cotacaoIdAtual}&e=2`;
+      const cliente = document.getElementById('nomeCliente').value.trim() || 'Cliente';
+
+      let msg = `🛒 *SOLICITAÇÃO DE COTAÇÃO*\nCliente: *${cliente}*\n\nPreencha seus preços no link:\n${linkVendedor}`;
+
+      alert(`✅ Cotação Salva! Link gerado.`);
+      window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(msg)}`, '_blank');
+      
+      alternarEtapa(3);
+    };
+
+    window.salvarPrecosVendedor = async function(cotacaoId) {
+      const vendedor = document.getElementById('nomeVendedor').value.trim();
+      const empresa = document.getElementById('empresaVendedor').value.trim();
+      const nomeIdentificacao = empresa ? `${vendedor} (${empresa})` : vendedor;
+
+      if (!vendedor) return alert("Preencha o seu nome!");
+
+      const cards = document.querySelectorAll('.produto-card');
+      let precos = {};
+      let preenchidos = 0;
+
+      cards.forEach((card) => {
+        const nome = card.querySelector('.input-nome').value.trim();
+        const precoStr = card.querySelector('.input-preco').value.replace(',', '.');
+        const preco = parseFloat(precoStr);
+
+        if (nome !== "" && !isNaN(preco) && preco > 0) {
+          precos[nome] = preco;
+          preenchidos++;
+        }
+      });
+
+      if (preenchidos === 0) return alert("⚠️ Digite o preço de pelo menos um produto!");
+
+      try {
+        const docRef = doc(db, "cotacoes", cotacaoId);
+        const docSnap = await getDoc(docRef);
+
+        if (docSnap.exists()) {
+          let ofertasAtuais = docSnap.data().ofertas || {};
+          ofertasAtuais[nomeIdentificacao] = precos;
+          await updateDoc(docRef, { ofertas: ofertasAtuais });
+          alert("✅ Seus preços foram enviados com sucesso!");
+        } else {
+          alert("❌ Cotação não encontrada.");
+        }
+      } catch (error) {
+        alert("❌ Erro ao enviar: " + error.message);
+      }
+    };
+
+    window.carregarCotacaoDoBanco = function(cotacaoId, etapa) {
+      if (listenerSnapshot) listenerSnapshot();
+
+      cotacaoIdAtual = cotacaoId;
+      if (usuarioTelefone) {
+        localStorage.setItem('cotacaoAtiva_' + usuarioTelefone, cotacaoId);
+      }
+
+      const docRef = doc(db, "cotacoes", cotacaoId);
+
+      listenerSnapshot = onSnapshot(docRef, (docSnap) => {
+        if (docSnap.exists()) {
+          const data = docSnap.data();
+          window.cotacaoDadosGlobais = data;
+
+          document.getElementById('nomeCliente').value = data.cliente || '';
+          document.getElementById('telCliente').value = data.tel || '';
+          
+          if (data.tipo) document.getElementById('tipoCotacao').value = data.tipo;
+          if (data.prazo) document.getElementById('prazoPagamento').value = data.prazo;
+          
+          const ofertas = data.ofertas || {};
+
+          document.getElementById('listaProdutos').innerHTML = '';
+          if (data.produtos && data.produtos.length > 0) {
+            data.produtos.forEach(prod => {
+              let menorPreco = 0;
+              let vencedor = 'Sem oferta';
+
+              for (let vend in ofertas) {
+                const precoVendedor = parseFloat(ofertas[vend][prod.nome]);
+                if (!isNaN(precoVendedor) && precoVendedor > 0) {
+                  if (menorPreco === 0 || precoVendedor < menorPreco) {
+                    menorPreco = precoVendedor;
+                    vencedor = vend;
+                  }
+                }
+              }
+              adicionarNovoProduto(prod.nome, prod.emb, menorPreco, 1, vencedor);
+            });
+          } else {
+            adicionarNovoProduto("Arroz 5kg", "Fardo c/ 6");
+          }
+
+          alternarEtapa(etapa);
+        }
+      });
+    };
+  </script>
+
+  <script>
+    let etapaAtual = 1; 
+    let cotacaoIdAtual = null;
+
+    function adicionarNovoProduto(nome = '', emb = '', preco = '', qtd = 1, vencedor = 'Sem oferta') {
+      const container = document.getElementById('listaProdutos');
+      const card = document.createElement('div');
+      card.className = 'produto-card';
+
+      card.innerHTML = `
+        <div class="linha-inputs">
+          <input type="text" class="input-editavel input-nome" placeholder="Nome..." value="${nome}" onchange="agendarSalvarAutomatico()">
+          <input type="text" class="input-editavel input-embalagem" placeholder="Emb..." value="${emb}" onchange="agendarSalvarAutomatico()">
+        </div>
+        <div class="linha-acoes">
+          <div class="bloco-preco">
+            <span>R$</span>
+            <input type="number" step="0.01" class="input-editavel input-preco" placeholder="0,00" value="${preco > 0 ? preco : ''}" onchange="calcularTotalEGerarSplits()">
+          </div>
+          <span class="badge-vencedor" style="${vencedor !== 'Sem oferta' ? 'display: inline-block;' : 'display: none;'}">🏆 <b class="nome-vencedor">${vencedor}</b></span>
+          <div class="qtd-controle">
+            <button class="btn-qtd" onclick="alterarQtd(this, -1)">-</button>
+            <input type="text" class="qtd-valor" value="${qtd}" readonly>
+            <button class="btn-qtd" onclick="alterarQtd(this, 1)">+</button>
+          </div>
+          <button class="btn-excluir" onclick="removerProduto(this)">🗑️ Excluir</button>
+        </div>
+      `;
+      container.appendChild(card);
+      
+      alternarEtapa(etapaAtual);
+      if (typeof window.agendarSalvarAutomatico === 'function') {
+        window.agendarSalvarAutomatico();
+      }
+    }
+
+    function alterarQtd(btn, delta) {
+      const input = btn.parentElement.querySelector('.qtd-valor');
+      input.value = Math.max(1, parseInt(input.value) + delta);
+      if (etapaAtual === 3) calcularTotalEGerarSplits();
+    }
+
+    function removerProduto(btn) {
+      btn.closest('.produto-card').remove();
+      if (etapaAtual === 3) calcularTotalEGerarSplits();
+      if (typeof window.agendarSalvarAutomatico === 'function') {
+        window.agendarSalvarAutomatico();
+      }
+    }
+
+    function alternarEtapa(etapa) {
       etapaAtual = etapa;
       
       const urlParams = new URLSearchParams(window.location.search);
@@ -41,7 +665,6 @@ function alternarEtapa(etapa) {
         document.getElementById('painelEnvioDividido').style.display = 'none';
         document.getElementById('btnAcao').style.display = 'block';
         document.getElementById('btnAcao').innerText = "Gerar Link e Enviar WhatsApp";
-        document.getElementById('btnAcao').onclick = function() { executarAcaoPrincipal(); };
 
         inputsNome.forEach(i => i.disabled = false);
         inputsEmb.forEach(i => i.disabled = false);
@@ -57,33 +680,123 @@ function alternarEtapa(etapa) {
         document.getElementById('boxTotal').style.display = 'none';
         document.getElementById('painelEnvioDividido').style.display = 'none';
         document.getElementById('btnAcao').style.display = 'block';
-        document.getElementById('btnAcao').innerText = "Enviar Meus Preços";
-        document.getElementById('btnAcao').onclick = function() {
-          if (window.cotacaoIdAtual) window.salvarPrecosVendedor(window.cotacaoIdAtual);
-        };
+        document.getElementById('btnAcao').innerText = "💾 Salvar e Enviar Preços";
 
         inputsNome.forEach(i => i.disabled = true);
         inputsEmb.forEach(i => i.disabled = true);
+        inputsPreco.forEach(i => i.disabled = false);
         precos.forEach(p => p.style.display = 'flex');
         quantidades.forEach(q => q.style.display = 'none');
         botoesExcluir.forEach(b => b.style.display = 'none');
         badgesVencedor.forEach(b => b.style.display = 'none');
       } else if (etapa === 3) {
-        document.getElementById('textoOrientacao').innerHTML = "📊 <b>Etapa 3:</b> Resumo e Melhor Preço.";
+        document.getElementById('textoOrientacao').innerHTML = "🛒 <b>Etapa 3:</b> Menores preços encontrados.";
         document.getElementById('secaoVendedor').style.display = 'none';
         document.getElementById('secaoAtalhos').style.display = 'none';
         document.getElementById('btnAdicionarManual').style.display = 'none';
         document.getElementById('boxTotal').style.display = 'flex';
         document.getElementById('painelEnvioDividido').style.display = 'block';
-        document.getElementById('btnAcao').style.display = 'block';
-        document.getElementById('btnAcao').innerText = "Enviar Pedido Fechado no WhatsApp";
-        document.getElementById('btnAcao').onclick = function() { executarAcaoPrincipal(); };
+        document.getElementById('btnAcao').style.display = 'none';
 
         inputsNome.forEach(i => i.disabled = true);
         inputsEmb.forEach(i => i.disabled = true);
+        inputsPreco.forEach(i => i.disabled = true);
         precos.forEach(p => p.style.display = 'flex');
         quantidades.forEach(q => q.style.display = 'flex');
         botoesExcluir.forEach(b => b.style.display = 'none');
         badgesVencedor.forEach(b => b.style.display = 'inline-block');
+        calcularTotalEGerarSplits();
       }
     }
+
+    function executarAcaoPrincipal() {
+      if (etapaAtual === 1) {
+        if (typeof window.salvarCotacaoEGerarLink === 'function') {
+          window.salvarCotacaoEGerarLink();
+        }
+      } else if (etapaAtual === 2) {
+        const urlParams = new URLSearchParams(window.location.search);
+        const cParam = urlParams.get('c');
+        if (cParam && typeof window.salvarPrecosVendedor === 'function') {
+          window.salvarPrecosVendedor(cParam);
+        } else {
+          alert("Erro: ID da cotação não encontrado na URL.");
+        }
+      }
+    }
+
+    function calcularTotalEGerarSplits() {
+      const cards = document.querySelectorAll('.produto-card');
+      let totalGeral = 0;
+      let vendedoresPedidos = {};
+
+      cards.forEach(card => {
+        const nome = card.querySelector('.input-nome').value.trim();
+        const emb = card.querySelector('.input-embalagem').value.trim();
+        const precoStr = card.querySelector('.input-preco').value.replace(',', '.');
+        const preco = parseFloat(precoStr) || 0;
+        const qtd = parseInt(card.querySelector('.qtd-valor').value) || 1;
+        const vencedor = card.querySelector('.nome-vencedor') ? card.querySelector('.nome-vencedor').innerText : 'Sem oferta';
+
+        if (preco > 0 && vencedor !== 'Sem oferta') {
+          const subtotal = preco * qtd;
+          totalGeral += subtotal;
+
+          if (!vendedoresPedidos[vencedor]) {
+            vendedoresPedidos[vencedor] = {
+              itens: [],
+              total: 0
+            };
+          }
+
+          vendedoresPedidos[vencedor].itens.push({ nome, emb, preco, qtd, subtotal });
+          vendedoresPedidos[vencedor].total += subtotal;
+        }
+      });
+
+      document.getElementById('totalDisplay').innerText = `R$ ${totalGeral.toFixed(2).replace('.', ',')}`;
+
+      const containerSplits = document.getElementById('painelEnvioDividido');
+      containerSplits.innerHTML = '';
+
+      const cliente = document.getElementById('nomeCliente').value.trim() || 'Cliente';
+      const prazo = document.getElementById('prazoPagamento').value;
+      const tipo = document.getElementById('tipoCotacao').value;
+
+      Object.keys(vendedoresPedidos).forEach(vendedor => {
+        const dados = vendedoresPedidos[vendedor];
+        const div = document.createElement('div');
+        div.className = 'card-divisao-vendedor';
+
+        let textoMsg = `📦 *PEDIDO FECHADO - COTAÇÃO*\n`;
+        textoMsg += `👤 Cliente: *${cliente}*\n`;
+        textoMsg += `🏷️ Condição: ${tipo} | ${prazo}\n`;
+        textoMsg += `------------------------------\n`;
+
+        dados.itens.forEach(item => {
+          textoMsg += `• ${item.qtd}x ${item.nome} (${item.emb}) - R$ ${item.preco.toFixed(2).replace('.', ',')} = R$ ${item.subtotal.toFixed(2).replace('.', ',')}\n`;
+        });
+
+        textoMsg += `------------------------------\n`;
+        textoMsg += `💰 *Total do Pedido: R$ ${dados.total.toFixed(2).replace('.', ',')}*`;
+
+        const urlWhatsapp = `https://api.whatsapp.com/send?text=${encodeURIComponent(textoMsg)}`;
+
+        div.innerHTML = `
+          <div>
+            <b>🏆 ${vendedor}</b><br>
+            <small>${dados.itens.length} item(ns) - Total: <b>R$ ${dados.total.toFixed(2).replace('.', ',')}</b></small>
+          </div>
+          <a href="${urlWhatsapp}" target="_blank" class="btn-send-vendor" style="text-decoration: none; display: inline-block;">Enviar Pedido 📲</a>
+        `;
+
+        containerSplits.appendChild(div);
+      });
+
+      if (Object.keys(vendedoresPedidos).length === 0) {
+        containerSplits.innerHTML = '<div style="font-size:0.85em; color:#718096; text-align:center; padding:5px;">Nenhum menor preço disponível para fechar pedido.</div>';
+      }
+    }
+  </script>
+</body>
+</html>
