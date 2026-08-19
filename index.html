@@ -180,7 +180,7 @@
         </div>
       </div>
 
-      <!-- SEÇÃO ATALHOS / ADICIONAR RÁPIDO POR CATEGORIAS (LIMPADA) -->
+      <!-- SEÇÃO ATALHOS / ADICIONAR RÁPIDO POR CATEGORIAS CORRIGIDA -->
       <div class="secao-atalhos" id="secaoAtalhos">
         <div class="titulo-atalhos">⚡ Adicionar Rápido por Categoria:</div>
         <div class="botoes-categorias">
@@ -188,9 +188,10 @@
           <button class="btn-cat" onclick="mudarCategoriaAtiva('perfumaria', this)">🧴 Perfumaria</button>
           <button class="btn-cat" onclick="mudarCategoriaAtiva('limpeza', this)">🧹 Limpeza</button>
           <button class="btn-cat" onclick="mudarCategoriaAtiva('frios', this)">🧀 Frios</button>
+          <button class="btn-cat" onclick="mudarCategoriaAtiva('enlatados', this)">🥫 Enlatados</button>
         </div>
         <div class="itens-categoria-container" id="containerItensCategoria">
-          <!-- Começa vazio. Os itens só aparecem conforme você cadastrar -->
+          <!-- Os itens só aparecem dentro da sua categoria correta -->
         </div>
       </div>
 
@@ -203,6 +204,7 @@
           <option value="perfumaria">🧴 Perfumaria</option>
           <option value="limpeza">🧹 Limpeza</option>
           <option value="frios">🧀 Frios</option>
+          <option value="enlatados">🥫 Enlatados</option>
         </select>
         <button class="btn-adicionar" onclick="adicionarItemManualComCategoria()">+ Adicionar Item em Branco</button>
       </div>
@@ -264,15 +266,15 @@
     let timerSalvarAuto = null;
     window.cotacaoDadosGlobais = null;
 
-    // Catálogo inicial zerado (sem produtos padrão visíveis)
+    // Catálogo isolado por categoria rigorosamente
     let catalogoCategorias = {
       estiva: [],
       perfumaria: [],
       limpeza: [],
-      frios: []
+      frios: [],
+      enlatados: []
     };
 
-    // Carregar itens salvos pelo usuário no localStorage
     function carregarCatalogoSalvo() {
       const salvo = localStorage.getItem('catalogo_customizado');
       if (salvo) {
@@ -290,18 +292,16 @@
     window.adicionarAoCatalogoCustomizado = function(categoria, nome, emb) {
       if (!nome || !catalogoCategorias[categoria]) return;
       
-      // Verifica se já existe na categoria
+      // Evita duplicatas estritas na mesma categoria
       const existe = catalogoCategorias[categoria].some(i => i.nome.toLowerCase() === nome.toLowerCase());
       if (!existe) {
         catalogoCategorias[categoria].push({ nome, emb: emb || 'Unidade' });
         localStorage.setItem('catalogo_customizado', JSON.stringify(catalogoCategorias));
         
-        // Atualiza a tela se a categoria ativa for a mesma
+        // Atualiza a tela se a categoria ativa for exatamente essa
         const btnAtivo = document.querySelector('.botoes-categorias .btn-cat.ativo');
-        if (btnAtivo) {
-          if (btnAtivo.innerText.toLowerCase().includes(categoria)) {
-            window.mudarCategoriaAtiva(categoria, btnAtivo);
-          }
+        if (btnAtivo && btnAtivo.getAttribute('onclick').includes(categoria)) {
+          window.mudarCategoriaAtiva(categoria, btnAtivo);
         }
       }
     };
@@ -316,7 +316,7 @@
       const itens = catalogoCategorias[categoriaKey] || [];
       
       if (itens.length === 0) {
-        containerItens.innerHTML = `<span class="aviso-vazio">Nenhum item rápido nesta categoria. Adicione um produto com esta categoria para salvá-lo aqui.</span>`;
+        containerItens.innerHTML = `<span class="aviso-vazio">Nenhum item nesta categoria. Adicione um produto selecionando esta categoria para salvá-lo aqui.</span>`;
         return;
       }
 
@@ -324,6 +324,7 @@
         const btn = document.createElement('button');
         btn.className = 'btn-item-rapido';
         btn.innerHTML = `+ ${item.nome}`;
+        // Ao clicar no botão rápido da categoria, ele envia o produto para a cotação do cliente
         btn.onclick = () => adicionarNovoProduto(item.nome, item.emb);
         containerItens.appendChild(btn);
       });
@@ -708,6 +709,8 @@
 
     function adicionarItemManualComCategoria() {
       const categoriaSelecionada = document.getElementById('selectCategoriaNovo').value;
+      
+      // Abre o modal/linha em branco na cotação do cliente e atrela a categoria selecionada
       adicionarNovoProduto('', '');
       
       const cards = document.querySelectorAll('.produto-card');
@@ -719,6 +722,8 @@
       const card = input.closest('.produto-card');
       const nome = card.querySelector('.input-nome').value.trim();
       const emb = card.querySelector('.input-embalagem').value.trim();
+      
+      // Pega a categoria correta que foi escolhida ou vinculada a este card
       const categoria = card.dataset.categoriaPredefinida || document.getElementById('selectCategoriaNovo').value;
 
       if (nome !== "" && typeof window.adicionarAoCatalogoCustomizado === 'function') {
@@ -927,7 +932,7 @@
     window.enviarPedidoSeparado = function(vencedor, itens) {
       const cliente = document.getElementById('nomeCliente').value.trim() || 'Cliente';
       const tipo = document.getElementById('tipoCotacao').value;
-      const prazo = document.getElementById('prazoPagamento').value;
+      const prazo = document.getElementById('prazoPagamento'.value);
       
       let msg = `🛒 *PEDIDO DE COMPRA*\nFornecedor: *${vencedor}*\nCliente: *${cliente}*\nTipo: *${tipo}*\nForma/Prazo: *${prazo}*\n\n`;
       let total = 0;
