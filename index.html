@@ -82,7 +82,7 @@
     .btn-excluir { background: #fff5f5; color: #e53e3e; border: 1px solid #fed7d7; border-radius: 6px; padding: 6px 10px; font-size: 0.8em; cursor: pointer; font-weight: bold; display: block; }
     .btn-adicionar { background: #ebf8ff; color: #2b6cb0; border: 2px dashed #90cdf4; border-radius: 10px; width: 100%; padding: 12px; font-size: 0.95em; font-weight: bold; cursor: pointer; margin-top: 5px; }
 
-    .carrinho-bar { position: fixed; bottom: 0; left: 0; right: 0; background: white; border-top: 1px solid #e2e8f0; padding: 15px; box-shadow: 0 -2px 10px rgba(0,0,0,0.1); z-index: 100; max-height: 280px; overflow-y: auto; }
+    .carrinho-bar { position: fixed; bottom: 0; left: 0; right: 0; background: white; border-top: 1px solid #e2e8f0; padding: 15px; box-shadow: 0 -2px 10px rgba(0,0,0,0.1); z-index: 100; max-height: 310px; overflow-y: auto; }
     .carrinho-conteudo { max-width: 650px; margin: 0 auto; }
     
     .linha-dados-cliente { display: flex; gap: 8px; margin-bottom: 8px; }
@@ -198,7 +198,13 @@
           </select>
           <select id="prazoPagamento" class="campo-cliente" onchange="agendarSalvarAutomatico()">
             <option value="À vista">⏱️ À vista</option>
-            <option value="7 dias">⏱️ 7 dias</option>
+            <option value="Pix">💠 Pix</option>
+            <option value="Cartão">💳 Cartão</option>
+            <option value="Boleto 7 dias">📄 Boleto 7 dias</option>
+            <option value="Boleto 14 dias">📄 Boleto 14 dias</option>
+            <option value="Boleto 21 dias">📄 Boleto 21 dias</option>
+            <option value="Boleto 28 dias">📄 Boleto 28 dias</option>
+            <option value="Boleto 30 dias">📄 Boleto 30 dias</option>
           </select>
         </div>
 
@@ -680,123 +686,144 @@
         document.getElementById('boxTotal').style.display = 'none';
         document.getElementById('painelEnvioDividido').style.display = 'none';
         document.getElementById('btnAcao').style.display = 'block';
-        document.getElementById('btnAcao').innerText = "💾 Salvar e Enviar Preços";
+        document.getElementById('btnAcao').innerText = "Enviar Meus Preços";
 
         inputsNome.forEach(i => i.disabled = true);
         inputsEmb.forEach(i => i.disabled = true);
-        inputsPreco.forEach(i => i.disabled = false);
         precos.forEach(p => p.style.display = 'flex');
         quantidades.forEach(q => q.style.display = 'none');
         botoesExcluir.forEach(b => b.style.display = 'none');
         badgesVencedor.forEach(b => b.style.display = 'none');
       } else if (etapa === 3) {
-        document.getElementById('textoOrientacao').innerHTML = "🛒 <b>Etapa 3:</b> Menores preços encontrados.";
+        document.getElementById('textoOrientacao').innerHTML = "📦 <b>Etapa 3:</b> Monte seu pedido final.";
         document.getElementById('secaoVendedor').style.display = 'none';
         document.getElementById('secaoAtalhos').style.display = 'none';
         document.getElementById('btnAdicionarManual').style.display = 'none';
         document.getElementById('boxTotal').style.display = 'flex';
-        document.getElementById('painelEnvioDividido').style.display = 'block';
-        document.getElementById('btnAcao').style.display = 'none';
+        document.getElementById('btnAcao').style.display = 'block';
 
         inputsNome.forEach(i => i.disabled = true);
         inputsEmb.forEach(i => i.disabled = true);
-        inputsPreco.forEach(i => i.disabled = true);
         precos.forEach(p => p.style.display = 'flex');
+        inputsPreco.forEach(ip => ip.disabled = true);
         quantidades.forEach(q => q.style.display = 'flex');
         botoesExcluir.forEach(b => b.style.display = 'none');
         badgesVencedor.forEach(b => b.style.display = 'inline-block');
-        calcularTotalEGerarSplits();
-      }
-    }
 
-    function executarAcaoPrincipal() {
-      if (etapaAtual === 1) {
-        if (typeof window.salvarCotacaoEGerarLink === 'function') {
-          window.salvarCotacaoEGerarLink();
-        }
-      } else if (etapaAtual === 2) {
-        const urlParams = new URLSearchParams(window.location.search);
-        const cParam = urlParams.get('c');
-        if (cParam && typeof window.salvarPrecosVendedor === 'function') {
-          window.salvarPrecosVendedor(cParam);
-        } else {
-          alert("Erro: ID da cotação não encontrado na URL.");
-        }
+        calcularTotalEGerarSplits();
       }
     }
 
     function calcularTotalEGerarSplits() {
       const cards = document.querySelectorAll('.produto-card');
       let totalGeral = 0;
-      let vendedoresPedidos = {};
+      let resumoPorVendedor = {};
 
       cards.forEach(card => {
         const nome = card.querySelector('.input-nome').value.trim();
-        const emb = card.querySelector('.input-embalagem').value.trim();
-        const precoStr = card.querySelector('.input-preco').value.replace(',', '.');
-        const preco = parseFloat(precoStr) || 0;
+        const preco = parseFloat(card.querySelector('.input-preco').value.replace(',', '.')) || 0;
         const qtd = parseInt(card.querySelector('.qtd-valor').value) || 1;
-        const vencedor = card.querySelector('.nome-vencedor') ? card.querySelector('.nome-vencedor').innerText : 'Sem oferta';
+        const vencedorEl = card.querySelector('.nome-vencedor');
+        const vencedor = vencedorEl ? vencedorEl.innerText : 'Sem oferta';
 
-        if (preco > 0 && vencedor !== 'Sem oferta') {
-          const subtotal = preco * qtd;
-          totalGeral += subtotal;
+        const subtotal = preco * qtd;
+        totalGeral += subtotal;
 
-          if (!vendedoresPedidos[vencedor]) {
-            vendedoresPedidos[vencedor] = {
-              itens: [],
-              total: 0
-            };
+        if (vencedor !== 'Sem oferta' && preco > 0) {
+          if (!resumoPorVendedor[vencedor]) {
+            resumoPorVendedor[vencedor] = { itens: [], total: 0 };
           }
-
-          vendedoresPedidos[vencedor].itens.push({ nome, emb, preco, qtd, subtotal });
-          vendedoresPedidos[vencedor].total += subtotal;
+          resumoPorVendedor[vencedor].itens.push({ nome, qtd, preco, subtotal });
+          resumoPorVendedor[vencedor].total += subtotal;
         }
       });
 
       document.getElementById('totalDisplay').innerText = `R$ ${totalGeral.toFixed(2).replace('.', ',')}`;
 
-      const containerSplits = document.getElementById('painelEnvioDividido');
-      containerSplits.innerHTML = '';
+      const painel = document.getElementById('painelEnvioDividido');
+      painel.innerHTML = '';
 
-      const cliente = document.getElementById('nomeCliente').value.trim() || 'Cliente';
-      const prazo = document.getElementById('prazoPagamento').value;
-      const tipo = document.getElementById('tipoCotacao').value;
+      const qtdVencedores = Object.keys(resumoPorVendedor).length;
 
-      Object.keys(vendedoresPedidos).forEach(vendedor => {
-        const dados = vendedoresPedidos[vendedor];
-        const div = document.createElement('div');
-        div.className = 'card-divisao-vendedor';
+      if (qtdVencedores > 1) {
+        painel.style.display = 'block';
+        let htmlCards = `<div style="font-size: 0.8em; font-weight: bold; margin-bottom: 5px; color: #2d3748;">⚡ Pedido Dividido por Fornecedor:</div>`;
 
-        let textoMsg = `📦 *PEDIDO FECHADO - COTAÇÃO*\n`;
-        textoMsg += `👤 Cliente: *${cliente}*\n`;
-        textoMsg += `🏷️ Condição: ${tipo} | ${prazo}\n`;
-        textoMsg += `------------------------------\n`;
-
-        dados.itens.forEach(item => {
-          textoMsg += `• ${item.qtd}x ${item.nome} (${item.emb}) - R$ ${item.preco.toFixed(2).replace('.', ',')} = R$ ${item.subtotal.toFixed(2).replace('.', ',')}\n`;
-        });
-
-        textoMsg += `------------------------------\n`;
-        textoMsg += `💰 *Total do Pedido: R$ ${dados.total.toFixed(2).replace('.', ',')}*`;
-
-        const urlWhatsapp = `https://api.whatsapp.com/send?text=${encodeURIComponent(textoMsg)}`;
-
-        div.innerHTML = `
-          <div>
-            <b>🏆 ${vendedor}</b><br>
-            <small>${dados.itens.length} item(ns) - Total: <b>R$ ${dados.total.toFixed(2).replace('.', ',')}</b></small>
-          </div>
-          <a href="${urlWhatsapp}" target="_blank" class="btn-send-vendor" style="text-decoration: none; display: inline-block;">Enviar Pedido 📲</a>
-        `;
-
-        containerSplits.appendChild(div);
-      });
-
-      if (Object.keys(vendedoresPedidos).length === 0) {
-        containerSplits.innerHTML = '<div style="font-size:0.85em; color:#718096; text-align:center; padding:5px;">Nenhum menor preço disponível para fechar pedido.</div>';
+        for (let vend in resumoPorVendedor) {
+          const dados = resumoPorVendedor[vend];
+          const totalFormatado = dados.total.toFixed(2).replace('.', ',');
+          htmlCards += `
+            <div class="card-divisao-vendedor">
+              <div>
+                <b>${vend}</b><br>
+                <span>Total: R$ ${totalFormatado}</span>
+              </div>
+              <button class="btn-send-vendor" onclick='enviarPedidoSeparado("${vend}", ${JSON.stringify(dados.itens)})'>Enviar WhatsApp</button>
+            </div>
+          `;
+        }
+        painel.innerHTML = htmlCards;
+        document.getElementById('btnAcao').innerText = "Enviar Pedido Completo (Geral)";
+      } else {
+        painel.style.display = 'none';
+        document.getElementById('btnAcao').innerText = "Enviar Pedido Completo via WhatsApp";
       }
     }
+
+    function executarAcaoPrincipal() {
+      if (etapaAtual === 1) {
+        window.salvarCotacaoEGerarLink();
+      } else if (etapaAtual === 2) {
+        window.salvarPrecosVendedor(cotacaoIdAtual);
+      } else if (etapaAtual === 3) {
+        enviarPedidoCompletoGeral();
+      }
+    }
+
+    function enviarPedidoCompletoGeral() {
+      const cliente = document.getElementById('nomeCliente').value.trim() || 'Cliente';
+      const tipo = document.getElementById('tipoCotacao').value;
+      const prazo = document.getElementById('prazoPagamento').value;
+      const cards = document.querySelectorAll('.produto-card');
+      
+      let msg = `🛒 *PEDIDO DE COMPRA*\nCliente: *${cliente}*\nTipo: *${tipo}*\nForma/Prazo: *${prazo}*\n\n`;
+      let totalGeral = 0;
+
+      cards.forEach(card => {
+        const nome = card.querySelector('.input-nome').value.trim();
+        const emb = card.querySelector('.input-embalagem').value.trim();
+        const preco = parseFloat(card.querySelector('.input-preco').value.replace(',', '.')) || 0;
+        const qtd = parseInt(card.querySelector('.qtd-valor').value) || 1;
+        const vencedorEl = card.querySelector('.nome-vencedor');
+        const vencedor = vencedorEl ? vencedorEl.innerText : 'Sem oferta';
+        const subtotal = preco * qtd;
+        
+        if (nome) {
+          totalGeral += subtotal;
+          msg += `• *${nome}* (${emb})\n  Qtd: ${qtd} | Preço: R$ ${preco.toFixed(2).replace('.', ',')} | Subtotal: R$ ${subtotal.toFixed(2).replace('.', ',')}\n  Fornecedor: _${vencedor}_\n\n`;
+        }
+      });
+
+      msg += `💰 *TOTAL GERAL: R$ ${totalGeral.toFixed(2).replace('.', ',')}*`;
+      window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(msg)}`, '_blank');
+    }
+
+    window.enviarPedidoSeparado = function(vencedor, itens) {
+      const cliente = document.getElementById('nomeCliente').value.trim() || 'Cliente';
+      const tipo = document.getElementById('tipoCotacao').value;
+      const prazo = document.getElementById('prazoPagamento').value;
+      
+      let msg = `🛒 *PEDIDO DE COMPRA*\nFornecedor: *${vencedor}*\nCliente: *${cliente}*\nTipo: *${tipo}*\nForma/Prazo: *${prazo}*\n\n`;
+      let total = 0;
+
+      itens.forEach(item => {
+        total += item.subtotal;
+        msg += `• *${item.nome}*\n  Qtd: ${item.qtd} | Preço: R$ ${item.preco.toFixed(2).replace('.', ',')} | Sub: R$ ${item.subtotal.toFixed(2).replace('.', ',')}\n\n`;
+      });
+
+      msg += `💰 *TOTAL: R$ ${total.toFixed(2).replace('.', ',')}*`;
+      window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(msg)}`, '_blank');
+    };
   </script>
 </body>
 </html>
