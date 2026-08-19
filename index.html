@@ -56,7 +56,6 @@
     .secao-vendedor { background: #f0fff4; border: 1px solid #c6f6d5; padding: 12px; border-radius: 10px; margin-bottom: 15px; display: none; }
     .secao-vendedor h4 { color: #22543d; font-size: 0.9em; margin-bottom: 8px; }
 
-    /* Estilização da seção de Atalhos por Categorias */
     .secao-atalhos { background: white; padding: 12px; border-radius: 10px; margin-bottom: 15px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
     .titulo-atalhos { font-size: 0.85em; font-weight: bold; color: #4a5568; margin-bottom: 8px; }
     .botoes-categorias { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
@@ -86,7 +85,9 @@
     .qtd-valor { width: 35px; text-align: center; font-weight: bold; font-size: 0.9em; border: none; background: transparent; }
 
     .btn-excluir { background: #fff5f5; color: #e53e3e; border: 1px solid #fed7d7; border-radius: 6px; padding: 6px 10px; font-size: 0.8em; cursor: pointer; font-weight: bold; display: block; }
-    .btn-adicionar { background: #ebf8ff; color: #2b6cb0; border: 2px dashed #90cdf4; border-radius: 10px; width: 100%; padding: 12px; font-size: 0.95em; font-weight: bold; cursor: pointer; margin-top: 5px; }
+    .bloco-adicionar-manual { display: flex; gap: 8px; margin-top: 5px; }
+    .select-categoria-novo { padding: 8px; border: 1px solid #cbd5e0; border-radius: 8px; font-size: 0.85em; background: white; font-weight: bold; color: #2b6cb0; }
+    .btn-adicionar { background: #ebf8ff; color: #2b6cb0; border: 2px dashed #90cdf4; border-radius: 10px; flex: 1; padding: 12px; font-size: 0.95em; font-weight: bold; cursor: pointer; }
 
     .carrinho-bar { position: fixed; bottom: 0; left: 0; right: 0; background: white; border-top: 1px solid #e2e8f0; padding: 15px; box-shadow: 0 -2px 10px rgba(0,0,0,0.1); z-index: 100; max-height: 310px; overflow-y: auto; }
     .carrinho-conteudo { max-width: 650px; margin: 0 auto; }
@@ -193,7 +194,17 @@
       </div>
 
       <div id="listaProdutos" style="margin-top: 10px;"></div>
-      <button class="btn-adicionar" id="btnAdicionarManual" onclick="adicionarNovoProduto('', '')">+ Adicionar Item em Branco</button>
+      
+      <!-- BLOCO DE ADICIONAR ITEM EM BRANCO COM ESCOLHA DE CATEGORIA -->
+      <div class="bloco-adicionar-manual" id="blocoAdicionarManual">
+        <select id="selectCategoriaNovo" class="select-categoria-novo">
+          <option value="estiva">📦 Estiva</option>
+          <option value="perfumaria">🧴 Perfumaria</option>
+          <option value="limpeza">🧹 Limpeza</option>
+          <option value="frios">🧀 Frios</option>
+        </select>
+        <button class="btn-adicionar" onclick="adicionarItemManualComCategoria()">+ Adicionar Item em Branco</button>
+      </div>
     </div>
 
     <div class="carrinho-bar">
@@ -252,8 +263,8 @@
     let timerSalvarAuto = null;
     window.cotacaoDadosGlobais = null;
 
-    // Catálogo de itens predefinidos por categoria
-    const catalogoCategorias = {
+    // Catálogo padrão de itens por categoria
+    let catalogoCategorias = {
       estiva: [
         { nome: 'Arroz 5kg', emb: 'Fardo c/ 6' },
         { nome: 'Feijão 1kg', emb: 'Fardo c/ 10' },
@@ -285,6 +296,46 @@
       ]
     };
 
+    // Carregar itens salvos pelo usuário no localStorage (se houver)
+    function carregarCatalogoSalvo() {
+      const salvo = localStorage.getItem('catalogo_customizado');
+      if (salvo) {
+        try {
+          const custom = JSON.parse(salvo);
+          for (let cat in custom) {
+            if (catalogoCategorias[cat]) {
+              // Evita duplicatas exatas pelo nome
+              custom[cat].forEach(itemNovo => {
+                if (!catalogoCategorias[cat].some(i => i.nome.toLowerCase() === itemNovo.nome.toLowerCase())) {
+                  catalogoCategorias[cat].push(itemNovo);
+                }
+              });
+            }
+          }
+        } catch(e) { console.error(e); }
+      }
+    }
+
+    window.adicionarAoCatalogoCustomizado = function(categoria, nome, emb) {
+      if (!nome || !catalogoCategorias[categoria]) return;
+      
+      // Verifica se já existe na categoria
+      const existe = catalogoCategorias[categoria].some(i => i.nome.toLowerCase() === nome.toLowerCase());
+      if (!existe) {
+        catalogoCategorias[categoria].push({ nome, emb: emb || 'Unidade' });
+        localStorage.setItem('catalogo_customizado', JSON.stringify(catalogoCategorias));
+        
+        // Atualiza a tela se a categoria ativa for a mesma
+        const btnAtivo = document.querySelector('.botoes-categorias .btn-cat.ativo');
+        if (btnAtivo) {
+          // Identifica qual categoria está selecionada pelo texto ou atributo
+          if (btnAtivo.innerText.toLowerCase().includes(categoria)) {
+            window.mudarCategoriaAtiva(categoria, btnAtivo);
+          }
+        }
+      }
+    };
+
     window.mudarCategoriaAtiva = function(categoriaKey, btnElement) {
       document.querySelectorAll('.btn-cat').forEach(b => b.classList.remove('ativo'));
       btnElement.classList.add('ativo');
@@ -302,13 +353,12 @@
       });
     };
 
-    // Inicializa a aba padrão "Estiva" ao carregar
     window.addEventListener('DOMContentLoaded', () => {
+      carregarCatalogoSalvo();
       const btnEstiva = document.querySelector('.botoes-categorias .btn-cat');
       if (btnEstiva) window.mudarCategoriaAtiva('estiva', btnEstiva);
     });
 
-    // Máscara de Telefone
     window.mascaraTelefone = function(input) {
       let v = input.value.replace(/\D/g, "");
       if (v.length > 11) v = v.substring(0, 11);
@@ -324,7 +374,6 @@
       input.value = v;
     };
 
-    // Auto-login se já tiver logado anteriormente
     window.addEventListener('DOMContentLoaded', async () => {
       const urlParams = new URLSearchParams(window.location.search);
       const cParam = urlParams.get('c');
@@ -347,7 +396,6 @@
       }
     });
 
-    // Submissão do login
     window.processarAuthWhatsApp = async function() {
       const errorDiv = document.getElementById('authErrorMsg');
       errorDiv.style.display = 'none';
@@ -371,7 +419,6 @@
       await validarEEntrar(phoneClean, passInput.trim(), false);
     };
 
-    // Validação com Telefone e Senha no Firestore
     async function validarEEntrar(phoneNum, senha, isAutoLogin = false) {
       const errorDiv = document.getElementById('authErrorMsg');
       
@@ -517,7 +564,10 @@
       cards.forEach((card, index) => {
         const nome = card.querySelector('.input-nome').value.trim();
         const emb = card.querySelector('.input-embalagem').value.trim();
-        if (nome !== "") produtos.push({ id: index, nome, emb });
+        if (nome !== "") {
+          produtos.push({ id: index, nome, emb });
+          // Opcional: Se preencheu nome e embalagem manualmente na lista, já cadastra na categoria selecionada padrão (Estiva) caso queira
+        }
       });
 
       try {
@@ -656,8 +706,8 @@
 
       card.innerHTML = `
         <div class="linha-inputs">
-          <input type="text" class="input-editavel input-nome" placeholder="Nome..." value="${nome}" onchange="agendarSalvarAutomatico()">
-          <input type="text" class="input-editavel input-embalagem" placeholder="Emb..." value="${emb}" onchange="agendarSalvarAutomatico()">
+          <input type="text" class="input-editavel input-nome" placeholder="Nome do produto..." value="${nome}" onchange="registrarItemEditado(this)">
+          <input type="text" class="input-editavel input-embalagem" placeholder="Emb..." value="${emb}" onchange="registrarItemEditado(this)">
         </div>
         <div class="linha-acoes">
           <div class="bloco-preco">
@@ -676,6 +726,32 @@
       container.appendChild(card);
       
       alternarEtapa(etapaAtual);
+      if (typeof window.agendarSalvarAutomatico === 'function') {
+        window.agendarSalvarAutomatico();
+      }
+    }
+
+    function adicionarItemManualComCategoria() {
+      const categoriaSelecionada = document.getElementById('selectCategoriaNovo').value;
+      // Adiciona um item vazio na lista
+      adicionarNovoProduto('', '');
+      
+      // Pega o último card adicionado para observar quando o usuário digitar o nome e salvar automaticamente na categoria escolhida
+      const cards = document.querySelectorAll('.produto-card');
+      const ultimoCard = cards[cards.length - 1];
+      ultimoCard.dataset.categoriaPredefinida = categoriaSelecionada;
+    }
+
+    function registrarItemEditado(input) {
+      const card = input.closest('.produto-card');
+      const nome = card.querySelector('.input-nome').value.trim();
+      const emb = card.querySelector('.input-embalagem').value.trim();
+      const categoria = card.dataset.categoriaPredefinida || document.getElementById('selectCategoriaNovo').value;
+
+      if (nome !== "" && typeof window.adicionarAoCatalogoCustomizado === 'function') {
+        window.adicionarAoCatalogoCustomizado(categoria, nome, emb);
+      }
+
       if (typeof window.agendarSalvarAutomatico === 'function') {
         window.agendarSalvarAutomatico();
       }
@@ -733,7 +809,7 @@
         document.getElementById('textoOrientacao').innerHTML = "📌 <b>Etapa 1:</b> Monte sua lista.";
         document.getElementById('secaoVendedor').style.display = 'none';
         document.getElementById('secaoAtalhos').style.display = 'block';
-        document.getElementById('btnAdicionarManual').style.display = 'block';
+        document.getElementById('blocoAdicionarManual').style.display = 'flex';
         document.getElementById('boxTotal').style.display = 'none';
         document.getElementById('painelEnvioDividido').style.display = 'none';
         document.getElementById('btnAcao').style.display = 'block';
@@ -749,7 +825,7 @@
         document.getElementById('textoOrientacao').innerHTML = "💼 <b>Etapa 2:</b> Vendedor, digite seus preços.";
         document.getElementById('secaoVendedor').style.display = 'block';
         document.getElementById('secaoAtalhos').style.display = 'none';
-        document.getElementById('btnAdicionarManual').style.display = 'none';
+        document.getElementById('blocoAdicionarManual').style.display = 'none';
         document.getElementById('boxTotal').style.display = 'none';
         document.getElementById('painelEnvioDividido').style.display = 'none';
         document.getElementById('btnAcao').style.display = 'block';
@@ -765,7 +841,7 @@
         document.getElementById('textoOrientacao').innerHTML = "📦 <b>Etapa 3:</b> Monte seu pedido final.";
         document.getElementById('secaoVendedor').style.display = 'none';
         document.getElementById('secaoAtalhos').style.display = 'none';
-        document.getElementById('btnAdicionarManual').style.display = 'none';
+        document.getElementById('blocoAdicionarManual').style.display = 'none';
         document.getElementById('boxTotal').style.display = 'flex';
         document.getElementById('btnAcao').style.display = 'block';
 
