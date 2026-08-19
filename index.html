@@ -676,7 +676,7 @@
         inputsEmb.forEach(i => i.disabled = false);
         precos.forEach(p => p.style.display = 'none');
         quantidades.forEach(q => q.style.display = 'none');
-        botoesExcluir.forEach(b => b.style.display = 'block');
+        botoesExcluir.forEach(b => b.style.display = 'block'); // Exibe botão excluir
         badgesVencedor.forEach(b => b.style.display = 'none');
       } else if (etapa === 2) {
         document.getElementById('textoOrientacao').innerHTML = "💼 <b>Etapa 2:</b> Vendedor, digite seus preços.";
@@ -692,7 +692,7 @@
         inputsEmb.forEach(i => i.disabled = true);
         precos.forEach(p => p.style.display = 'flex');
         quantidades.forEach(q => q.style.display = 'none');
-        botoesExcluir.forEach(b => b.style.display = 'none');
+        botoesExcluir.forEach(b => b.style.display = 'block'); // <--- EXIBE O BOTÃO DE EXCLUIR NA ETAPA 2 TAMBÉM
         badgesVencedor.forEach(b => b.style.display = 'none');
       } else if (etapa === 3) {
         document.getElementById('textoOrientacao').innerHTML = "📦 <b>Etapa 3:</b> Monte seu pedido final.";
