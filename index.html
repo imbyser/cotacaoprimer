@@ -56,17 +56,6 @@
     .secao-vendedor { background: #f0fff4; border: 1px solid #c6f6d5; padding: 12px; border-radius: 10px; margin-bottom: 15px; display: none; }
     .secao-vendedor h4 { color: #22543d; font-size: 0.9em; margin-bottom: 8px; }
 
-    .secao-atalhos { background: white; padding: 12px; border-radius: 10px; margin-bottom: 15px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
-    .titulo-atalhos { font-size: 0.85em; font-weight: bold; color: #4a5568; margin-bottom: 8px; }
-    .botoes-categorias { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
-    .btn-cat { background: #edf2f7; border: 1px solid #cbd5e0; border-radius: 20px; padding: 6px 12px; font-size: 0.8em; font-weight: bold; color: #2d3748; cursor: pointer; transition: 0.2s; }
-    .btn-cat.ativo { background: #2b6cb0; color: white; border-color: #2b6cb0; }
-    
-    .itens-categoria-container { display: flex; flex-wrap: wrap; gap: 6px; background: #f7fafc; padding: 8px; border-radius: 8px; border: 1px solid #e2e8f0; min-height: 45px; align-items: center; }
-    .aviso-vazio { font-size: 0.78em; color: #a0aec0; font-style: italic; width: 100%; text-align: center; }
-    .btn-item-rapido { background: white; border: 1px solid #cbd5e0; border-radius: 6px; padding: 5px 10px; font-size: 0.78em; font-weight: bold; color: #2b6cb0; cursor: pointer; }
-    .btn-item-rapido:hover { background: #ebf8ff; border-color: #90cdf4; }
-
     .produto-card { background: white; border-radius: 10px; padding: 12px; margin-bottom: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); display: flex; flex-direction: column; gap: 8px; }
     .linha-inputs { display: flex; gap: 8px; }
     .input-editavel { border: 1px solid #cbd5e0; border-radius: 6px; padding: 8px; font-size: 0.9em; outline: none; }
@@ -86,9 +75,7 @@
     .qtd-valor { width: 35px; text-align: center; font-weight: bold; font-size: 0.9em; border: none; background: transparent; }
 
     .btn-excluir { background: #fff5f5; color: #e53e3e; border: 1px solid #fed7d7; border-radius: 6px; padding: 6px 10px; font-size: 0.8em; cursor: pointer; font-weight: bold; display: block; }
-    .bloco-adicionar-manual { display: flex; gap: 8px; margin-top: 5px; }
-    .select-categoria-novo { padding: 8px; border: 1px solid #cbd5e0; border-radius: 8px; font-size: 0.85em; background: white; font-weight: bold; color: #2b6cb0; }
-    .btn-adicionar { background: #ebf8ff; color: #2b6cb0; border: 2px dashed #90cdf4; border-radius: 10px; flex: 1; padding: 12px; font-size: 0.95em; font-weight: bold; cursor: pointer; }
+    .btn-adicionar { background: #ebf8ff; color: #2b6cb0; border: 2px dashed #90cdf4; border-radius: 10px; width: 100%; padding: 12px; font-size: 0.95em; font-weight: bold; cursor: pointer; margin-top: 5px; }
 
     .carrinho-bar { position: fixed; bottom: 0; left: 0; right: 0; background: white; border-top: 1px solid #e2e8f0; padding: 15px; box-shadow: 0 -2px 10px rgba(0,0,0,0.1); z-index: 100; max-height: 310px; overflow-y: auto; }
     .carrinho-conteudo { max-width: 650px; margin: 0 auto; }
@@ -99,9 +86,6 @@
 
     .resumo-total { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; font-size: 1em; font-weight: bold; color: #1a365d; }
     .btn-whatsapp { background: #25d366; color: white; border: none; padding: 12px; border-radius: 8px; font-size: 0.9em; font-weight: bold; cursor: pointer; width: 100%; text-align: center; }
-    .card-divisao-vendedor { background: #f0fff4; border: 1px solid #9ae6b4; padding: 10px; border-radius: 8px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; font-size: 0.85em; }
-    .btn-send-vendor { background: #2f855a; color: white; border: none; padding: 6px 10px; border-radius: 6px; font-weight: bold; font-size: 0.8em; cursor: pointer; }
-
     #statusSalvamento { font-size: 0.75em; color: #2b6cb0; font-weight: bold; }
   </style>
 </head>
@@ -180,34 +164,10 @@
         </div>
       </div>
 
-      <!-- SEÇÃO ATALHOS / ADICIONAR RÁPIDO POR CATEGORIAS CORRIGIDA -->
-      <div class="secao-atalhos" id="secaoAtalhos">
-        <div class="titulo-atalhos">⚡ Adicionar Rápido por Categoria:</div>
-        <div class="botoes-categorias">
-          <button class="btn-cat ativo" onclick="mudarCategoriaAtiva('estiva', this)">📦 Estiva</button>
-          <button class="btn-cat" onclick="mudarCategoriaAtiva('perfumaria', this)">🧴 Perfumaria</button>
-          <button class="btn-cat" onclick="mudarCategoriaAtiva('limpeza', this)">🧹 Limpeza</button>
-          <button class="btn-cat" onclick="mudarCategoriaAtiva('frios', this)">🧀 Frios</button>
-          <button class="btn-cat" onclick="mudarCategoriaAtiva('enlatados', this)">🥫 Enlatados</button>
-        </div>
-        <div class="itens-categoria-container" id="containerItensCategoria">
-          <!-- Os itens só aparecem dentro da sua categoria correta -->
-        </div>
-      </div>
+      <!-- SEÇÃO "ADICIONAR RÁPIDO" REMOVIDA DAQUI -->
 
       <div id="listaProdutos" style="margin-top: 10px;"></div>
-      
-      <!-- BLOCO DE ADICIONAR ITEM EM BRANCO COM ESCOLHA DE CATEGORIA -->
-      <div class="bloco-adicionar-manual" id="blocoAdicionarManual">
-        <select id="selectCategoriaNovo" class="select-categoria-novo">
-          <option value="estiva">📦 Estiva</option>
-          <option value="perfumaria">🧴 Perfumaria</option>
-          <option value="limpeza">🧹 Limpeza</option>
-          <option value="frios">🧀 Frios</option>
-          <option value="enlatados">🥫 Enlatados</option>
-        </select>
-        <button class="btn-adicionar" onclick="adicionarItemManualComCategoria()">+ Adicionar Item em Branco</button>
-      </div>
+      <button class="btn-adicionar" id="btnAdicionarManual" onclick="adicionarNovoProduto('', '')">+ Adicionar Item em Branco</button>
     </div>
 
     <div class="carrinho-bar">
@@ -265,91 +225,6 @@
     let listenerSnapshot = null;
     let timerSalvarAuto = null;
     window.cotacaoDadosGlobais = null;
-
-    // Catálogo inicial perfeito, separando corretamente Estiva de Perfumaria
-    let catalogoCategorias = {
-      estiva: [
-        { nome: "Feijão Preto grão de Minas", emb: "Unidade" }
-      ],
-      perfumaria: [
-        { nome: "Sabonete Even", emb: "Unidade" },
-        { nome: "Sabonete Protex", emb: "Unidade" }
-      ],
-      limpeza: [],
-      frios: [],
-      enlatados: []
-    };
-
-    function carregarCatalogoSalvo() {
-      // Limpeza forçada única para corrigir o cache antigo contaminado do navegador
-      const versaoCache = localStorage.getItem('versao_catalogo_fix_v2');
-      if (!versaoCache) {
-        localStorage.removeItem('catalogo_customizado');
-        localStorage.setItem('versao_catalogo_fix_v2', 'true');
-      }
-
-      const salvo = localStorage.getItem('catalogo_customizado');
-      if (salvo) {
-        try {
-          const custom = JSON.parse(salvo);
-          for (let cat in custom) {
-            if (catalogoCategorias[cat]) {
-              // Garante que não haja itens duplicados
-              custom[cat].forEach(itemNovo => {
-                const existe = catalogoCategorias[cat].some(i => i.nome.toLowerCase() === itemNovo.nome.toLowerCase());
-                if (!existe) {
-                  catalogoCategorias[cat].push(itemNovo);
-                }
-              });
-            }
-          }
-        } catch(e) { console.error(e); }
-      }
-    }
-
-    window.adicionarAoCatalogoCustomizado = function(categoria, nome, emb) {
-      if (!nome || !catalogoCategorias[categoria]) return;
-      
-      const existe = catalogoCategorias[categoria].some(i => i.nome.toLowerCase() === nome.toLowerCase());
-      if (!existe) {
-        catalogoCategorias[categoria].push({ nome, emb: emb || 'Unidade' });
-        localStorage.setItem('catalogo_customizado', JSON.stringify(catalogoCategorias));
-        
-        const btnAtivo = document.querySelector('.botoes-categorias .btn-cat.ativo');
-        if (btnAtivo && btnAtivo.getAttribute('onclick').includes(categoria)) {
-          window.mudarCategoriaAtiva(categoria, btnAtivo);
-        }
-      }
-    };
-
-    window.mudarCategoriaAtiva = function(categoriaKey, btnElement) {
-      document.querySelectorAll('.btn-cat').forEach(b => b.classList.remove('ativo'));
-      btnElement.classList.add('ativo');
-
-      const containerItens = document.getElementById('containerItensCategoria');
-      containerItens.innerHTML = '';
-
-      const itens = catalogoCategorias[categoriaKey] || [];
-      
-      if (itens.length === 0) {
-        containerItens.innerHTML = `<span class="aviso-vazio">Nenhum item nesta categoria. Adicione um produto selecionando esta categoria para salvá-lo aqui.</span>`;
-        return;
-      }
-
-      itens.forEach(item => {
-        const btn = document.createElement('button');
-        btn.className = 'btn-item-rapido';
-        btn.innerHTML = `+ ${item.nome}`;
-        btn.onclick = () => adicionarNovoProduto(item.nome, item.emb);
-        containerItens.appendChild(btn);
-      });
-    };
-
-    window.addEventListener('DOMContentLoaded', () => {
-      carregarCatalogoSalvo();
-      const btnEstiva = document.querySelector('.botoes-categorias .btn-cat');
-      if (btnEstiva) window.mudarCategoriaAtiva('estiva', btnEstiva);
-    });
 
     window.mascaraTelefone = function(input) {
       let v = input.value.replace(/\D/g, "");
@@ -556,9 +431,7 @@
       cards.forEach((card, index) => {
         const nome = card.querySelector('.input-nome').value.trim();
         const emb = card.querySelector('.input-embalagem').value.trim();
-        if (nome !== "") {
-          produtos.push({ id: index, nome, emb });
-        }
+        if (nome !== "") produtos.push({ id: index, nome, emb });
       });
 
       try {
@@ -697,8 +570,8 @@
 
       card.innerHTML = `
         <div class="linha-inputs">
-          <input type="text" class="input-editavel input-nome" placeholder="Nome do produto..." value="${nome}" onchange="registrarItemEditado(this)">
-          <input type="text" class="input-editavel input-embalagem" placeholder="Emb..." value="${emb}" onchange="registrarItemEditado(this)">
+          <input type="text" class="input-editavel input-nome" placeholder="Nome..." value="${nome}" onchange="agendarSalvarAutomatico()">
+          <input type="text" class="input-editavel input-embalagem" placeholder="Emb..." value="${emb}" onchange="agendarSalvarAutomatico()">
         </div>
         <div class="linha-acoes">
           <div class="bloco-preco">
@@ -717,32 +590,6 @@
       container.appendChild(card);
       
       alternarEtapa(etapaAtual);
-      if (typeof window.agendarSalvarAutomatico === 'function') {
-        window.agendarSalvarAutomatico();
-      }
-    }
-
-    function adicionarItemManualComCategoria() {
-      const categoriaSelecionada = document.getElementById('selectCategoriaNovo').value;
-      
-      adicionarNovoProduto('', '');
-      
-      const cards = document.querySelectorAll('.produto-card');
-      const ultimoCard = cards[cards.length - 1];
-      ultimoCard.dataset.categoriaPredefinida = categoriaSelecionada;
-    }
-
-    function registrarItemEditado(input) {
-      const card = input.closest('.produto-card');
-      const nome = card.querySelector('.input-nome').value.trim();
-      const emb = card.querySelector('.input-embalagem').value.trim();
-      
-      const categoria = card.dataset.categoriaPredefinida || document.getElementById('selectCategoriaNovo').value;
-
-      if (nome !== "" && typeof window.adicionarAoCatalogoCustomizado === 'function') {
-        window.adicionarAoCatalogoCustomizado(categoria, nome, emb);
-      }
-
       if (typeof window.agendarSalvarAutomatico === 'function') {
         window.agendarSalvarAutomatico();
       }
@@ -799,8 +646,7 @@
       if (etapa === 1) {
         document.getElementById('textoOrientacao').innerHTML = "📌 <b>Etapa 1:</b> Monte sua lista.";
         document.getElementById('secaoVendedor').style.display = 'none';
-        document.getElementById('secaoAtalhos').style.display = 'block';
-        document.getElementById('blocoAdicionarManual').style.display = 'flex';
+        document.getElementById('btnAdicionarManual').style.display = 'block';
         document.getElementById('boxTotal').style.display = 'none';
         document.getElementById('painelEnvioDividido').style.display = 'none';
         document.getElementById('btnAcao').style.display = 'block';
@@ -812,151 +658,50 @@
         quantidades.forEach(q => q.style.display = 'none');
         botoesExcluir.forEach(b => b.style.display = 'block');
         badgesVencedor.forEach(b => b.style.display = 'none');
+
       } else if (etapa === 2) {
-        document.getElementById('textoOrientacao').innerHTML = "💼 <b>Etapa 2:</b> Vendedor, digite seus preços.";
+        document.getElementById('textoOrientacao').innerHTML = "📌 <b>Etapa 2:</b> Preencha os preços e envie.";
         document.getElementById('secaoVendedor').style.display = 'block';
-        document.getElementById('secaoAtalhos').style.display = 'none';
-        document.getElementById('blocoAdicionarManual').style.display = 'none';
+        document.getElementById('btnAdicionarManual').style.display = 'none';
         document.getElementById('boxTotal').style.display = 'none';
         document.getElementById('painelEnvioDividido').style.display = 'none';
         document.getElementById('btnAcao').style.display = 'block';
-        document.getElementById('btnAcao').innerText = "Enviar Meus Preços";
+        document.getElementById('btnAcao').innerText = "Enviar Preços ao Cliente";
 
         inputsNome.forEach(i => i.disabled = true);
         inputsEmb.forEach(i => i.disabled = true);
         precos.forEach(p => p.style.display = 'flex');
         quantidades.forEach(q => q.style.display = 'none');
-        botoesExcluir.forEach(b => b.style.display = 'block');
+        botoesExcluir.forEach(b => b.style.display = 'none');
         badgesVencedor.forEach(b => b.style.display = 'none');
+
       } else if (etapa === 3) {
-        document.getElementById('textoOrientacao').innerHTML = "📦 <b>Etapa 3:</b> Monte seu pedido final.";
+        document.getElementById('textoOrientacao').innerHTML = "📌 <b>Etapa 3:</b> Veja o resultado e feche o pedido.";
         document.getElementById('secaoVendedor').style.display = 'none';
-        document.getElementById('secaoAtalhos').style.display = 'none';
-        document.getElementById('blocoAdicionarManual').style.display = 'none';
+        document.getElementById('btnAdicionarManual').style.display = 'none';
         document.getElementById('boxTotal').style.display = 'flex';
         document.getElementById('btnAcao').style.display = 'block';
+        document.getElementById('btnAcao').innerText = "Finalizar e Enviar Pedido no WhatsApp";
 
         inputsNome.forEach(i => i.disabled = true);
         inputsEmb.forEach(i => i.disabled = true);
         precos.forEach(p => p.style.display = 'flex');
-        inputsPreco.forEach(ip => ip.disabled = true);
+        inputsPreco.forEach(i => i.disabled = true);
         quantidades.forEach(q => q.style.display = 'flex');
         botoesExcluir.forEach(b => b.style.display = 'none');
-        badgesVencedor.forEach(b => b.style.display = 'inline-block');
-
-        calcularTotalEGerarSplits();
       }
     }
 
-    function calcularTotalEGerarSplits() {
-      const cards = document.querySelectorAll('.produto-card');
-      let totalGeral = 0;
-      let resumoPorVendedor = {};
-
-      cards.forEach(card => {
-        const nome = card.querySelector('.input-nome').value.trim();
-        const preco = parseFloat(card.querySelector('.input-preco').value.replace(',', '.')) || 0;
-        const qtd = parseInt(card.querySelector('.qtd-valor').value) || 1;
-        const vencedorEl = card.querySelector('.nome-vencedor');
-        const vencedor = vencedorEl ? vencedorEl.innerText : 'Sem oferta';
-
-        const subtotal = preco * qtd;
-        totalGeral += subtotal;
-
-        if (vencedor !== 'Sem oferta' && preco > 0) {
-          if (!resumoPorVendedor[vencedor]) {
-            resumoPorVendedor[vencedor] = { itens: [], total: 0 };
-          }
-          resumoPorVendedor[vencedor].itens.push({ nome, qtd, preco, subtotal });
-          resumoPorVendedor[vencedor].total += subtotal;
-        }
-      });
-
-      document.getElementById('totalDisplay').innerText = `R$ ${totalGeral.toFixed(2).replace('.', ',')}`;
-
-      const painel = document.getElementById('painelEnvioDividido');
-      painel.innerHTML = '';
-
-      const qtdVencedores = Object.keys(resumoPorVendedor).length;
-
-      if (qtdVencedores > 1) {
-        painel.style.display = 'block';
-        let htmlCards = `<div style="font-size: 0.8em; font-weight: bold; margin-bottom: 5px; color: #2d3748;">⚡ Pedido Dividido por Fornecedor:</div>`;
-
-        for (let vend in resumoPorVendedor) {
-          const dados = resumoPorVendedor[vend];
-          const totalFormatado = dados.total.toFixed(2).replace('.', ',');
-          htmlCards += `
-            <div class="card-divisao-vendedor">
-              <div>
-                <b>${vend}</b><br>
-                <span>Total: R$ ${totalFormatado}</span>
-              </div>
-              <button class="btn-send-vendor" onclick='enviarPedidoSeparado("${vend}", ${JSON.stringify(dados.itens)})'>Enviar WhatsApp</button>
-            </div>
-          `;
-        }
-        painel.innerHTML = htmlCards;
-        document.getElementById('btnAcao').innerText = "Enviar Pedido Completo (Geral)";
-      } else {
-        painel.style.display = 'none';
-        document.getElementById('btnAcao').innerText = "Enviar Pedido Completo via WhatsApp";
-      }
-    }
-
-    function executarAcaoPrincipal() {
+    window.executarAcaoPrincipal = function() {
       if (etapaAtual === 1) {
         window.salvarCotacaoEGerarLink();
       } else if (etapaAtual === 2) {
-        window.salvarPrecosVendedor(cotacaoIdAtual);
+        const urlParams = new URLSearchParams(window.location.search);
+        const cParam = urlParams.get('c');
+        if (cParam) window.salvarPrecosVendedor(cParam);
       } else if (etapaAtual === 3) {
-        enviarPedidoCompletoGeral();
+        alert("Função de envio de pedido finalizado.");
       }
-    }
-
-    function enviarPedidoCompletoGeral() {
-      const cliente = document.getElementById('nomeCliente').value.trim() || 'Cliente';
-      const tipo = document.getElementById('tipoCotacao').value;
-      const prazo = document.getElementById('prazoPagamento').value;
-      const cards = document.querySelectorAll('.produto-card');
-      
-      let msg = `🛒 *PEDIDO DE COMPRA*\nCliente: *${cliente}*\nTipo: *${tipo}*\nForma/Prazo: *${prazo}*\n\n`;
-      let totalGeral = 0;
-
-      cards.forEach(card => {
-        const nome = card.querySelector('.input-nome').value.trim();
-        const emb = card.querySelector('.input-embalagem').value.trim();
-        const preco = parseFloat(card.querySelector('.input-preco').value.replace(',', '.')) || 0;
-        const qtd = parseInt(card.querySelector('.qtd-valor').value) || 1;
-        const vencedorEl = card.querySelector('.nome-vencedor');
-        const vencedor = vencedorEl ? vencedorEl.innerText : 'Sem oferta';
-        const subtotal = preco * qtd;
-        
-        if (nome) {
-          totalGeral += subtotal;
-          msg += `• *${nome}* (${emb})\n  Qtd: ${qtd} | Preço: R$ ${preco.toFixed(2).replace('.', ',')} | Subtotal: R$ ${subtotal.toFixed(2).replace('.', ',')}\n  Fornecedor: _${vencedor}_\n\n`;
-        }
-      });
-
-      msg += `💰 *TOTAL GERAL: R$ ${totalGeral.toFixed(2).replace('.', ',')}*`;
-      window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(msg)}`, '_blank');
-    }
-
-    window.enviarPedidoSeparado = function(vencedor, itens) {
-      const cliente = document.getElementById('nomeCliente').value.trim() || 'Cliente';
-      const tipo = document.getElementById('tipoCotacao').value;
-      const prazo = document.getElementById('prazoPagamento'.value);
-      
-      let msg = `🛒 *PEDIDO DE COMPRA*\nFornecedor: *${vencedor}*\nCliente: *${cliente}*\nTipo: *${tipo}*\nForma/Prazo: *${prazo}*\n\n`;
-      let total = 0;
-
-      itens.forEach(item => {
-        total += item.subtotal;
-        msg += `• *${item.nome}*\n  Qtd: ${item.qtd} | Preço: R$ ${item.preco.toFixed(2).replace('.', ',')} | Sub: R$ ${item.subtotal.toFixed(2).replace('.', ',')}\n\n`;
-      });
-
-      msg += `💰 *TOTAL: R$ ${total.toFixed(2).replace('.', ',')}*`;
-      window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(msg)}`, '_blank');
     };
   </script>
 </body>
