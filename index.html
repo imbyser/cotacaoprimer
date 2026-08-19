@@ -266,23 +266,41 @@
     let timerSalvarAuto = null;
     window.cotacaoDadosGlobais = null;
 
-    // Catálogo isolado por categoria rigorosamente
+    // Catálogo inicial perfeito, separando corretamente Estiva de Perfumaria
     let catalogoCategorias = {
-      estiva: [],
-      perfumaria: [],
+      estiva: [
+        { nome: "Feijão Preto grão de Minas", emb: "Unidade" }
+      ],
+      perfumaria: [
+        { nome: "Sabonete Even", emb: "Unidade" },
+        { nome: "Sabonete Protex", emb: "Unidade" }
+      ],
       limpeza: [],
       frios: [],
       enlatados: []
     };
 
     function carregarCatalogoSalvo() {
+      // Limpeza forçada única para corrigir o cache antigo contaminado do navegador
+      const versaoCache = localStorage.getItem('versao_catalogo_fix_v2');
+      if (!versaoCache) {
+        localStorage.removeItem('catalogo_customizado');
+        localStorage.setItem('versao_catalogo_fix_v2', 'true');
+      }
+
       const salvo = localStorage.getItem('catalogo_customizado');
       if (salvo) {
         try {
           const custom = JSON.parse(salvo);
           for (let cat in custom) {
             if (catalogoCategorias[cat]) {
-              catalogoCategorias[cat] = custom[cat];
+              // Garante que não haja itens duplicados
+              custom[cat].forEach(itemNovo => {
+                const existe = catalogoCategorias[cat].some(i => i.nome.toLowerCase() === itemNovo.nome.toLowerCase());
+                if (!existe) {
+                  catalogoCategorias[cat].push(itemNovo);
+                }
+              });
             }
           }
         } catch(e) { console.error(e); }
@@ -292,13 +310,11 @@
     window.adicionarAoCatalogoCustomizado = function(categoria, nome, emb) {
       if (!nome || !catalogoCategorias[categoria]) return;
       
-      // Evita duplicatas estritas na mesma categoria
       const existe = catalogoCategorias[categoria].some(i => i.nome.toLowerCase() === nome.toLowerCase());
       if (!existe) {
         catalogoCategorias[categoria].push({ nome, emb: emb || 'Unidade' });
         localStorage.setItem('catalogo_customizado', JSON.stringify(catalogoCategorias));
         
-        // Atualiza a tela se a categoria ativa for exatamente essa
         const btnAtivo = document.querySelector('.botoes-categorias .btn-cat.ativo');
         if (btnAtivo && btnAtivo.getAttribute('onclick').includes(categoria)) {
           window.mudarCategoriaAtiva(categoria, btnAtivo);
@@ -324,7 +340,6 @@
         const btn = document.createElement('button');
         btn.className = 'btn-item-rapido';
         btn.innerHTML = `+ ${item.nome}`;
-        // Ao clicar no botão rápido da categoria, ele envia o produto para a cotação do cliente
         btn.onclick = () => adicionarNovoProduto(item.nome, item.emb);
         containerItens.appendChild(btn);
       });
@@ -710,7 +725,6 @@
     function adicionarItemManualComCategoria() {
       const categoriaSelecionada = document.getElementById('selectCategoriaNovo').value;
       
-      // Abre o modal/linha em branco na cotação do cliente e atrela a categoria selecionada
       adicionarNovoProduto('', '');
       
       const cards = document.querySelectorAll('.produto-card');
@@ -723,7 +737,6 @@
       const nome = card.querySelector('.input-nome').value.trim();
       const emb = card.querySelector('.input-embalagem').value.trim();
       
-      // Pega a categoria correta que foi escolhida ou vinculada a este card
       const categoria = card.dataset.categoriaPredefinida || document.getElementById('selectCategoriaNovo').value;
 
       if (nome !== "" && typeof window.adicionarAoCatalogoCustomizado === 'function') {
