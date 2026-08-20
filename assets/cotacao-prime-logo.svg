@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 330 72" role="img" aria-labelledby="title desc">
+  <title id="title">Cotação Prime</title>
+  <desc id="desc">Lista com a melhor escolha marcada, ao lado do nome Cotação Prime.</desc>
+  <g transform="translate(0 0)">
+    <path d="M14 5h32l12 12v44a6 6 0 0 1-6 6H14a6 6 0 0 1-6-6V11a6 6 0 0 1 6-6Z" fill="#fffaf0" stroke="#153b66" stroke-width="4" stroke-linejoin="round"/>
+    <path d="M46 5v12h12" fill="#dceaf1" stroke="#153b66" stroke-width="4" stroke-linejoin="round"/>
+    <circle cx="20" cy="25" r="3.5" fill="#2d6fa3"/>
+    <path d="M29 25h17M29 36h17M29 47h10" stroke="#2d6fa3" stroke-width="4" stroke-linecap="round"/>
+    <circle cx="20" cy="36" r="3.5" fill="#2d6fa3"/>
+    <circle cx="20" cy="47" r="3.5" fill="#2d6fa3"/>
+    <path d="m36 50 7 7 17-21" fill="none" stroke="#16a765" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+  <text x="82" y="34" fill="#153b66" font-family="Arial, Helvetica, sans-serif" font-size="28" font-weight="800" letter-spacing="-0.8">COTAÇÃO</text>
+  <text x="82" y="61" fill="#16a765" font-family="Arial, Helvetica, sans-serif" font-size="25" font-weight="800" letter-spacing="2.5">PRIME</text>
+</svg>

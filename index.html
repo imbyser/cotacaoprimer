@@ -3,7 +3,13 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Sistema Profissional de Cotação e Pedidos</title>
+  <meta name="description" content="Monte sua lista, receba os preços dos fornecedores e faça seus pedidos.">
+  <meta name="theme-color" content="#153b66">
+  <title>Cotação Prime — Lista, preços e pedido</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800;900&family=Atkinson+Hyperlegible:wght@400;700&display=swap" rel="stylesheet">
+  <link rel="icon" href="assets/cotacao-prime-mark.svg" type="image/svg+xml">
 
   <style>
     * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 0; }
@@ -97,26 +103,31 @@
 
     #statusSalvamento { font-size: 0.75em; color: #2b6cb0; font-weight: bold; }
   </style>
+  <link rel="stylesheet" href="assets/app.css">
 </head>
 <body>
 
   <!-- AUTENTICAÇÃO POR WHATSAPP E SENHA -->
-  <div id="authOverlay">
+  <div id="authOverlay" role="dialog" aria-modal="true" aria-labelledby="authTitle">
     <div class="auth-card">
-      <h2>🔑 Acessar Sistema</h2>
-      <p>Digite seu WhatsApp e senha cadastrados</p>
+      <img class="auth-logo" src="assets/cotacao-prime-logo.svg" alt="Cotação Prime" width="250" height="55">
+      <h2 id="authTitle">Entrar no sistema</h2>
+      <p>Use o WhatsApp e a senha que você cadastrou.</p>
+      <div id="authPaymentMsg" class="auth-payment-message" role="status" hidden></div>
+
+      <label class="sr-only" for="authPhone">WhatsApp com DDD</label>
+      <input type="tel" id="authPhone" class="auth-input" placeholder="WhatsApp com DDD" maxlength="15" inputmode="tel" autocomplete="tel" oninput="mascaraTelefone(this)">
+      <label class="sr-only" for="authPassword">Senha</label>
+      <input type="password" id="authPassword" class="auth-input" placeholder="Sua senha" autocomplete="current-password">
       
-      <input type="tel" id="authPhone" class="auth-input" placeholder="(81) 99999-9999" maxlength="15" oninput="mascaraTelefone(this)">
-      <input type="password" id="authPassword" class="auth-input" placeholder="Sua Senha">
+      <div id="authErrorMsg" class="auth-error" role="alert"></div>
       
-      <div id="authErrorMsg" class="auth-error"></div>
-      
-      <button id="btnAuthSubmit" class="btn-auth-primary" onclick="processarAuthWhatsApp()">
-        <span>Entrar no Sistema</span> 📲
+      <button id="btnAuthSubmit" class="btn-auth-primary" type="button" onclick="processarAuthWhatsApp()">
+        <span>Entrar no sistema</span>
       </button>
       
       <div class="auth-toggle">
-        <span>Ainda não é assinante? <a href="https://imbyser.github.io/cotacaoprimer/vendas.html" target="_blank">Ver Planos e Assinar</a></span>
+        <span>Ainda não é cliente? <a href="vendas.html">Ver planos</a></span>
       </div>
     </div>
   </div>
@@ -125,79 +136,86 @@
   <div class="user-bar" id="userBar" style="display: none;">
     <span>👤 WhatsApp: <b id="userPhoneDisplay">-</b></span>
     <div style="display: flex; gap: 8px; align-items: center;">
-      <a href="https://imbyser.github.io/cotacaoprimer/vendas.html" target="_blank" class="btn-assinar-topo">💳 Gerenciar Assinatura</a>
-      <button class="btn-logout" onclick="fazerLogout()">Sair</button>
+      <a href="vendas.html" class="btn-assinar-topo">Gerenciar assinatura</a>
+      <button class="btn-logout" type="button" onclick="fazerLogout()">Sair</button>
     </div>
   </div>
 
   <!-- BANNER DE STATUS -->
   <div class="trial-banner" id="trialBanner" style="display: none;">
-    <span id="txtBannerStatus">⚡ Assinatura Ativa e Liberada!</span>
-    <a href="https://imbyser.github.io/cotacaoprimer/vendas.html" target="_blank" class="btn-assinar-topo">Renovar / Alterar Plano</a>
+    <span id="txtBannerStatus">Assinatura ativa. Sistema liberado.</span>
+    <a href="vendas.html" class="btn-assinar-topo">Renovar ou mudar plano</a>
   </div>
 
   <!-- PAINEL DE COTAÇÕES DO CLIENTE -->
   <div class="painel-minhas-cotacoes" id="painelCotacoes" style="display: none;">
     <div>
-      <label for="selectCotacoesUsuario">📂 <b>Minhas Cotações Salvas:</b></label>
+      <label for="selectCotacoesUsuario"><b>Minhas cotações salvas:</b></label>
       <select id="selectCotacoesUsuario" class="seletor-cotacoes" onchange="selecionarCotacaoSalva(this.value)">
         <option value="">-- Criar Nova Cotação --</option>
       </select>
     </div>
-    <button onclick="novaCotacao()" style="padding: 4px 8px; background: #319795; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 0.8em;">+ Nova Lista</button>
+    <button class="btn-nova-lista" type="button" onclick="novaCotacao()">+ Nova lista</button>
   </div>
 
-  <div id="appContainer" style="display: none;">
+  <div id="appContainer" role="main" style="display: none;">
     <header>
+      <img src="assets/cotacao-prime-mark.svg" alt="" width="42" height="42">
       <h1 id="tituloHeader">Cotação de Produtos</h1>
     </header>
 
     <!-- BARRA DE ETAPAS -->
-    <div class="etapas-bar" id="barraEtapas">
-      <button class="btn-etapa ativo" id="btnEtapa1" onclick="alternarEtapa(1)">1. Lista</button>
-      <button class="btn-etapa" id="btnEtapa2" onclick="alternarEtapa(2)">2. Preços</button>
-      <button class="btn-etapa" id="btnEtapa3" onclick="alternarEtapa(3)">3. Pedido</button>
+    <div class="etapas-bar" id="barraEtapas" aria-label="Etapas da cotação">
+      <button class="btn-etapa ativo" id="btnEtapa1" type="button" aria-current="step" onclick="alternarEtapa(1)">1. Lista</button>
+      <button class="btn-etapa" id="btnEtapa2" type="button" onclick="alternarEtapa(2)">2. Preços</button>
+      <button class="btn-etapa" id="btnEtapa3" type="button" onclick="alternarEtapa(3)">3. Pedido</button>
     </div>
 
     <div class="container">
       <div class="badge-etapa" id="badgeOrientacao">
-        <span id="textoOrientacao">📌 <b>Etapa 1:</b> Monte sua lista.</span>
-        <span id="statusSalvamento"></span>
+        <span id="textoOrientacao"><b>Etapa 1:</b> Monte sua lista.</span>
+        <span id="statusSalvamento" role="status" aria-live="polite"></span>
       </div>
 
       <div class="secao-vendedor" id="secaoVendedor">
-        <h4>💼 Identificação do Vendedor:</h4>
+        <h4>Seus dados</h4>
         <div class="linha-dados-cliente">
-          <input type="text" id="nomeVendedor" class="campo-cliente" placeholder="Seu Nome...">
-          <input type="text" id="empresaVendedor" class="campo-cliente" placeholder="Empresa...">
+          <label class="sr-only" for="nomeVendedor">Seu nome</label>
+          <input type="text" id="nomeVendedor" class="campo-cliente" placeholder="Seu nome" autocomplete="name">
+          <label class="sr-only" for="empresaVendedor">Empresa</label>
+          <input type="text" id="empresaVendedor" class="campo-cliente" placeholder="Empresa" autocomplete="organization">
         </div>
       </div>
 
       <div class="secao-atalhos" id="secaoAtalhos">
-        <div class="titulo-atalhos">⚡ Adicionar Rápido:</div>
+        <div class="titulo-atalhos">Adicionar rápido:</div>
         <div class="botoes-categorias">
-          <button class="btn-cat" onclick="adicionarNovoProduto('Arroz 5kg', 'Fardo c/ 6')">+ Arroz</button>
-          <button class="btn-cat" onclick="adicionarNovoProduto('Feijão 1kg', 'Fardo c/ 10')">+ Feijão</button>
+          <button class="btn-cat" type="button" onclick="adicionarNovoProduto('Arroz 5kg', 'Fardo c/ 6')">+ Arroz</button>
+          <button class="btn-cat" type="button" onclick="adicionarNovoProduto('Feijão 1kg', 'Fardo c/ 10')">+ Feijão</button>
         </div>
       </div>
 
       <div id="listaProdutos" style="margin-top: 10px;"></div>
-      <button class="btn-adicionar" id="btnAdicionarManual" onclick="adicionarNovoProduto('', '')">+ Adicionar Item em Branco</button>
+      <button class="btn-adicionar" id="btnAdicionarManual" type="button" onclick="adicionarNovoProduto('', '')">+ Adicionar outro produto</button>
     </div>
 
     <div class="carrinho-bar">
       <div class="carrinho-conteudo">
         <div class="linha-dados-cliente">
-          <input type="text" id="nomeCliente" class="campo-cliente" placeholder="Nome da Loja..." onchange="agendarSalvarAutomatico()">
-          <input type="tel" id="telCliente" class="campo-cliente" placeholder="WhatsApp..." onchange="agendarSalvarAutomatico()">
+          <label class="sr-only" for="nomeCliente">Nome da loja</label>
+          <input type="text" id="nomeCliente" class="campo-cliente" placeholder="Nome da loja" autocomplete="organization" onchange="agendarSalvarAutomatico()">
+          <label class="sr-only" for="telCliente">WhatsApp da loja</label>
+          <input type="tel" id="telCliente" class="campo-cliente" placeholder="WhatsApp da loja" inputmode="tel" autocomplete="tel" onchange="agendarSalvarAutomatico()">
         </div>
 
         <!-- REINCLUÍDO E AJUSTADO: FORMA DE PAGAMENTO E PRAZO -->
         <div class="linha-pagamento" id="secaoPagamento">
+          <label class="sr-only" for="tipoCotacao">Forma de compra</label>
           <select id="tipoCotacao" class="campo-cliente" onchange="agendarSalvarAutomatico()">
             <option value="Caixa">📦 Por Caixa</option>
             <option value="Unidade">🏷️ Por Unidade</option>
           </select>
+          <label class="sr-only" for="prazoPagamento">Forma ou prazo de pagamento</label>
           <select id="prazoPagamento" class="campo-cliente" onchange="agendarSalvarAutomatico()">
             <option value="À vista">⏱️ À vista</option>
             <option value="Pix">💠 Pix</option>
@@ -216,14 +234,14 @@
         </div>
 
         <div id="painelEnvioDividido" style="display: none; margin-bottom: 8px;"></div>
-        <button class="btn-whatsapp" id="btnAcao" onclick="executarAcaoPrincipal()">Gerar Link e Enviar WhatsApp</button>
+        <button class="btn-whatsapp" id="btnAcao" type="button" onclick="executarAcaoPrincipal()">Gerar Link e Enviar WhatsApp</button>
       </div>
     </div>
   </div>
 
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-    import { getFirestore, doc, setDoc, getDoc, onSnapshot, updateDoc, collection, query, where, getDocs, orderBy, limit } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+    import { getFirestore, doc, setDoc, onSnapshot, collection, query, where, getDocs, orderBy, limit, runTransaction } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyAPBH_zOO3xrdiyW1qk20b3b1ejMlyYSvg",
@@ -261,6 +279,15 @@
       const urlParams = new URLSearchParams(window.location.search);
       const cParam = urlParams.get('c');
       const eParam = parseInt(urlParams.get('e'));
+      const pagamento = urlParams.get('pagamento');
+
+      if (pagamento === 'aprovado' || pagamento === 'pendente') {
+        const paymentMsg = document.getElementById('authPaymentMsg');
+        paymentMsg.textContent = pagamento === 'aprovado'
+          ? 'Pagamento recebido. Sua entrada pode levar alguns instantes para ser liberada.'
+          : 'Pagamento em análise. Assim que for confirmado, sua entrada será liberada.';
+        paymentMsg.hidden = false;
+      }
 
       if (cParam && eParam === 2) {
         document.getElementById('authOverlay').style.display = 'none';
@@ -277,10 +304,15 @@
       if (telefoneSalvo && senhaSalva) {
         await validarEEntrar(telefoneSalvo, senhaSalva, true);
       }
+
+      document.getElementById('authPassword').addEventListener('keydown', (event) => {
+        if (event.key === 'Enter') window.processarAuthWhatsApp();
+      });
     });
 
     window.processarAuthWhatsApp = async function() {
       const errorDiv = document.getElementById('authErrorMsg');
+      const botaoEntrar = document.getElementById('btnAuthSubmit');
       errorDiv.style.display = 'none';
       
       const phoneInput = document.getElementById('authPhone').value;
@@ -299,7 +331,17 @@
         return;
       }
 
-      await validarEEntrar(phoneClean, passInput.trim(), false);
+      botaoEntrar.disabled = true;
+      botaoEntrar.setAttribute('aria-busy', 'true');
+      botaoEntrar.querySelector('span').innerText = 'Entrando...';
+
+      try {
+        await validarEEntrar(phoneClean, passInput.trim(), false);
+      } finally {
+        botaoEntrar.disabled = false;
+        botaoEntrar.removeAttribute('aria-busy');
+        botaoEntrar.querySelector('span').innerText = 'Entrar no sistema';
+      }
     };
 
     async function validarEEntrar(phoneNum, senha, isAutoLogin = false) {
@@ -351,7 +393,7 @@
           errorDiv.style.display = 'block';
         }
       } catch (err) {
-        errorDiv.innerText = "Erro ao validar: " + err.message;
+        errorDiv.innerText = "Não foi possível entrar agora. Confira sua internet e tente novamente.";
         errorDiv.style.display = 'block';
       }
     }
@@ -375,7 +417,7 @@
           const data = docSnap.data();
           const option = document.createElement('option');
           option.value = docSnap.id;
-          option.innerText = `${docSnap.id} - ${data.cliente || 'Sem Nome'}`;
+          option.innerText = `${data.cliente || 'Sem nome'} — ${docSnap.id.slice(-6)}`;
           select.appendChild(option);
         });
       } catch (e) {
@@ -410,7 +452,7 @@
       window.history.pushState({}, '', window.location.pathname);
       document.getElementById('listaProdutos').innerHTML = '';
       document.getElementById('selectCotacoesUsuario').value = '';
-      adicionarNovoProduto("Arroz 5kg", "Fardo c/ 6");
+      adicionarNovoProduto("Arroz 5kg", "Fardo c/ 6", '', 1, 'Sem oferta', false);
       alternarEtapa(1);
     };
 
@@ -432,10 +474,6 @@
     window.salvarEstadoAutomatico = async function() {
       if (!usuarioTelefone) return;
 
-      if (!cotacaoIdAtual) {
-        cotacaoIdAtual = "COT-" + Math.floor(100000 + Math.random() * 900000);
-      }
-
       const cliente = document.getElementById('nomeCliente').value.trim() || 'Cliente';
       const tel = document.getElementById('telCliente').value.trim();
       const prazo = document.getElementById('prazoPagamento').value;
@@ -450,24 +488,39 @@
         if (nome !== "") produtos.push({ id: index, nome, emb });
       });
 
+      if (produtos.length === 0 && !cotacaoIdAtual) {
+        document.getElementById('statusSalvamento').innerText = "Adicione um produto";
+        return false;
+      }
+
+      const cotacaoNova = !cotacaoIdAtual;
+      if (cotacaoNova) {
+        cotacaoIdAtual = `COT-${doc(collection(db, "cotacoes")).id}`;
+      }
+
       try {
-        await setDoc(doc(db, "cotacoes", cotacaoIdAtual), {
+        const dadosCotacao = {
           userId: usuarioTelefone,
           cliente, tel, prazo, pagto: "Combinar", tipo, produtos,
-          criadoEm: new Date()
-        }, { merge: true });
+          atualizadoEm: new Date()
+        };
+        if (cotacaoNova) dadosCotacao.criadoEm = new Date();
+
+        await setDoc(doc(db, "cotacoes", cotacaoIdAtual), dadosCotacao, { merge: true });
 
         localStorage.setItem('cotacaoAtiva_' + usuarioTelefone, cotacaoIdAtual);
         document.getElementById('statusSalvamento').innerText = "✅ Salvo";
         document.getElementById('selectCotacoesUsuario').value = cotacaoIdAtual;
+        return true;
       } catch (e) {
         document.getElementById('statusSalvamento').innerText = "⚠️ Erro ao salvar";
+        return false;
       }
     };
 
     window.salvarCotacaoEGerarLink = async function() {
-      await window.salvarEstadoAutomatico();
-      if (!cotacaoIdAtual) return alert("Adicione pelo menos um produto válido.");
+      const cotacaoSalva = await window.salvarEstadoAutomatico();
+      if (!cotacaoSalva || !cotacaoIdAtual) return alert("Adicione pelo menos um produto para continuar.");
 
       await carregarListaCotacoesUsuario();
       document.getElementById('selectCotacoesUsuario').value = cotacaoIdAtual;
@@ -510,23 +563,26 @@
 
       try {
         const docRef = doc(db, "cotacoes", cotacaoId);
-        const docSnap = await getDoc(docRef);
 
-        if (docSnap.exists()) {
-          let ofertasAtuais = docSnap.data().ofertas || {};
+        await runTransaction(db, async (transaction) => {
+          const docSnap = await transaction.get(docRef);
+          if (!docSnap.exists()) throw new Error("COTACAO_NAO_ENCONTRADA");
+
+          const ofertasAtuais = { ...(docSnap.data().ofertas || {}) };
           ofertasAtuais[nomeIdentificacao] = {
             vendedor: vendedor,
             empresa: empresa,
             precos: precos
           };
 
-          await updateDoc(docRef, { ofertas: ofertasAtuais });
-          alert("✅ Seus preços foram enviados com sucesso!");
-        } else {
-          alert("❌ Cotação não encontrada.");
-        }
+          transaction.update(docRef, { ofertas: ofertasAtuais });
+        });
+
+        alert("✅ Seus preços foram enviados com sucesso!");
       } catch (error) {
-        alert("❌ Erro ao enviar: " + error.message);
+        alert(error.message === "COTACAO_NAO_ENCONTRADA"
+          ? "Cotação não encontrada. Peça um novo link para a loja."
+          : "Não foi possível enviar os preços. Confira sua internet e tente novamente.");
       }
     };
 
@@ -576,10 +632,10 @@
                 menorPreco = 0;
               }
 
-              adicionarNovoProduto(prod.nome, prod.emb, menorPreco, 1, vencedor);
+              adicionarNovoProduto(prod.nome, prod.emb, menorPreco, 1, vencedor, false);
             });
           } else {
-            adicionarNovoProduto("Arroz 5kg", "Fardo c/ 6");
+            adicionarNovoProduto("Arroz 5kg", "Fardo c/ 6", '', 1, 'Sem oferta', false);
           }
 
           alternarEtapa(etapa);
@@ -595,8 +651,12 @@
     function alternarEtapa(e) {
       etapaAtual = e;
 
-      document.querySelectorAll('.btn-etapa').forEach(btn => btn.classList.remove('ativo'));
+      document.querySelectorAll('.btn-etapa').forEach(btn => {
+        btn.classList.remove('ativo');
+        btn.removeAttribute('aria-current');
+      });
       document.getElementById('btnEtapa' + e).classList.add('ativo');
+      document.getElementById('btnEtapa' + e).setAttribute('aria-current', 'step');
 
       const isE1 = (e === 1);
       const isE2 = (e === 2);
@@ -647,48 +707,107 @@
       const txtOrientacao = document.getElementById('textoOrientacao');
 
       if (isE1) {
-        txtOrientacao.innerHTML = '📌 <b>Etapa 1:</b> Monte sua lista.';
+        txtOrientacao.innerHTML = '<b>Etapa 1:</b> Monte sua lista.';
         btnAcao.innerText = 'Gerar Link e Enviar WhatsApp';
         btnAcao.style.display = 'block';
       } else if (isE2) {
-        txtOrientacao.innerHTML = '📌 <b>Etapa 2:</b> Preencha os preços.';
+        txtOrientacao.innerHTML = '<b>Etapa 2:</b> Preencha os preços.';
         btnAcao.innerText = 'Salvar Meus Preços';
         btnAcao.style.display = 'block';
       } else if (isE3) {
-        txtOrientacao.innerHTML = '📌 <b>Etapa 3:</b> Confira o vencedor e envie o pedido.';
+        txtOrientacao.innerHTML = '<b>Etapa 3:</b> Confira o vencedor e envie o pedido.';
         btnAcao.style.display = 'none';
         calcularTotalEGerarSplits();
       }
     }
 
-    function adicionarNovoProduto(nome = '', emb = '', preco = '', qtd = 1, vencedor = 'Sem oferta') {
+    function adicionarNovoProduto(nome = '', emb = '', preco = '', qtd = 1, vencedor = 'Sem oferta', salvar = true) {
       const container = document.getElementById('listaProdutos');
       const card = document.createElement('div');
       card.className = 'produto-card';
 
-      card.innerHTML = `
-        <div class="linha-inputs">
-          <input type="text" class="input-editavel input-nome" placeholder="Nome..." value="${nome}" onchange="agendarSalvarAutomatico()">
-          <input type="text" class="input-editavel input-embalagem" placeholder="Emb..." value="${emb}" onchange="agendarSalvarAutomatico()">
-        </div>
-        <div class="linha-acoes">
-          <div class="bloco-preco">
-            <span>R$</span>
-            <input type="number" step="0.01" class="input-editavel input-preco" placeholder="0,00" value="${preco > 0 ? preco : ''}" onchange="calcularTotalEGerarSplits()">
-          </div>
-          <span class="badge-vencedor">🏆 <b class="nome-vencedor">${vencedor}</b></span>
-          <div class="qtd-controle">
-            <button class="btn-qtd" onclick="alterarQtd(this, -1)">-</button>
-            <input type="text" class="qtd-valor" value="${qtd}" readonly>
-            <button class="btn-qtd" onclick="alterarQtd(this, 1)">+</button>
-          </div>
-          <button class="btn-excluir" onclick="removerProduto(this)">🗑️ Excluir</button>
-        </div>
-      `;
+      const linhaInputs = document.createElement('div');
+      linhaInputs.className = 'linha-inputs';
+
+      const inputNome = document.createElement('input');
+      inputNome.type = 'text';
+      inputNome.className = 'input-editavel input-nome';
+      inputNome.placeholder = 'Nome do produto';
+      inputNome.value = String(nome || '');
+      inputNome.setAttribute('aria-label', 'Nome do produto');
+      inputNome.addEventListener('change', () => window.agendarSalvarAutomatico());
+
+      const inputEmbalagem = document.createElement('input');
+      inputEmbalagem.type = 'text';
+      inputEmbalagem.className = 'input-editavel input-embalagem';
+      inputEmbalagem.placeholder = 'Embalagem';
+      inputEmbalagem.value = String(emb || '');
+      inputEmbalagem.setAttribute('aria-label', 'Embalagem do produto');
+      inputEmbalagem.addEventListener('change', () => window.agendarSalvarAutomatico());
+
+      linhaInputs.append(inputNome, inputEmbalagem);
+
+      const linhaAcoes = document.createElement('div');
+      linhaAcoes.className = 'linha-acoes';
+
+      const blocoPreco = document.createElement('div');
+      blocoPreco.className = 'bloco-preco';
+      const prefixoPreco = document.createElement('span');
+      prefixoPreco.textContent = 'R$';
+      const inputPreco = document.createElement('input');
+      inputPreco.type = 'number';
+      inputPreco.step = '0.01';
+      inputPreco.min = '0';
+      inputPreco.inputMode = 'decimal';
+      inputPreco.className = 'input-editavel input-preco';
+      inputPreco.placeholder = '0,00';
+      inputPreco.value = Number(preco) > 0 ? String(preco) : '';
+      inputPreco.setAttribute('aria-label', `Preço de ${nome || 'produto'}`);
+      inputPreco.addEventListener('change', calcularTotalEGerarSplits);
+      blocoPreco.append(prefixoPreco, inputPreco);
+
+      const badgeVencedor = document.createElement('span');
+      badgeVencedor.className = 'badge-vencedor';
+      badgeVencedor.append(document.createTextNode('Menor preço: '));
+      const nomeVencedor = document.createElement('b');
+      nomeVencedor.className = 'nome-vencedor';
+      nomeVencedor.textContent = String(vencedor || 'Sem oferta');
+      badgeVencedor.appendChild(nomeVencedor);
+
+      const controleQuantidade = document.createElement('div');
+      controleQuantidade.className = 'qtd-controle';
+      const btnDiminuir = document.createElement('button');
+      btnDiminuir.type = 'button';
+      btnDiminuir.className = 'btn-qtd';
+      btnDiminuir.textContent = '−';
+      btnDiminuir.setAttribute('aria-label', 'Diminuir quantidade');
+      btnDiminuir.addEventListener('click', () => alterarQtd(btnDiminuir, -1));
+      const quantidade = document.createElement('input');
+      quantidade.type = 'text';
+      quantidade.className = 'qtd-valor';
+      quantidade.value = String(Math.max(1, Number.parseInt(qtd, 10) || 1));
+      quantidade.readOnly = true;
+      quantidade.setAttribute('aria-label', 'Quantidade');
+      const btnAumentar = document.createElement('button');
+      btnAumentar.type = 'button';
+      btnAumentar.className = 'btn-qtd';
+      btnAumentar.textContent = '+';
+      btnAumentar.setAttribute('aria-label', 'Aumentar quantidade');
+      btnAumentar.addEventListener('click', () => alterarQtd(btnAumentar, 1));
+      controleQuantidade.append(btnDiminuir, quantidade, btnAumentar);
+
+      const btnExcluir = document.createElement('button');
+      btnExcluir.type = 'button';
+      btnExcluir.className = 'btn-excluir';
+      btnExcluir.textContent = 'Excluir';
+      btnExcluir.addEventListener('click', () => removerProduto(btnExcluir));
+
+      linhaAcoes.append(blocoPreco, badgeVencedor, controleQuantidade, btnExcluir);
+      card.append(linhaInputs, linhaAcoes);
       container.appendChild(card);
-      
+
       alternarEtapa(etapaAtual);
-      if (typeof window.agendarSalvarAutomatico === 'function') {
+      if (salvar && typeof window.agendarSalvarAutomatico === 'function') {
         window.agendarSalvarAutomatico();
       }
     }
@@ -734,21 +853,33 @@
       document.getElementById('totalDisplay').innerText = `R$ ${totalGeral.toFixed(2).replace('.', ',')}`;
 
       const containerSplit = document.getElementById('painelEnvioDividido');
-      containerSplit.innerHTML = '';
+      containerSplit.replaceChildren();
 
       if (Object.keys(splitsPorVencedor).length > 0) {
-        containerSplit.innerHTML = '<b>⚡ Pedido Dividido por Fornecedor:</b><br><br>';
+        const titulo = document.createElement('strong');
+        titulo.className = 'titulo-divisao';
+        titulo.textContent = 'Pedido separado por fornecedor:';
+        containerSplit.appendChild(titulo);
+
         for (let v in splitsPorVencedor) {
           if (v !== 'Sem oferta') {
             const div = document.createElement('div');
             div.className = 'card-divisao-vendedor';
-            div.innerHTML = `
-              <div>
-                <b>${v}</b><br>
-                Total: R$ ${splitsPorVencedor[v].total.toFixed(2).replace('.', ',')}
-              </div>
-              <button class="btn-send-vendor" onclick="enviarWhatsappVencedor('${v}')">Enviar WhatsApp</button>
-            `;
+
+            const dados = document.createElement('div');
+            const nome = document.createElement('b');
+            nome.textContent = v;
+            const total = document.createElement('span');
+            total.textContent = `Total: R$ ${splitsPorVencedor[v].total.toFixed(2).replace('.', ',')}`;
+            dados.append(nome, document.createElement('br'), total);
+
+            const botao = document.createElement('button');
+            botao.type = 'button';
+            botao.className = 'btn-send-vendor';
+            botao.textContent = 'Enviar pelo WhatsApp';
+            botao.addEventListener('click', () => enviarWhatsappVencedor(v));
+
+            div.append(dados, botao);
             containerSplit.appendChild(div);
           }
         }

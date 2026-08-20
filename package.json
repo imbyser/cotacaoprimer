@@ -1,8 +1,18 @@
 {
-  "name": "supercotacao-backend",
-  "version": "1.0.0",
+  "name": "cotacao-prime",
+  "version": "2.0.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": "22.x"
+  },
+  "scripts": {
+    "backup:firestore": "node scripts/export-firestore-readonly.js",
+    "check": "node --check api/checkout.js && node --check assets/landing.js && node --check scripts/export-firestore-readonly.js",
+    "test": "node test/checkout-validation.test.js"
+  },
   "dependencies": {
-    "firebase-admin": "^12.0.0",
-    "mercadopago": "^2.0.8"
+    "firebase-admin": "14.3.0",
+    "mercadopago": "3.4.0"
   }
 }
