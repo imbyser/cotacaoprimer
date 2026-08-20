@@ -192,6 +192,7 @@
           <input type="tel" id="telCliente" class="campo-cliente" placeholder="WhatsApp..." onchange="agendarSalvarAutomatico()">
         </div>
 
+        <!-- REINCLUÍDO E AJUSTADO: FORMA DE PAGAMENTO E PRAZO -->
         <div class="linha-pagamento" id="secaoPagamento">
           <select id="tipoCotacao" class="campo-cliente" onchange="agendarSalvarAutomatico()">
             <option value="Caixa">📦 Por Caixa</option>
@@ -604,7 +605,10 @@
       document.getElementById('secaoVendedor').style.display = isE2 ? 'block' : 'none';
       document.getElementById('secaoAtalhos').style.display = isE1 ? 'block' : 'none';
       document.getElementById('btnAdicionarManual').style.display = isE1 ? 'block' : 'none';
-      document.getElementById('secaoPagamento').style.display = isE3 ? 'flex' : 'none';
+      
+      // AJUSTADO: EXIBIR SEÇÃO DE PAGAMENTO E PRAZO NAS ETAPAS 1 E 3
+      document.getElementById('secaoPagamento').style.display = (isE1 || isE3) ? 'flex' : 'none';
+      
       document.getElementById('boxTotal').style.display = isE3 ? 'flex' : 'none';
       document.getElementById('painelEnvioDividido').style.display = isE3 ? 'block' : 'none';
 
@@ -634,8 +638,9 @@
         el.style.display = isE3 ? 'flex' : 'none';
       });
 
+      // AJUSTADO: BOTÃO EXCLUIR VISÍVEL NAS ETAPAS 1 E 2
       document.querySelectorAll('.btn-excluir').forEach(btn => {
-        btn.style.display = isE1 ? 'block' : 'none';
+        btn.style.display = (isE1 || isE2) ? 'block' : 'none';
       });
 
       const btnAcao = document.getElementById('btnAcao');
