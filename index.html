@@ -483,6 +483,7 @@
       alternarEtapa(3);
     };
 
+    /* PONTO 1: Estruturação avançada das ofertas por vendedor */
     window.salvarPrecosVendedor = async function(cotacaoId) {
       const vendedor = document.getElementById('nomeVendedor').value.trim();
       const empresa = document.getElementById('empresaVendedor').value.trim();
@@ -513,7 +514,12 @@
 
         if (docSnap.exists()) {
           let ofertasAtuais = docSnap.data().ofertas || {};
-          ofertasAtuais[nomeIdentificacao] = precos;
+          ofertasAtuais[nomeIdentificacao] = {
+            vendedor: vendedor,
+            empresa: empresa,
+            precos: precos
+          };
+
           await updateDoc(docRef, { ofertas: ofertasAtuais });
           alert("✅ Seus preços foram enviados com sucesso!");
         } else {
@@ -524,7 +530,7 @@
       }
     };
 
-    /* CORREÇÃO AQUI: Garante o cálculo do menor preço independente da quantidade de vendedores */
+    /* PONTO 2: Leitura robusta e cálculo dinâmico do menor preço */
     window.carregarCotacaoDoBanco = function(cotacaoId, etapa) {
       if (listenerSnapshot) listenerSnapshot();
 
@@ -554,13 +560,15 @@
               let menorPreco = Infinity;
               let vencedor = 'Sem oferta';
 
-              // Varia entre TODOS os vendedores cadastrados
               for (let vend in ofertas) {
-                const precoVendedor = parseFloat(ofertas[vend][prod.nome]);
-                if (!isNaN(precoVendedor) && precoVendedor > 0) {
-                  if (precoVendedor < menorPreco) {
-                    menorPreco = precoVendedor;
-                    vencedor = vend;
+                const mapaPrecos = ofertas[vend] ? (ofertas[vend].precos || ofertas[vend]) : {};
+                if (mapaPrecos && mapaPrecos[prod.nome] !== undefined) {
+                  const precoVendedor = parseFloat(mapaPrecos[prod.nome]);
+                  if (!isNaN(precoVendedor) && precoVendedor > 0) {
+                    if (precoVendedor < menorPreco) {
+                      menorPreco = precoVendedor;
+                      vencedor = vend;
+                    }
                   }
                 }
               }
@@ -584,6 +592,62 @@
   <script>
     let etapaAtual = 1; 
     let cotacaoIdAtual = null;
+
+    /* PONTO 3: Troca de Etapas e Alternância do Painel */
+    function alternarEtapa(e) {
+      etapaAtual = e;
+
+      document.querySelectorAll('.btn-etapa').forEach(btn => btn.classList.remove('ativo'));
+      document.getElementById('btnEtapa' + e).classList.add('ativo');
+
+      const isE1 = (e === 1);
+      const isE2 = (e === 2);
+      const isE3 = (e === 3);
+
+      document.getElementById('secaoVendedor').style.display = isE2 ? 'block' : 'none';
+      document.getElementById('secaoAtalhos').style.display = isE1 ? 'block' : 'none';
+      document.getElementById('btnAdicionarManual').style.display = isE1 ? 'block' : 'none';
+      document.getElementById('secaoPagamento').style.display = isE3 ? 'flex' : 'none';
+      document.getElementById('boxTotal').style.display = isE3 ? 'flex' : 'none';
+      document.getElementById('painelEnvioDividido').style.display = isE3 ? 'block' : 'none';
+
+      document.querySelectorAll('.input-nome, .input-embalagem').forEach(input => {
+        input.disabled = !isE1;
+      });
+
+      document.querySelectorAll('.bloco-preco').forEach(el => {
+        el.style.display = (isE2 || isE3) ? 'flex' : 'none';
+      });
+
+      document.querySelectorAll('.input-preco').forEach(input => {
+        input.disabled = !isE2;
+      });
+
+      document.querySelectorAll('.qtd-controle').forEach(el => {
+        el.style.display = isE3 ? 'flex' : 'none';
+      });
+
+      document.querySelectorAll('.btn-excluir').forEach(btn => {
+        btn.style.display = isE1 ? 'block' : 'none';
+      });
+
+      const btnAcao = document.getElementById('btnAcao');
+      const txtOrientacao = document.getElementById('textoOrientacao');
+
+      if (isE1) {
+        txtOrientacao.innerHTML = '📌 <b>Etapa 1:</b> Monte sua lista.';
+        btnAcao.innerText = 'Gerar Link e Enviar WhatsApp';
+        btnAcao.style.display = 'block';
+      } else if (isE2) {
+        txtOrientacao.innerHTML = '📌 <b>Etapa 2:</b> Preencha os preços.';
+        btnAcao.innerText = 'Salvar Meus Preços';
+        btnAcao.style.display = 'block';
+      } else if (isE3) {
+        txtOrientacao.innerHTML = '📌 <b>Etapa 3:</b> Confira o vencedor e envie o pedido.';
+        btnAcao.style.display = 'none';
+        calcularTotalEGerarSplits();
+      }
+    }
 
     function adicionarNovoProduto(nome = '', emb = '', preco = '', qtd = 1, vencedor = 'Sem oferta') {
       const container = document.getElementById('listaProdutos');
@@ -679,6 +743,50 @@
       }
     }
 
+    /* PONTO 3 (Continuação): Função para estruturação do WhatsApp por Fornecedor Vencedor */
+    function enviarWhatsappVencedor(nomeVencedor) {
+      if (!window.cotacaoDadosGlobais) return alert("Dados da cotação não encontrados.");
+
+      const dados = window.cotacaoDadosGlobais;
+      const ofertas = dados.ofertas || {};
+      const dadosVendedor = ofertas[nomeVencedor] || {};
+
+      const cliente = document.getElementById('nomeCliente').value || 'Cliente';
+      const prazo = document.getElementById('prazoPagamento').value || 'A combinar';
+      const tipo = document.getElementById('tipoCotacao').value || 'Caixa';
+
+      const cards = document.querySelectorAll('.produto-card');
+      let itensVencedor = [];
+      let totalVencedor = 0;
+
+      cards.forEach(card => {
+        const nome = card.querySelector('.input-nome').value.trim();
+        const emb = card.querySelector('.input-embalagem').value.trim();
+        const precoStr = card.querySelector('.input-preco').value.replace(',', '.');
+        const preco = parseFloat(precoStr) || 0;
+        const qtd = parseInt(card.querySelector('.qtd-valor').value) || 1;
+        const vencedor = card.querySelector('.nome-vencedor') ? card.querySelector('.nome-vencedor').innerText : 'Sem oferta';
+
+        if (vencedor === nomeVencedor && preco > 0) {
+          const subtotal = preco * qtd;
+          totalVencedor += subtotal;
+          itensVencedor.push(`• *${nome}* (${emb}) - ${qtd}x R$ ${preco.toFixed(2).replace('.', ',')} = R$ ${subtotal.toFixed(2).replace('.', ',')}`);
+        }
+      });
+
+      if (itensVencedor.length === 0) return alert("Nenhum item encontrado para este fornecedor.");
+
+      let msg = `🛍️ *PEDIDO DE COMPRA*\n`;
+      msg += `📍 *Cliente:* ${cliente}\n`;
+      msg += `💳 *Prazo:* ${prazo} (${tipo})\n\n`;
+      msg += `📦 *Itens do Pedido:*\n`;
+      msg += itensVencedor.join('\n') + `\n\n`;
+      msg += `💰 *Total do Pedido: R$ ${totalVencedor.toFixed(2).replace('.', ',')}*\n\n`;
+      msg += `Por favor, confirme o recebimento e o prazo de entrega.`;
+
+      window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(msg)}`, '_blank');
+    }
+
     function executarAcaoPrincipal() {
       if (etapaAtual === 1) {
         if (typeof window.salvarCotacaoEGerarLink === 'function') {
@@ -690,134 +798,6 @@
         }
       } else if (etapaAtual === 3) {
         alert("Escolha um dos fornecedores abaixo para enviar o pedido diretamente!");
-      }
-    }
-
-    function enviarWhatsappVencedor(vencedor) {
-      const cliente = document.getElementById('nomeCliente').value.trim() || 'Cliente';
-      const prazo = document.getElementById('prazoPagamento').value;
-      const tipo = document.getElementById('tipoCotacao').value;
-
-      const cards = document.querySelectorAll('.produto-card');
-      let msg = `🛒 *PEDIDO FINAL - ${vencedor.toUpperCase()}*\n`;
-      msg += `Cliente: *${cliente}*\n`;
-      msg += `Condição: *${prazo}* (${tipo})\n\n`;
-      msg += `*ITENS:* \n`;
-
-      let totalVencedor = 0;
-
-      cards.forEach(card => {
-        const nome = card.querySelector('.input-nome').value.trim();
-        const emb = card.querySelector('.input-embalagem').value.trim();
-        const precoStr = card.querySelector('.input-preco').value.replace(',', '.');
-        const preco = parseFloat(precoStr) || 0;
-        const qtd = parseInt(card.querySelector('.qtd-valor').value) || 1;
-        const v = card.querySelector('.nome-vencedor') ? card.querySelector('.nome-vencedor').innerText : 'Sem oferta';
-
-        if (v === vencedor && preco > 0) {
-          const subtotal = preco * qtd;
-          totalVencedor += subtotal;
-          msg += `- ${qtd}x ${nome} (${emb}) - R$ ${preco.toFixed(2)} = R$ ${subtotal.toFixed(2)}\n`;
-        }
-      });
-
-      msg += `\n*TOTAL DO PEDIDO: R$ ${totalVencedor.toFixed(2).replace('.', ',')}*`;
-
-      window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(msg)}`, '_blank');
-    }
-
-    function alternarEtapa(etapa) {
-      etapaAtual = etapa;
-      
-      const urlParams = new URLSearchParams(window.location.search);
-      const eParam = parseInt(urlParams.get('e'));
-      const eVendedor = (eParam === 2);
-
-      if (eVendedor) {
-        document.getElementById('btnEtapa1').style.display = 'none';
-        document.getElementById('btnEtapa3').style.display = 'none';
-        document.getElementById('btnEtapa2').style.display = 'block';
-        document.getElementById('btnEtapa2').style.maxWidth = '100%';
-        document.getElementById('btnEtapa2').style.width = '100%';
-      } else {
-        document.getElementById('btnEtapa1').style.display = 'block';
-        document.getElementById('btnEtapa2').style.display = 'block';
-        document.getElementById('btnEtapa3').style.display = 'block';
-        document.getElementById('btnEtapa2').style.maxWidth = '200px';
-      }
-
-      document.getElementById('btnEtapa1').classList.toggle('ativo', etapa === 1);
-      document.getElementById('btnEtapa2').classList.toggle('ativo', etapa === 2);
-      document.getElementById('btnEtapa3').classList.toggle('ativo', etapa === 3);
-
-      const precos = document.querySelectorAll('.bloco-preco');
-      const quantidades = document.querySelectorAll('.qtd-controle');
-      const botoesExcluir = document.querySelectorAll('.btn-excluir');
-      const inputsNome = document.querySelectorAll('.input-nome');
-      const inputsEmb = document.querySelectorAll('.input-embalagem');
-      const inputsPreco = document.querySelectorAll('.input-preco');
-      const badgesVencedor = document.querySelectorAll('.badge-vencedor');
-
-      document.getElementById('barraEtapas').style.display = 'flex';
-
-      if (etapa === 1) {
-        document.getElementById('textoOrientacao').innerHTML = "📌 <b>Etapa 1:</b> Monte sua lista.";
-        document.getElementById('secaoVendedor').style.display = 'none';
-        document.getElementById('secaoAtalhos').style.display = 'block';
-        document.getElementById('btnAdicionarManual').style.display = 'block';
-        document.getElementById('boxTotal').style.display = 'none';
-        document.getElementById('painelEnvioDividido').style.display = 'none';
-        document.getElementById('btnAcao').style.display = 'block';
-        document.getElementById('btnAcao').innerText = "Gerar Link e Enviar WhatsApp";
-
-        inputsNome.forEach(i => i.disabled = false);
-        inputsEmb.forEach(i => i.disabled = false);
-        precos.forEach(p => p.style.display = 'none');
-        quantidades.forEach(q => q.style.display = 'none');
-        botoesExcluir.forEach(b => b.style.display = 'block');
-        badgesVencedor.forEach(b => b.style.display = 'none');
-      } else if (etapa === 2) {
-        document.getElementById('textoOrientacao').innerHTML = "💼 <b>Etapa 2:</b> Preencha os preços dos produtos.";
-        document.getElementById('secaoVendedor').style.display = 'block';
-        document.getElementById('secaoAtalhos').style.display = 'none';
-        document.getElementById('btnAdicionarManual').style.display = 'none';
-        document.getElementById('boxTotal').style.display = 'none';
-        document.getElementById('painelEnvioDividido').style.display = 'none';
-        document.getElementById('btnAcao').style.display = 'block';
-        document.getElementById('btnAcao').innerText = "Salvar e Enviar Preços";
-
-        inputsNome.forEach(i => i.disabled = true);
-        inputsEmb.forEach(i => i.disabled = true);
-        inputsPreco.forEach(i => i.disabled = false);
-        precos.forEach(p => p.style.display = 'flex');
-        quantidades.forEach(q => q.style.display = 'none');
-        botoesExcluir.forEach(b => b.style.display = 'none');
-        badgesVencedor.forEach(b => b.style.display = 'none');
-      } else if (etapa === 3) {
-        document.getElementById('textoOrientacao').innerHTML = "📦 <b>Etapa 3:</b> Monte seu pedido final.";
-        document.getElementById('secaoVendedor').style.display = 'none';
-        document.getElementById('secaoAtalhos').style.display = 'none';
-        document.getElementById('btnAdicionarManual').style.display = 'none';
-        document.getElementById('boxTotal').style.display = 'flex';
-        document.getElementById('painelEnvioDividido').style.display = 'block';
-        document.getElementById('btnAcao').style.display = 'none';
-
-        inputsNome.forEach(i => i.disabled = true);
-        inputsEmb.forEach(i => i.disabled = true);
-        inputsPreco.forEach(i => i.disabled = true);
-        precos.forEach(p => p.style.display = 'flex');
-        quantidades.forEach(q => q.style.display = 'flex');
-        botoesExcluir.forEach(b => b.style.display = 'none');
-        
-        const cards = document.querySelectorAll('.produto-card');
-        cards.forEach(card => {
-          const v = card.querySelector('.nome-vencedor') ? card.querySelector('.nome-vencedor').innerText : 'Sem oferta';
-          if (v !== 'Sem oferta') {
-            card.querySelector('.badge-vencedor').style.display = 'inline-block';
-          }
-        });
-
-        calcularTotalEGerarSplits();
       }
     }
   </script>
