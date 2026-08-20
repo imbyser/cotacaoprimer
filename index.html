@@ -33,7 +33,7 @@
     .btn-auth-primary:hover { background: #1eb954; }
     .auth-toggle { margin-top: 15px; font-size: 0.85em; color: #4a5568; }
     .auth-toggle a { color: #2b6cb0; font-weight: bold; text-decoration: underline; }
-    .auth-error { color: #e53e3e; font-size: 0.8em; margin-bottom: 10px; display: none; font-weight: bold; }
+    .auth-error { color: #e53e3e; font-size: 0.85em; margin-bottom: 12px; display: none; font-weight: bold; background: #fff5f5; padding: 8px; border-radius: 6px; border: 1px solid #fed7d7; }
 
     .user-bar { background: #0f2342; color: white; padding: 8px 15px; display: flex; justify-content: space-between; align-items: center; font-size: 0.8em; flex-wrap: wrap; gap: 8px; }
     .btn-logout { background: #e53e3e; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-weight: bold; }
@@ -112,7 +112,7 @@
       <div id="authErrorMsg" class="auth-error"></div>
       
       <button id="btnAuthSubmit" class="btn-auth-primary" onclick="processarAuthWhatsApp()">
-        <span>Entrar no Sistema</span> 📲
+        <span id="txtBtnAuth">Entrar no Sistema</span> 📲
       </button>
       
       <div class="auth-toggle">
@@ -220,10 +220,10 @@
     </div>
   </div>
 
-  <!-- SCRIPTS FIREBASE COM INVALIDAÇÃO DE CACHE (?v=2.0.0) -->
+  <!-- SCRIPTS FIREBASE CORRIGIDOS -->
   <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js?v=2.0.0";
-    import { getFirestore, doc, setDoc, getDoc, onSnapshot, updateDoc, collection, query, where, getDocs, orderBy, limit } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js?v=2.0.0";
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js?v=2.1.0";
+    import { getFirestore, doc, setDoc, getDoc, onSnapshot, updateDoc, collection, query, where, getDocs, orderBy, limit } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js?v=2.1.0";
 
     const firebaseConfig = {
       apiKey: "AIzaSyAPBH_zOO3xrdiyW1qk20b3b1ejMlyYSvg",
@@ -281,6 +281,7 @@
 
     window.processarAuthWhatsApp = async function() {
       const errorDiv = document.getElementById('authErrorMsg');
+      const txtBtn = document.getElementById('txtBtnAuth');
       errorDiv.style.display = 'none';
       
       const phoneInput = document.getElementById('authPhone').value;
@@ -299,7 +300,9 @@
         return;
       }
 
+      txtBtn.innerText = "Verificando...";
       await validarEEntrar(phoneClean, passInput.trim(), false);
+      txtBtn.innerText = "Entrar no Sistema";
     };
 
     async function validarEEntrar(phoneNum, senha, isAutoLogin = false) {
@@ -351,7 +354,7 @@
           errorDiv.style.display = 'block';
         }
       } catch (err) {
-        errorDiv.innerText = "Erro ao validar: " + err.message;
+        errorDiv.innerText = "Erro de conexão ao validar: " + err.message;
         errorDiv.style.display = 'block';
       }
     }
@@ -484,7 +487,6 @@
       alternarEtapa(3);
     };
 
-    /* CORREÇÃO DO BUG DE SOBRESCRITA DOS VENDEDORES */
     window.salvarPrecosVendedor = async function(cotacaoId) {
       const vendedor = document.getElementById('nomeVendedor').value.trim();
       const empresa = document.getElementById('empresaVendedor').value.trim();
@@ -515,8 +517,6 @@
 
         if (docSnap.exists()) {
           let ofertasAtuais = docSnap.data().ofertas || {};
-          
-          // ID Único para impedir que um vendedor sobrescreva o outro
           const keyVendedor = `${nomeIdentificacao}_${Date.now()}`;
           
           ofertasAtuais[keyVendedor] = {
@@ -534,7 +534,6 @@
       }
     };
 
-    /* LÓGICA DE COMPARAÇÃO DAS OFERTAS DE TODOS OS VENDEDORES */
     window.carregarCotacaoDoBanco = function(cotacaoId, etapa) {
       if (listenerSnapshot) listenerSnapshot();
 
@@ -564,11 +563,8 @@
               let menorPreco = Infinity;
               let vencedor = 'Sem oferta';
 
-              // Varre todos os registros de ofertas únicos
               for (let key in ofertas) {
                 const ofertaObj = ofertas[key];
-                
-                // Trata compatibilidade com formato antigo e novo ID único
                 const nomeExibicao = ofertaObj.nome || key;
                 const mapaPrecos = ofertaObj.precos || ofertaObj;
 
@@ -583,9 +579,7 @@
                 }
               }
 
-              if (menorPreco === Infinity) {
-                menorPreco = 0;
-              }
+              if (menorPreco === Infinity) menorPreco = 0;
 
               adicionarNovoProduto(prod.nome, prod.emb, menorPreco, 1, vencedor);
             });
@@ -635,7 +629,6 @@
       }
     }
 
-    /* CONTROLE RIGIDO DAS ETAPAS E FIXAÇÃO DO BOTÃO EXCLUIR */
     function alternarEtapa(e) {
       etapaAtual = e;
 
@@ -659,7 +652,7 @@
       const qtdControles = document.querySelectorAll('.qtd-controle');
       const botoesExcluir = document.querySelectorAll('.btn-excluir');
 
-      if (e === 1) { // ETAPA 1: CRIAÇÃO DA LISTA
+      if (e === 1) {
         textoOrientacao.innerHTML = '📌 <b>Etapa 1:</b> Monte sua lista.';
         secaoVendedor.style.display = 'none';
         secaoAtalhos.style.display = 'block';
@@ -673,9 +666,9 @@
         blocosPreco.forEach(b => b.style.display = 'none');
         badgesVencedor.forEach(b => b.style.display = 'none');
         qtdControles.forEach(q => q.style.display = 'none');
-        botoesExcluir.forEach(b => b.style.display = 'block'); // Garante botão Excluir na Etapa 1
+        botoesExcluir.forEach(b => b.style.display = 'block');
 
-      } else if (e === 2) { // ETAPA 2: PREENCHIMENTO DO VENDEDOR
+      } else if (e === 2) {
         textoOrientacao.innerHTML = '📌 <b>Etapa 2:</b> Preencha seus preços e envie.';
         secaoVendedor.style.display = 'block';
         secaoAtalhos.style.display = 'none';
@@ -689,9 +682,9 @@
         blocosPreco.forEach(b => b.style.display = 'flex');
         badgesVencedor.forEach(b => b.style.display = 'none');
         qtdControles.forEach(q => q.style.display = 'none');
-        botoesExcluir.forEach(b => b.style.display = 'none'); // Oculta botão Excluir para Vendedores
+        botoesExcluir.forEach(b => b.style.display = 'none');
 
-      } else if (e === 3) { // ETAPA 3: PEDIDO E RESUMO
+      } else if (e === 3) {
         textoOrientacao.innerHTML = '📌 <b>Etapa 3:</b> Confira os melhores preços e monte o pedido.';
         secaoVendedor.style.display = 'none';
         secaoAtalhos.style.display = 'none';
