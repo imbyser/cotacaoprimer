@@ -144,3 +144,20 @@ test("mantém os valores cobrados iguais aos planos exibidos", () => {
     }
   );
 });
+
+test("ativa a compatibilidade somente para erro de permissão do Firestore", () => {
+  assert.equal(
+    checkoutInternals.erroDePermissaoFirestore({
+      code: 7,
+      message: "7 PERMISSION_DENIED: Missing or insufficient permissions."
+    }),
+    true
+  );
+  assert.equal(
+    checkoutInternals.erroDePermissaoFirestore({
+      code: "unavailable",
+      message: "Serviço temporariamente indisponível"
+    }),
+    false
+  );
+});
