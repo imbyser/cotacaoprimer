@@ -5,11 +5,11 @@ const FIREBASE_WEB_API_KEY = "AIzaSyAPBH_zOO3xrdiyW1qk20b3b1ejMlyYSvg";
 const LIMITE_AUDIO_BYTES = 3 * 1024 * 1024;
 const TIPOS_AUDIO = new Set([
   "audio/webm",
-  "audio/webm;codecs=opus",
   "audio/mp4",
+  "audio/x-m4a",
+  "audio/aac",
   "audio/mpeg",
   "audio/ogg",
-  "audio/ogg;codecs=opus",
   "audio/wav",
   "audio/x-wav"
 ]);
@@ -145,9 +145,12 @@ function verificarLimite(telefone) {
 }
 
 function decodificarAudio(dataUrl, mimeInformado) {
-  const correspondencia = String(dataUrl || "").match(/^data:([^;,]+(?:;codecs=[^;,]+)?);base64,([A-Za-z0-9+/=]+)$/);
+  const correspondencia = String(dataUrl || "").match(/^data:([^,]+);base64,([A-Za-z0-9+/=\r\n]+)$/i);
   if (!correspondencia) throw new Error("AUDIO_INVALIDO");
-  const mimeType = limparTexto(mimeInformado || correspondencia[1], 80).toLowerCase();
+  const mimeType = limparTexto(mimeInformado || correspondencia[1], 120)
+    .toLowerCase()
+    .split(";", 1)[0]
+    .trim();
   if (!TIPOS_AUDIO.has(mimeType)) throw new Error("AUDIO_INVALIDO");
   const buffer = Buffer.from(correspondencia[2], "base64");
   if (buffer.length < 100 || buffer.length > LIMITE_AUDIO_BYTES) throw new Error("AUDIO_INVALIDO");
@@ -155,7 +158,7 @@ function decodificarAudio(dataUrl, mimeInformado) {
 }
 
 function extensaoDoAudio(mimeType) {
-  if (mimeType.includes("mp4")) return "m4a";
+  if (mimeType.includes("mp4") || mimeType.includes("m4a") || mimeType.includes("aac")) return "m4a";
   if (mimeType.includes("mpeg")) return "mp3";
   if (mimeType.includes("ogg")) return "ogg";
   if (mimeType.includes("wav")) return "wav";

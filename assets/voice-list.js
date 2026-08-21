@@ -11,6 +11,7 @@
       "audio/mp4",
       "audio/ogg;codecs=opus"
     ];
+    if (typeof MediaRecorder.isTypeSupported !== "function") return "audio/mp4";
     return tipos.find((tipo) => MediaRecorder.isTypeSupported(tipo)) || "";
   }
 
@@ -176,7 +177,8 @@
           if (cancelado) return;
           mostrarEstado("processing");
           try {
-            const blob = new Blob(chunks, { type: recorder.mimeType || "audio/webm" });
+            const tipoDoAudio = recorder.mimeType || chunks.find((chunk) => chunk.type)?.type || mimeType || "audio/webm";
+            const blob = new Blob(chunks, { type: tipoDoAudio });
             await processarAudio(blob);
           } catch (falha) {
             mostrarEstado("intro");

@@ -57,3 +57,4 @@ Se uma restauração de dados algum dia for realmente necessária, ela deve ser 
 - Tela com 20 listas para verificar ordenação, rolagem e botões de nova lista.
 - Leitura real, sem escrita, para validar 54 listas, abertura de cotação e etapas 2 e 3.
 - Ciclo real da Groq com áudio sintético, autenticação ativa e retorno de cinco produtos, sem salvar uma cotação.
+- Compatibilidade de gravação validada para MP4/AAC do Safari no iPhone, inclusive quando o navegador acrescenta parâmetros de codec ao tipo do arquivo.
