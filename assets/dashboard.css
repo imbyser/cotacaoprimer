@@ -718,6 +718,9 @@ body.tela-listas {
 }
 
 .voice-lista-revisao li {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr);
+  gap: 9px;
   padding: 11px 12px;
   border: 1px solid var(--cp-line);
   border-left: 5px solid var(--cp-green-600);
@@ -725,14 +728,38 @@ body.tela-listas {
   background: white;
 }
 
-.voice-lista-revisao strong,
+.voice-lista-revisao label,
 .voice-lista-revisao span {
   display: block;
 }
 
 .voice-lista-revisao span {
+  margin-bottom: 4px;
   color: var(--cp-muted);
+  font-weight: 800;
   font-size: 0.84rem;
+}
+
+.voice-lista-revisao input {
+  width: 100%;
+  min-height: 44px;
+  border: 1px solid var(--cp-line);
+  border-radius: 5px;
+  padding: 8px 10px;
+  color: var(--cp-ink);
+  background: var(--cp-paper);
+  font: inherit;
+}
+
+.voice-lista-revisao input:focus {
+  border-color: var(--cp-green-700);
+  outline: 3px solid rgba(62, 179, 123, 0.18);
+}
+
+.voice-ajuda-revisao {
+  padding: 10px 12px;
+  border-left: 4px solid var(--cp-green-600);
+  background: var(--cp-green-100);
 }
 
 .voice-erro {
@@ -806,6 +833,10 @@ body.tela-listas {
   .voice-panel {
     padding: 24px 18px;
     box-shadow: 7px 7px 0 rgba(5, 22, 39, 0.62);
+  }
+
+  .voice-lista-revisao li {
+    grid-template-columns: 1fr;
   }
 }
 

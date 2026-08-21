@@ -12,7 +12,7 @@ Branch de implementação: `feat/dashboard-listas-voz`
 - A ação “Criar nova lista” existe no topo e fixa na parte inferior da tela de listas.
 - Ao abrir uma cotação, as três etapas conhecidas continuam na mesma ordem: Lista, Preços e Pedido.
 - O fornecedor que recebe `?c=...&e=2` continua isolado na página de preenchimento de preços, mesmo quando existe uma conta administrativa salva no navegador.
-- A lista por voz transcreve e organiza os itens, mas só cria a lista depois da revisão e confirmação do usuário.
+- A lista por voz transcreve e organiza os itens, permite corrigir nomes e embalagens reconhecidos e só cria a lista depois da confirmação do usuário.
 
 ## Segurança dos dados
 
@@ -56,4 +56,3 @@ Se uma restauração de dados algum dia for realmente necessária, ela deve ser 
 - Tela com 20 listas para verificar ordenação, rolagem e botões de nova lista.
 - Leitura real, sem escrita, para validar 54 listas, abertura de cotação e etapas 2 e 3.
 - Ciclo real da Groq com áudio sintético, autenticação ativa e retorno de cinco produtos, sem salvar uma cotação.
-

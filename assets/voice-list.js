@@ -28,7 +28,7 @@
       Array.from(modal.querySelectorAll("[data-voice-state]"))
         .map((elemento) => [elemento.dataset.voiceState, elemento])
     );
-    const erro = modal.querySelector("[data-voice-error]");
+    const erros = Array.from(modal.querySelectorAll("[data-voice-error]"));
     const tempo = modal.querySelector("[data-voice-time]");
     const revisao = modal.querySelector("[data-voice-review]");
     const transcricao = modal.querySelector("[data-voice-transcript]");
@@ -47,8 +47,10 @@
     }
 
     function definirErro(mensagem) {
-      erro.textContent = mensagem || "";
-      erro.hidden = !mensagem;
+      erros.forEach((erro) => {
+        erro.textContent = mensagem || "";
+        erro.hidden = !mensagem;
+      });
     }
 
     function pararCaptura() {
@@ -88,16 +90,42 @@
 
     function montarRevisao(produtos, texto) {
       revisao.replaceChildren();
-      produtos.forEach((produto) => {
+      produtos.forEach((produto, indice) => {
         const item = document.createElement("li");
-        const nome = document.createElement("strong");
-        const embalagem = document.createElement("span");
-        nome.textContent = produto.nome;
-        embalagem.textContent = produto.emb || "Embalagem não informada";
-        item.append(nome, embalagem);
+        const labelNome = document.createElement("label");
+        const labelEmbalagem = document.createElement("label");
+        const textoNome = document.createElement("span");
+        const textoEmbalagem = document.createElement("span");
+        const nome = document.createElement("input");
+        const embalagem = document.createElement("input");
+
+        textoNome.textContent = `Produto ${indice + 1}`;
+        textoEmbalagem.textContent = "Embalagem (se tiver)";
+        nome.type = "text";
+        nome.value = produto.nome;
+        nome.maxLength = 120;
+        nome.autocomplete = "off";
+        nome.dataset.voiceProductName = "";
+        embalagem.type = "text";
+        embalagem.value = produto.emb || "";
+        embalagem.maxLength = 80;
+        embalagem.autocomplete = "off";
+        embalagem.dataset.voiceProductPackaging = "";
+        labelNome.append(textoNome, nome);
+        labelEmbalagem.append(textoEmbalagem, embalagem);
+        item.append(labelNome, labelEmbalagem);
         revisao.appendChild(item);
       });
       transcricao.textContent = texto ? `Entendi: “${texto}”` : "";
+    }
+
+    function produtosDaRevisao() {
+      return Array.from(revisao.querySelectorAll("li")).reduce((produtos, item) => {
+        const nome = item.querySelector("[data-voice-product-name]")?.value.trim().slice(0, 120) || "";
+        const emb = item.querySelector("[data-voice-product-packaging]")?.value.trim().slice(0, 80) || "";
+        if (nome) produtos.push({ nome, emb });
+        return produtos;
+      }, []);
     }
 
     async function processarAudio(blob) {
@@ -177,7 +205,11 @@
     }
 
     async function confirmar() {
-      if (!produtosReconhecidos.length) return;
+      produtosReconhecidos = produtosDaRevisao();
+      if (!produtosReconhecidos.length) {
+        definirErro("Deixe pelo menos um produto preenchido para continuar.");
+        return;
+      }
       const botao = modal.querySelector("[data-voice-confirm]");
       botao.disabled = true;
       botao.textContent = "Abrindo a lista...";
