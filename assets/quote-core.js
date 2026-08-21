@@ -13,6 +13,28 @@
     return partes.length >= 2 && partes.every((parte) => /[\p{L}\p{N}]/u.test(parte));
   }
 
+  function validarDadosLoja(nomeInformado, telefoneInformado) {
+    const nome = normalizarEspacos(nomeInformado);
+    const telefone = String(telefoneInformado || "").replace(/\D/g, "");
+
+    if (!nome || nome.toLocaleLowerCase("pt-BR") === "cliente") {
+      return {
+        valido: false,
+        campo: "nomeCliente",
+        mensagem: "Digite o nome da loja para continuar."
+      };
+    }
+    if (!/^\d{10,11}$/.test(telefone)) {
+      return {
+        valido: false,
+        campo: "telCliente",
+        mensagem: "Digite um WhatsApp válido da loja, com DDD."
+      };
+    }
+
+    return { valido: true, nome, telefone };
+  }
+
   function precoParaCentavos(valor) {
     if (typeof valor === "number") {
       if (!Number.isFinite(valor) || valor < 0) return null;
@@ -226,6 +248,7 @@
     VERSAO_RASCUNHO,
     normalizarEspacos,
     nomeCompletoValido,
+    validarDadosLoja,
     precoParaCentavos,
     centavosParaNumero,
     formatarCentavos,

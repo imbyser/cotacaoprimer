@@ -303,31 +303,42 @@
 
     <div class="carrinho-bar">
       <div class="carrinho-conteudo">
-        <div class="linha-dados-cliente">
-          <label class="sr-only" for="nomeCliente">Nome da loja</label>
-          <input type="text" id="nomeCliente" class="campo-cliente" placeholder="Nome da loja" autocomplete="organization" oninput="agendarSalvarAutomatico()">
-          <label class="sr-only" for="telCliente">WhatsApp da loja</label>
-          <input type="tel" id="telCliente" class="campo-cliente" placeholder="WhatsApp da loja" inputmode="tel" autocomplete="tel" oninput="agendarSalvarAutomatico()">
+        <div class="dados-pedido-resumo" id="dadosPedidoResumo">
+          <div class="dados-pedido-resumo-texto">
+            <strong>Dados para enviar</strong>
+            <span id="textoResumoDadosPedido">Falta nome e WhatsApp da loja</span>
+          </div>
+          <button type="button" id="btnEditarDadosPedido" onclick="expandirDadosPedido()">Editar dados</button>
         </div>
 
-        <!-- REINCLUÍDO E AJUSTADO: FORMA DE PAGAMENTO E PRAZO -->
-        <div class="linha-pagamento" id="secaoPagamento">
-          <label class="sr-only" for="tipoCotacao">Forma de compra</label>
-          <select id="tipoCotacao" class="campo-cliente" onchange="agendarSalvarAutomatico()">
-            <option value="Caixa">📦 Por Caixa</option>
-            <option value="Unidade">🏷️ Por Unidade</option>
-          </select>
-          <label class="sr-only" for="prazoPagamento">Forma ou prazo de pagamento</label>
-          <select id="prazoPagamento" class="campo-cliente" onchange="agendarSalvarAutomatico()">
-            <option value="À vista">⏱️ À vista</option>
-            <option value="Pix">💠 Pix</option>
-            <option value="Cartão">💳 Cartão</option>
-            <option value="Boleto 7 dias">📄 Boleto 7 dias</option>
-            <option value="Boleto 14 dias">📄 Boleto 14 dias</option>
-            <option value="Boleto 21 dias">📄 Boleto 21 dias</option>
-            <option value="Boleto 28 dias">📄 Boleto 28 dias</option>
-            <option value="Boleto 30 dias">📄 Boleto 30 dias</option>
-          </select>
+        <div class="dados-pedido-campos" id="dadosPedidoCampos">
+          <div class="linha-dados-cliente">
+            <label class="sr-only" for="nomeCliente">Nome da loja</label>
+            <input type="text" id="nomeCliente" class="campo-cliente" placeholder="Nome da loja" autocomplete="organization" oninput="agendarSalvarAutomatico()">
+            <label class="sr-only" for="telCliente">WhatsApp da loja</label>
+            <input type="tel" id="telCliente" class="campo-cliente" placeholder="WhatsApp da loja" inputmode="tel" autocomplete="tel" oninput="agendarSalvarAutomatico()">
+          </div>
+
+          <!-- REINCLUÍDO E AJUSTADO: FORMA DE PAGAMENTO E PRAZO -->
+          <div class="linha-pagamento" id="secaoPagamento">
+            <label class="sr-only" for="tipoCotacao">Forma de compra</label>
+            <select id="tipoCotacao" class="campo-cliente" onchange="agendarSalvarAutomatico()">
+              <option value="Caixa">📦 Por Caixa</option>
+              <option value="Unidade">🏷️ Por Unidade</option>
+            </select>
+            <label class="sr-only" for="prazoPagamento">Forma ou prazo de pagamento</label>
+            <select id="prazoPagamento" class="campo-cliente" onchange="agendarSalvarAutomatico()">
+              <option value="À vista">⏱️ À vista</option>
+              <option value="Pix">💠 Pix</option>
+              <option value="Cartão">💳 Cartão</option>
+              <option value="Boleto 7 dias">📄 Boleto 7 dias</option>
+              <option value="Boleto 14 dias">📄 Boleto 14 dias</option>
+              <option value="Boleto 21 dias">📄 Boleto 21 dias</option>
+              <option value="Boleto 28 dias">📄 Boleto 28 dias</option>
+              <option value="Boleto 30 dias">📄 Boleto 30 dias</option>
+            </select>
+          </div>
+          <p class="dados-pedido-erro" id="dadosPedidoErro" role="alert" hidden></p>
         </div>
 
         <div class="resumo-total" id="boxTotal" style="display: none;">
@@ -511,6 +522,15 @@
           : window.criarNovaListaComProdutos(produtos)
       });
       window.cotacaoVoiceController = voiceController;
+      ['nomeCliente', 'telCliente', 'tipoCotacao', 'prazoPagamento'].forEach((id) => {
+        const campo = document.getElementById(id);
+        const evento = campo.tagName === 'SELECT' ? 'change' : 'input';
+        campo.addEventListener(evento, () => {
+          window.limparErroDadosPedido?.();
+          window.atualizarResumoDadosPedido?.();
+        });
+      });
+      window.inicializarRodapeDadosPedido?.();
 
       if (pagamento === 'aprovado' || pagamento === 'pendente') {
         const paymentMsg = document.getElementById('authPaymentMsg');
@@ -690,6 +710,7 @@
       document.getElementById('telCliente').value = rascunho.tel || '';
       definirOpcaoSeExistir('tipoCotacao', rascunho.tipo);
       definirOpcaoSeExistir('prazoPagamento', rascunho.prazo);
+      window.atualizarResumoDadosPedido?.();
 
       const lista = document.getElementById('listaProdutos');
       lista.replaceChildren();
@@ -823,7 +844,6 @@
         atualizarPainelDeListas();
       } catch (e) {
         console.error("Erro ao carregar cotações:", e);
-        cotacoesDoUsuario = [];
         atualizarPainelDeListas();
       }
     }
@@ -894,19 +914,37 @@
       alternarEtapa(1);
     }
 
-    window.abrirDashboard = async function() {
-      if (!await salvarAntesDeTrocarLista()) return;
-      pararListenerCotacao();
+    function salvarEmSegundoPlanoAoSair() {
+      clearTimeout(timerSalvarAuto);
+      timerSalvarAuto = null;
+      if (!haAlteracoesPendentes) return Promise.resolve(true);
+
+      guardarRascunhoLocal();
+      rascunhoPendenteLogin = obterRascunhoLocal(usuarioTelefone);
+      document.getElementById('dashboardDraft').hidden = !rascunhoPendenteLogin;
+      return window.salvarEstadoAutomatico();
+    }
+
+    async function atualizarListasDepoisDaSaida(promessaSalvamento) {
+      await promessaSalvamento.catch(() => false);
       await carregarListaCotacoesUsuario();
+    }
+
+    window.abrirDashboard = function() {
+      const salvamento = salvarEmSegundoPlanoAoSair();
+      pararListenerCotacao();
+      atualizarPainelDeListas();
       mostrarTela('dashboard');
+      void atualizarListasDepoisDaSaida(salvamento);
     };
 
-    window.abrirListas = async function() {
+    window.abrirListas = function() {
       if (modoFornecedor) return;
-      if (!await salvarAntesDeTrocarLista()) return;
+      const salvamento = salvarEmSegundoPlanoAoSair();
       pararListenerCotacao();
-      await carregarListaCotacoesUsuario();
+      atualizarPainelDeListas();
       mostrarTela('listas');
+      void atualizarListasDepoisDaSaida(salvamento);
     };
 
     window.criarNovaLista = async function() {
@@ -1034,7 +1072,7 @@
 
       const versaoCapturada = versaoAlteracoes;
 
-      const cliente = document.getElementById('nomeCliente').value.trim() || 'Cliente';
+      const cliente = document.getElementById('nomeCliente').value.trim();
       const tel = document.getElementById('telCliente').value.trim();
       const prazo = document.getElementById('prazoPagamento').value;
       const tipo = document.getElementById('tipoCotacao').value;
@@ -1077,7 +1115,7 @@
             opcao.value = cotacaoIdAtual;
             select.appendChild(opcao);
           }
-          opcao.innerText = `${cliente} — ${cotacaoIdAtual.slice(-6)}`;
+          opcao.innerText = `${cliente || 'Sem nome'} — ${cotacaoIdAtual.slice(-6)}`;
           select.value = cotacaoIdAtual;
           const cotacaoAnterior = cotacoesDoUsuario.find((item) => item.id === cotacaoIdAtual) || {};
           const cotacaoAtualizada = {
@@ -1133,6 +1171,9 @@
     };
 
     window.salvarCotacaoEGerarLink = async function() {
+      const dadosLoja = window.validarDadosLojaParaEnvio?.();
+      if (!dadosLoja) return;
+
       const cotacaoSalva = await window.salvarEstadoAutomatico();
       if (!cotacaoSalva || !cotacaoIdAtual) return alert("Adicione pelo menos um produto para continuar.");
 
@@ -1141,13 +1182,13 @@
 
       const baseUrl = window.location.href.split('?')[0];
       const linkVendedor = `${baseUrl}?c=${cotacaoIdAtual}&e=2`;
-      const cliente = document.getElementById('nomeCliente').value.trim() || 'Cliente';
+      const cliente = dadosLoja.nome;
 
       let msg = `🛒 *SOLICITAÇÃO DE COTAÇÃO*\nCliente: *${cliente}*\n\nPreencha seus preços no link:\n${linkVendedor}`;
 
       alert(`✅ Cotação Salva! Link gerado.`);
       window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(msg)}`, '_blank');
-      
+      window.marcarDadosPedidoComoConhecidos?.();
       alternarEtapa(3);
     };
 
@@ -1196,6 +1237,7 @@
         document.getElementById('telCliente').value = modoFornecedor ? '' : (data.tel || '');
         if (!modoFornecedor && data.tipo) document.getElementById('tipoCotacao').value = data.tipo;
         if (!modoFornecedor && data.prazo) document.getElementById('prazoPagamento').value = data.prazo;
+        window.atualizarResumoDadosPedido?.();
       }
 
       if (modoFornecedor) {
@@ -1413,6 +1455,106 @@
     let etapaAtual = 1;
     let cotacaoIdAtual = null;
     let modoFornecedor = false;
+    const CHAVE_RODAPE_COMPACTO = 'cotacaoPrime_rodapeCompacto_v1';
+    let rodapeDadosCompacto = false;
+
+    function lerPreferenciaRodapeDados() {
+      try {
+        return localStorage.getItem(CHAVE_RODAPE_COMPACTO) === '1';
+      } catch {
+        return false;
+      }
+    }
+
+    function salvarPreferenciaRodapeDados(compacto) {
+      try {
+        localStorage.setItem(CHAVE_RODAPE_COMPACTO, compacto ? '1' : '0');
+      } catch {
+        // A interface continua funcionando quando o armazenamento está bloqueado.
+      }
+    }
+
+    function atualizarEstadoRodapeDadosPedido() {
+      const telaPequena = window.matchMedia('(max-width: 600px)').matches;
+      const compacto = rodapeDadosCompacto && telaPequena && etapaAtual === 1 && !modoFornecedor;
+      document.querySelector('.carrinho-bar')?.classList.toggle('dados-compactos', compacto);
+      document.body.classList.toggle('rodape-compacto', compacto);
+      window.atualizarResumoDadosPedido?.();
+    }
+
+    window.inicializarRodapeDadosPedido = function() {
+      rodapeDadosCompacto = lerPreferenciaRodapeDados();
+      atualizarEstadoRodapeDadosPedido();
+      const consultaTelaPequena = window.matchMedia('(max-width: 600px)');
+      if (typeof consultaTelaPequena.addEventListener === 'function') {
+        consultaTelaPequena.addEventListener('change', atualizarEstadoRodapeDadosPedido);
+      } else if (typeof consultaTelaPequena.addListener === 'function') {
+        consultaTelaPequena.addListener(atualizarEstadoRodapeDadosPedido);
+      }
+    };
+
+    window.expandirDadosPedido = function() {
+      rodapeDadosCompacto = false;
+      atualizarEstadoRodapeDadosPedido();
+      document.getElementById('nomeCliente')?.focus();
+    };
+
+    window.marcarDadosPedidoComoConhecidos = function() {
+      rodapeDadosCompacto = true;
+      salvarPreferenciaRodapeDados(true);
+    };
+
+    window.limparErroDadosPedido = function() {
+      const erro = document.getElementById('dadosPedidoErro');
+      if (erro) {
+        erro.textContent = '';
+        erro.hidden = true;
+      }
+      document.getElementById('nomeCliente')?.removeAttribute('aria-invalid');
+      document.getElementById('telCliente')?.removeAttribute('aria-invalid');
+    };
+
+    window.atualizarResumoDadosPedido = function() {
+      const resumo = document.getElementById('textoResumoDadosPedido');
+      if (!resumo) return;
+      const nome = CotacaoCore.normalizarEspacos(document.getElementById('nomeCliente')?.value);
+      const telefone = String(document.getElementById('telCliente')?.value || '').replace(/\D/g, '');
+      const faltando = [];
+      if (!nome || nome.toLocaleLowerCase('pt-BR') === 'cliente') faltando.push('nome');
+      if (!/^\d{10,11}$/.test(telefone)) faltando.push('WhatsApp');
+
+      if (faltando.length) {
+        resumo.textContent = `Falta ${faltando.join(' e ')} da loja`;
+        resumo.dataset.incompleto = 'true';
+        return;
+      }
+
+      const tipo = document.getElementById('tipoCotacao')?.value || 'Caixa';
+      const prazo = document.getElementById('prazoPagamento')?.value || 'À vista';
+      resumo.textContent = `${nome} • ${tipo} • ${prazo}`;
+      delete resumo.dataset.incompleto;
+    };
+
+    window.validarDadosLojaParaEnvio = function() {
+      const campoNome = document.getElementById('nomeCliente');
+      const campoTelefone = document.getElementById('telCliente');
+      const validacao = CotacaoCore.validarDadosLoja(campoNome?.value, campoTelefone?.value);
+      window.limparErroDadosPedido();
+      if (validacao.valido) return validacao;
+
+      rodapeDadosCompacto = false;
+      atualizarEstadoRodapeDadosPedido();
+      const erro = document.getElementById('dadosPedidoErro');
+      if (erro) {
+        erro.textContent = validacao.mensagem;
+        erro.hidden = false;
+      }
+      const campo = document.getElementById(validacao.campo);
+      campo?.setAttribute('aria-invalid', 'true');
+      campo?.focus();
+      campo?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+      return null;
+    };
 
     function configurarModoFornecedor(cotacaoId) {
       modoFornecedor = true;
@@ -1442,6 +1584,7 @@
       const isE2 = (e === 2);
       const isE3 = (e === 3);
       document.body.classList.toggle('etapa-pedido', isE3 && !modoFornecedor);
+      atualizarEstadoRodapeDadosPedido();
 
       document.getElementById('secaoVendedor').style.display = isE2 ? 'block' : 'none';
       const secaoAtalhos = document.getElementById('secaoAtalhos');
@@ -1694,8 +1837,9 @@
         return;
       }
 
-      const dados = window.cotacaoDadosGlobais;
-      const cliente = document.getElementById('nomeCliente').value || 'Cliente';
+      const dadosLoja = window.validarDadosLojaParaEnvio?.();
+      if (!dadosLoja) return;
+      const cliente = dadosLoja.nome;
       const prazo = document.getElementById('prazoPagamento').value || 'A combinar';
       const tipo = document.getElementById('tipoCotacao').value || 'Caixa';
       const resumo = CotacaoCore.agruparPedidoPorFornecedor(coletarItensDoPedido());

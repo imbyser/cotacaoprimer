@@ -11,6 +11,29 @@ test("exige nome e sobrenome do fornecedor", () => {
   assert.equal(core.nomeCompletoValido("Ana Sá"), true);
 });
 
+test("exige nome da loja e WhatsApp com DDD antes do envio", () => {
+  assert.deepEqual(core.validarDadosLoja("", "(81) 99999-9999"), {
+    valido: false,
+    campo: "nomeCliente",
+    mensagem: "Digite o nome da loja para continuar."
+  });
+  assert.deepEqual(core.validarDadosLoja("Cliente", "(81) 99999-9999"), {
+    valido: false,
+    campo: "nomeCliente",
+    mensagem: "Digite o nome da loja para continuar."
+  });
+  assert.deepEqual(core.validarDadosLoja("Mercado Central", "9999"), {
+    valido: false,
+    campo: "telCliente",
+    mensagem: "Digite um WhatsApp válido da loja, com DDD."
+  });
+  assert.deepEqual(core.validarDadosLoja("  Mercado   Central ", "(81) 99999-9999"), {
+    valido: true,
+    nome: "Mercado Central",
+    telefone: "81999999999"
+  });
+});
+
 test("interpreta preços brasileiros e calcula em centavos", () => {
   assert.equal(core.precoParaCentavos("27,90"), 2790);
   assert.equal(core.precoParaCentavos("1.234,56"), 123456);

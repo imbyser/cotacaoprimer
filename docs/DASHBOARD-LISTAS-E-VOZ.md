@@ -58,3 +58,6 @@ Se uma restauração de dados algum dia for realmente necessária, ela deve ser 
 - Leitura real, sem escrita, para validar 54 listas, abertura de cotação e etapas 2 e 3.
 - Ciclo real da Groq com áudio sintético, autenticação ativa e retorno de cinco produtos, sem salvar uma cotação.
 - Compatibilidade de gravação validada para MP4/AAC do Safari no iPhone, inclusive quando o navegador acrescenta parâmetros de codec ao tipo do arquivo.
+- Na primeira utilização, os dados da loja continuam abertos. Depois do primeiro envio, a etapa Lista usa um resumo compacto com “Editar dados” e mantém o botão principal no mesmo lugar.
+- O link e os pedidos por WhatsApp são bloqueados até o preenchimento do nome da loja e de um número válido com DDD.
+- No Safari móvel, “Minhas listas” e “Início” trocam de tela imediatamente. Alterações pendentes são guardadas primeiro no aparelho e sincronizadas em segundo plano.

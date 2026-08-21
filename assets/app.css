@@ -568,7 +568,91 @@ select {
 }
 
 .carrinho-conteudo {
+  position: relative;
   max-width: 680px;
+}
+
+.dados-pedido-resumo {
+  display: none;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 9px;
+  padding: 9px 10px;
+  border: 1px solid var(--cp-blue-200);
+  border-left: 5px solid var(--cp-blue-600);
+  border-radius: 5px;
+  background: var(--cp-blue-100);
+}
+
+.dados-pedido-resumo-texto {
+  min-width: 0;
+}
+
+.dados-pedido-resumo strong,
+.dados-pedido-resumo span {
+  display: block;
+}
+
+.dados-pedido-resumo strong {
+  color: var(--cp-navy-950);
+  font-family: var(--cp-display);
+  font-size: 0.78rem;
+  font-weight: 900;
+}
+
+.dados-pedido-resumo span {
+  overflow: hidden;
+  margin-top: 1px;
+  color: var(--cp-muted);
+  font-size: 0.8rem;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dados-pedido-resumo span[data-incompleto="true"] {
+  color: var(--cp-danger);
+  font-weight: 700;
+}
+
+.dados-pedido-resumo button {
+  min-height: 44px;
+  border: 1px solid var(--cp-navy-900);
+  border-radius: 5px;
+  color: var(--cp-navy-900);
+  background: var(--cp-paper);
+  font-family: var(--cp-display);
+  font-size: 0.78rem;
+  font-weight: 900;
+}
+
+.dados-pedido-resumo button {
+  flex: 0 0 auto;
+  padding: 8px 10px;
+}
+
+.dados-pedido-campos {
+  min-width: 0;
+}
+
+.dados-pedido-erro {
+  margin: 0 0 9px;
+  padding: 9px 10px;
+  border: 1px solid #e9b6b6;
+  border-left: 5px solid var(--cp-danger);
+  border-radius: 5px;
+  color: #7b1818;
+  background: #fff1f0;
+  font-size: 0.86rem;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.campo-cliente[aria-invalid="true"] {
+  border-color: var(--cp-danger);
+  box-shadow: 0 0 0 2px rgba(167, 44, 44, 0.14);
 }
 
 .campo-cliente {
@@ -726,7 +810,8 @@ body.modo-fornecedor {
 .modo-fornecedor .trial-banner,
 .modo-fornecedor #btnAdicionarManual,
 .modo-fornecedor #btnAdicionarVoz,
-.modo-fornecedor .carrinho-conteudo > .linha-dados-cliente,
+.modo-fornecedor #dadosPedidoCampos,
+.modo-fornecedor #dadosPedidoResumo,
 .modo-fornecedor #secaoPagamento,
 .modo-fornecedor #boxTotal,
 .modo-fornecedor #painelEnvioDividido,
@@ -899,6 +984,23 @@ body.modo-fornecedor {
   .carrinho-bar {
     max-height: 56dvh;
     padding: 10px 10px max(10px, env(safe-area-inset-bottom));
+  }
+
+  body.rodape-compacto {
+    padding-bottom: 158px;
+  }
+
+  .carrinho-bar.dados-compactos {
+    max-height: none;
+    overflow: visible;
+  }
+
+  .carrinho-bar.dados-compactos .dados-pedido-resumo {
+    display: flex;
+  }
+
+  .carrinho-bar.dados-compactos .dados-pedido-campos {
+    display: none;
   }
 
   .carrinho-bar .linha-dados-cliente,
