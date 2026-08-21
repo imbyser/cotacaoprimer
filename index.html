@@ -105,6 +105,7 @@
   </style>
   <link rel="stylesheet" href="assets/app.css">
   <link rel="stylesheet" href="assets/order-panel.css">
+  <link rel="stylesheet" href="assets/dashboard.css">
 </head>
 <body>
 
@@ -133,8 +134,8 @@
     </div>
   </div>
 
-  <!-- BARRA DE USUÁRIO -->
-  <div class="user-bar" id="userBar" style="display: none;">
+  <!-- CONTROLES LEGADOS MANTIDOS OCULTOS PARA COMPATIBILIDADE -->
+  <div class="user-bar" id="userBar" style="display: none;" hidden aria-hidden="true">
     <span>👤 WhatsApp: <b id="userPhoneDisplay">-</b></span>
     <div style="display: flex; gap: 8px; align-items: center;">
       <a href="vendas.html" class="btn-assinar-topo">Gerenciar assinatura</a>
@@ -143,13 +144,13 @@
   </div>
 
   <!-- BANNER DE STATUS -->
-  <div class="trial-banner" id="trialBanner" style="display: none;">
+  <div class="trial-banner" id="trialBanner" style="display: none;" hidden aria-hidden="true">
     <span id="txtBannerStatus">Assinatura ativa. Sistema liberado.</span>
     <a href="vendas.html" class="btn-assinar-topo">Renovar ou mudar plano</a>
   </div>
 
   <!-- PAINEL DE COTAÇÕES DO CLIENTE -->
-  <div class="painel-minhas-cotacoes" id="painelCotacoes" style="display: none;">
+  <div class="painel-minhas-cotacoes" id="painelCotacoes" style="display: none;" hidden aria-hidden="true">
     <div>
       <label for="selectCotacoesUsuario"><b>Minhas cotações salvas:</b></label>
       <select id="selectCotacoesUsuario" class="seletor-cotacoes" onchange="selecionarCotacaoSalva(this.value)">
@@ -160,10 +161,108 @@
   </div>
 
   <div id="appContainer" role="main" style="display: none;">
-    <header>
-      <img src="assets/cotacao-prime-mark.svg" alt="" width="42" height="42">
-      <h1 id="tituloHeader">Cotação de Produtos</h1>
-    </header>
+    <section class="app-view dashboard-view" id="dashboardView" aria-labelledby="dashboardTitle">
+      <div class="dashboard-hero">
+        <div class="dashboard-topo">
+          <img class="dashboard-logo" src="assets/cotacao-prime-logo.svg" alt="Cotação Prime" width="250" height="55">
+          <div class="dashboard-conta-resumo">
+            <span>WhatsApp <strong id="dashboardPhone">-</strong></span>
+            <button class="dashboard-sair" type="button" data-logout onclick="fazerLogout()">Sair</button>
+          </div>
+        </div>
+        <div class="dashboard-boas-vindas">
+          <span class="dashboard-kicker">Sua área de compras</span>
+          <h1 id="dashboardTitle">O que você quer fazer agora?</h1>
+          <p>Crie uma lista nova ou continue de onde parou. As respostas dos fornecedores ficam dentro de cada lista.</p>
+        </div>
+      </div>
+
+      <div class="dashboard-main">
+        <div class="dashboard-acoes">
+          <button class="dashboard-acao dashboard-acao-principal" type="button" onclick="criarNovaLista()">
+            <span class="dashboard-acao-texto">
+              <strong>Criar nova lista</strong>
+              <span>Digite os produtos do seu jeito.</span>
+              <small>Começar digitando →</small>
+            </span>
+            <span class="dashboard-acao-icone" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+            </span>
+          </button>
+          <button class="dashboard-acao" type="button" onclick="abrirListas()">
+            <span class="dashboard-acao-texto">
+              <strong>Minhas listas</strong>
+              <span id="dashboardListCount">Veja todas as listas salvas.</span>
+              <small>Abrir listas →</small>
+            </span>
+            <span class="dashboard-acao-icone" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><path d="M9 6h11M9 12h11M9 18h11M4 6h.01M4 12h.01M4 18h.01"/></svg>
+            </span>
+          </button>
+        </div>
+        <button class="dashboard-voz" type="button" onclick="abrirListaPorVoz()">
+          <span class="dashboard-acao-icone" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3M8 21h8"/></svg>
+          </span>
+          <span>
+            <strong>Criar lista falando</strong>
+            <small>Diga “cebola, tomate, feijão...” e confira antes de salvar.</small>
+          </span>
+          <b aria-hidden="true">→</b>
+        </button>
+
+        <div class="dashboard-atalhos">
+          <section class="dashboard-bloco" aria-labelledby="recentesTitle">
+            <div class="dashboard-secao-topo">
+              <h2 id="recentesTitle">Listas recentes</h2>
+              <button class="dashboard-ver-todas" type="button" onclick="abrirListas()">Ver todas</button>
+            </div>
+            <div class="listas-cards" id="dashboardRecentLists"></div>
+            <div class="rascunho-pendente" id="dashboardDraft" hidden>
+              <strong>Você tem uma lista em andamento</strong>
+              <span>O que foi digitado ficou guardado neste aparelho.</span>
+              <button type="button" onclick="continuarRascunho()">Continuar esta lista</button>
+            </div>
+          </section>
+
+          <aside class="conta-card" aria-labelledby="contaTitle">
+            <h2 id="contaTitle">Minha assinatura</h2>
+            <div class="conta-status">Assinatura ativa. Sistema liberado.</div>
+            <p>Renove, troque de plano ou confira os valores quando precisar.</p>
+            <a href="vendas.html" class="dashboard-link-conta">Gerenciar assinatura</a>
+          </aside>
+        </div>
+      </div>
+    </section>
+
+    <section class="app-view listas-view" id="listasView" hidden aria-labelledby="listasTitle">
+      <header class="listas-header">
+        <div class="listas-topo">
+          <button class="listas-voltar" type="button" onclick="abrirDashboard()">← Início</button>
+          <div>
+            <span class="listas-kicker">Cotação Prime</span>
+            <h1 id="listasTitle">Minhas listas</h1>
+          </div>
+          <button class="listas-nova-topo" type="button" onclick="criarNovaLista()">+ Nova lista</button>
+        </div>
+      </header>
+      <div class="listas-main">
+        <p class="listas-resumo" id="listasResumo"><strong>0 listas</strong> — as mais recentes aparecem primeiro.</p>
+        <div class="listas-cards" id="allLists"></div>
+      </div>
+      <div class="listas-fixed-action">
+        <button class="listas-nova-fixa" type="button" onclick="criarNovaLista()">+ Criar nova lista</button>
+      </div>
+    </section>
+
+    <section class="app-view workspace-view" id="workspaceView" hidden aria-labelledby="tituloHeader">
+      <header class="workspace-header">
+        <button class="workspace-voltar" type="button" onclick="abrirListas()">← Minhas listas</button>
+        <div class="workspace-identidade">
+          <img src="assets/cotacao-prime-mark.svg" alt="" width="42" height="42">
+          <h1 id="tituloHeader">Cotação de Produtos</h1>
+        </div>
+      </header>
 
     <!-- BARRA DE ETAPAS -->
     <div class="etapas-bar" id="barraEtapas" aria-label="Etapas da cotação">
@@ -239,13 +338,61 @@
         <button class="btn-whatsapp" id="btnAcao" type="button" onclick="executarAcaoPrincipal()">Gerar Link e Enviar WhatsApp</button>
       </div>
     </div>
+    </section>
+
+    <div class="voice-modal" id="voiceModal" hidden role="dialog" aria-modal="true" aria-labelledby="voiceTitle">
+      <section class="voice-panel">
+        <button class="voice-fechar" type="button" data-voice-close aria-label="Fechar">×</button>
+
+        <div data-voice-state="intro">
+          <div class="voice-marca" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3M8 21h8"/></svg>
+          </div>
+          <span class="dashboard-kicker">Criar falando</span>
+          <h2 id="voiceTitle">Fale os produtos da lista.</h2>
+          <p>Diga os nomes e, se souber, a embalagem. Você vai conferir tudo antes de criar.</p>
+          <div class="voice-exemplo"><strong>Exemplo:</strong> “Arroz cinco quilos, feijão, cebola, tomate e óleo caixa com vinte.”</div>
+          <p class="voice-erro" data-voice-error hidden role="alert"></p>
+          <button class="voice-principal" type="button" data-voice-start>Começar a falar</button>
+          <button class="voice-secundario" type="button" data-voice-close onclick="criarNovaLista()">Prefiro digitar</button>
+        </div>
+
+        <div class="voice-gravando" data-voice-state="recording" hidden>
+          <div class="voice-marca" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3M8 21h8"/></svg>
+          </div>
+          <span class="dashboard-kicker">Gravando</span>
+          <h2>Fale com calma.</h2>
+          <p>Pode dizer todos os produtos de uma vez.</p>
+          <strong class="voice-tempo" data-voice-time>00:00</strong>
+          <button class="voice-principal" type="button" data-voice-stop>Terminar e montar lista</button>
+        </div>
+
+        <div class="voice-processando" data-voice-state="processing" hidden>
+          <span class="dashboard-kicker">Organizando</span>
+          <h2>Montando sua lista...</h2>
+          <p>Estou separando os produtos para você conferir.</p>
+        </div>
+
+        <div data-voice-state="review" hidden>
+          <span class="dashboard-kicker">Confira antes de criar</span>
+          <h2>Foi isso que você pediu?</h2>
+          <p data-voice-transcript></p>
+          <ul class="voice-lista-revisao" data-voice-review></ul>
+          <button class="voice-principal" type="button" data-voice-confirm>Usar estes itens</button>
+          <button class="voice-secundario" type="button" data-voice-retry>Gravar novamente</button>
+        </div>
+      </section>
+    </div>
   </div>
 
   <script src="assets/quote-core.js"></script>
+  <script src="assets/dashboard.js"></script>
+  <script src="assets/voice-list.js"></script>
   <script src="assets/order-panel.js"></script>
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-    import { getFirestore, doc, setDoc, getDoc, onSnapshot, collection, query, where, getDocs, orderBy, limit, runTransaction } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+    import { getFirestore, doc, setDoc, getDoc, onSnapshot, collection, query, where, getDocs, runTransaction } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyAPBH_zOO3xrdiyW1qk20b3b1ejMlyYSvg",
@@ -270,6 +417,9 @@
     let cotacaoRenderizadaId = null;
     let assinaturaProdutosRenderizados = "";
     let ofertaEmEnvio = false;
+    let cotacoesDoUsuario = [];
+    let rascunhoPendenteLogin = null;
+    let voiceController = null;
     const ATRASO_AUTOSAVE_MS = 700;
     const PREFIXO_RASCUNHO = 'rascunhoCotacao_';
     window.cotacaoDadosGlobais = null;
@@ -289,11 +439,72 @@
       input.value = v;
     };
 
+    function pararListenerCotacao() {
+      if (!listenerSnapshot) return;
+      listenerSnapshot();
+      listenerSnapshot = null;
+    }
+
+    function mostrarTela(nome) {
+      const telas = {
+        dashboard: document.getElementById('dashboardView'),
+        listas: document.getElementById('listasView'),
+        workspace: document.getElementById('workspaceView')
+      };
+      Object.entries(telas).forEach(([chave, tela]) => {
+        tela.hidden = chave !== nome;
+      });
+      document.body.classList.remove('tela-dashboard', 'tela-listas', 'tela-workspace');
+      document.body.classList.add(`tela-${nome}`);
+      document.body.classList.toggle(
+        'etapa-pedido',
+        nome === 'workspace' && etapaAtual === 3 && !modoFornecedor
+      );
+      window.scrollTo({ top: 0, behavior: 'auto' });
+    }
+
+    function atualizarPainelDeListas() {
+      const ordenadas = CotacaoDashboardUI.ordenarCotacoesRecentes(cotacoesDoUsuario);
+      cotacoesDoUsuario = ordenadas;
+      const quantidade = ordenadas.length;
+      document.getElementById('dashboardListCount').textContent = quantidade
+        ? `${quantidade} ${quantidade === 1 ? 'lista salva' : 'listas salvas'}.`
+        : 'Nenhuma lista salva ainda.';
+
+      const resumo = document.getElementById('listasResumo');
+      resumo.replaceChildren();
+      const destaque = document.createElement('strong');
+      destaque.textContent = `${quantidade} ${quantidade === 1 ? 'lista' : 'listas'}`;
+      resumo.append(destaque, document.createTextNode(' — as mais recentes aparecem primeiro.'));
+
+      CotacaoDashboardUI.renderizarListas({
+        container: document.getElementById('dashboardRecentLists'),
+        cotacoes: ordenadas,
+        limite: 3,
+        aoAbrir: (id) => window.abrirCotacao(id)
+      });
+      CotacaoDashboardUI.renderizarListas({
+        container: document.getElementById('allLists'),
+        cotacoes: ordenadas,
+        aoAbrir: (id) => window.abrirCotacao(id)
+      });
+    }
+
     window.addEventListener('DOMContentLoaded', async () => {
       const urlParams = new URLSearchParams(window.location.search);
       const cParam = urlParams.get('c');
       const eParam = parseInt(urlParams.get('e'));
       const pagamento = urlParams.get('pagamento');
+
+      voiceController = CotacaoVoice.criarControlador({
+        modal: document.getElementById('voiceModal'),
+        obterCredenciais: () => ({
+          telefone: localStorage.getItem('usuario_whatsapp') || '',
+          senha: localStorage.getItem('usuario_senha') || ''
+        }),
+        aoConfirmar: (produtos) => window.criarNovaListaComProdutos(produtos)
+      });
+      window.cotacaoVoiceController = voiceController;
 
       if (pagamento === 'aprovado' || pagamento === 'pendente') {
         const paymentMsg = document.getElementById('authPaymentMsg');
@@ -311,6 +522,7 @@
         document.getElementById('userBar').style.display = 'none';
         document.getElementById('trialBanner').style.display = 'none';
         document.getElementById('painelCotacoes').style.display = 'none';
+        mostrarTela('workspace');
         await window.carregarCotacaoDoBanco(cParam, 2);
         return;
       }
@@ -531,22 +743,16 @@
 
             document.getElementById('authOverlay').style.display = 'none';
             document.getElementById('userPhoneDisplay').innerText = document.getElementById('authPhone').value || phoneNum;
+            document.getElementById('dashboardPhone').innerText = phoneNum;
             document.getElementById('appContainer').style.display = 'block';
-            document.getElementById('userBar').style.display = 'flex';
-            document.getElementById('trialBanner').style.display = 'flex';
-            document.getElementById('painelCotacoes').style.display = 'flex';
+            document.getElementById('userBar').style.display = 'none';
+            document.getElementById('trialBanner').style.display = 'none';
+            document.getElementById('painelCotacoes').style.display = 'none';
 
             await carregarListaCotacoesUsuario();
-
-            const rascunhoLocal = obterRascunhoLocal(usuarioTelefone);
-            const cotacaoSalvaLocal = localStorage.getItem('cotacaoAtiva_' + usuarioTelefone);
-            if (rascunhoLocal) {
-              restaurarRascunhoLocal(rascunhoLocal);
-            } else if (cotacaoSalvaLocal) {
-              window.carregarCotacaoDoBanco(cotacaoSalvaLocal, 1);
-            } else {
-              await buscarUltimaCotacaoDoUsuario();
-            }
+            rascunhoPendenteLogin = obterRascunhoLocal(usuarioTelefone);
+            document.getElementById('dashboardDraft').hidden = !rascunhoPendenteLogin;
+            mostrarTela('dashboard');
           } else {
             errorDiv.innerText = "Sua assinatura está suspensa ou pendente de pagamento.";
             errorDiv.style.display = 'block';
@@ -562,11 +768,11 @@
     }
 
     window.fazerLogout = async function() {
-      const botao = document.getElementById('btnLogout');
-      if (botao) {
+      const botoes = Array.from(document.querySelectorAll('[data-logout], #btnLogout'));
+      botoes.forEach((botao) => {
         botao.disabled = true;
         botao.innerText = haAlteracoesPendentes ? 'Salvando...' : 'Saindo...';
-      }
+      });
 
       clearTimeout(timerSalvarAuto);
       timerSalvarAuto = null;
@@ -589,42 +795,30 @@
     async function carregarListaCotacoesUsuario() {
       if (!usuarioTelefone) return;
       const select = document.getElementById('selectCotacoesUsuario');
-      select.innerHTML = '<option value="">-- Criar Nova Cotação --</option>';
+      select.replaceChildren();
+      const opcaoNova = document.createElement('option');
+      opcaoNova.value = '';
+      opcaoNova.textContent = '-- Criar Nova Cotação --';
+      select.appendChild(opcaoNova);
 
       try {
         const q = query(collection(db, "cotacoes"), where("userId", "==", usuarioTelefone));
         const querySnapshot = await getDocs(q);
+        cotacoesDoUsuario = CotacaoDashboardUI.ordenarCotacoesRecentes(
+          querySnapshot.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }))
+        );
 
-        querySnapshot.forEach((docSnap) => {
-          const data = docSnap.data();
+        cotacoesDoUsuario.forEach((data) => {
           const option = document.createElement('option');
-          option.value = docSnap.id;
-          option.innerText = `${data.cliente || 'Sem nome'} — ${docSnap.id.slice(-6)}`;
+          option.value = data.id;
+          option.innerText = `${data.cliente || 'Sem nome'} — ${data.id.slice(-6)}`;
           select.appendChild(option);
         });
+        atualizarPainelDeListas();
       } catch (e) {
         console.error("Erro ao carregar cotações:", e);
-      }
-    }
-
-    async function buscarUltimaCotacaoDoUsuario() {
-      if (!usuarioTelefone) return;
-      try {
-        const q = query(
-          collection(db, "cotacoes"), 
-          where("userId", "==", usuarioTelefone),
-          orderBy("criadoEm", "desc"),
-          limit(1)
-        );
-        const querySnapshot = await getDocs(q);
-        if (!querySnapshot.empty) {
-          const docSnap = querySnapshot.docs[0];
-          window.carregarCotacaoDoBanco(docSnap.id, 1);
-        } else {
-          window.novaCotacao();
-        }
-      } catch(e) {
-        window.novaCotacao();
+        cotacoesDoUsuario = [];
+        atualizarPainelDeListas();
       }
     }
 
@@ -640,11 +834,23 @@
       return salvo;
     }
 
-    function iniciarNovaCotacao() {
-      if (listenerSnapshot) {
-        listenerSnapshot();
-        listenerSnapshot = null;
+    async function salvarRascunhoPendenteNaNuvem() {
+      if (!rascunhoPendenteLogin) return true;
+      mostrarTela('workspace');
+      restaurarRascunhoLocal(rascunhoPendenteLogin);
+      const salvo = await window.salvarEstadoAutomatico();
+      if (!salvo) {
+        alert('Você tem uma lista em andamento que ainda não foi salva na nuvem. Abra essa lista e confira os produtos antes de criar outra.');
+        return false;
       }
+      rascunhoPendenteLogin = null;
+      document.getElementById('dashboardDraft').hidden = true;
+      await carregarListaCotacoesUsuario();
+      return true;
+    }
+
+    function iniciarNovaCotacao(produtosIniciais = []) {
+      pararListenerCotacao();
       clearTimeout(timerSalvarAuto);
       timerSalvarAuto = null;
       cotacaoIdAtual = null;
@@ -660,28 +866,88 @@
         removerRascunhoLocal(usuarioTelefone);
       }
       window.history.pushState({}, '', window.location.pathname);
-      document.getElementById('listaProdutos').innerHTML = '';
+      document.getElementById('listaProdutos').replaceChildren();
       document.getElementById('selectCotacoesUsuario').value = '';
       document.getElementById('statusSalvamento').innerText = '';
-      adicionarNovoProduto("Arroz 5kg", "Fardo c/ 6", '', 1, 'Sem oferta', false);
+      const produtos = Array.isArray(produtosIniciais) ? produtosIniciais.slice(0, 80) : [];
+      if (produtos.length) {
+        produtos.forEach((produto) => {
+          adicionarNovoProduto(
+            produto.nome || '',
+            produto.emb || '',
+            '',
+            1,
+            CotacaoCore.SEM_OFERTA,
+            false,
+            false
+          );
+        });
+      } else {
+        adicionarNovoProduto('', '', '', 1, CotacaoCore.SEM_OFERTA, false, false);
+      }
       alternarEtapa(1);
     }
 
-    window.novaCotacao = async function() {
+    window.abrirDashboard = async function() {
       if (!await salvarAntesDeTrocarLista()) return;
+      pararListenerCotacao();
+      await carregarListaCotacoesUsuario();
+      mostrarTela('dashboard');
+    };
+
+    window.abrirListas = async function() {
+      if (modoFornecedor) return;
+      if (!await salvarAntesDeTrocarLista()) return;
+      pararListenerCotacao();
+      await carregarListaCotacoesUsuario();
+      mostrarTela('listas');
+    };
+
+    window.criarNovaLista = async function() {
+      if (!await salvarAntesDeTrocarLista()) return;
+      if (!await salvarRascunhoPendenteNaNuvem()) return;
       iniciarNovaCotacao();
+      mostrarTela('workspace');
+      document.querySelector('.input-nome')?.focus();
+    };
+
+    window.criarNovaListaComProdutos = async function(produtos) {
+      if (!await salvarAntesDeTrocarLista()) return;
+      if (!await salvarRascunhoPendenteNaNuvem()) return;
+      iniciarNovaCotacao(produtos);
+      mostrarTela('workspace');
+      window.agendarSalvarAutomatico();
+    };
+
+    window.novaCotacao = window.criarNovaLista;
+
+    window.abrirListaPorVoz = function() {
+      if (modoFornecedor) return;
+      voiceController?.abrir();
+    };
+
+    window.continuarRascunho = function() {
+      const rascunho = rascunhoPendenteLogin || obterRascunhoLocal(usuarioTelefone);
+      if (!rascunho) return;
+      mostrarTela('workspace');
+      restaurarRascunhoLocal(rascunho);
+      rascunhoPendenteLogin = null;
+      document.getElementById('dashboardDraft').hidden = true;
+    };
+
+    window.abrirCotacao = async function(id) {
+      if (!id || !await salvarAntesDeTrocarLista()) return;
+      if (!await salvarRascunhoPendenteNaNuvem()) return;
+      mostrarTela('workspace');
+      await window.carregarCotacaoDoBanco(id, 1);
     };
 
     window.selecionarCotacaoSalva = async function(id) {
-      if (!await salvarAntesDeTrocarLista()) {
-        document.getElementById('selectCotacoesUsuario').value = cotacaoIdAtual || '';
-        return;
-      }
       if (!id) {
-        iniciarNovaCotacao();
+        await window.criarNovaLista();
         return;
       }
-      window.carregarCotacaoDoBanco(id, 1);
+      await window.abrirCotacao(id);
     };
 
     window.agendarSalvarAutomatico = function() {
@@ -766,10 +1032,24 @@
           }
           opcao.innerText = `${cliente} — ${cotacaoIdAtual.slice(-6)}`;
           select.value = cotacaoIdAtual;
+          const cotacaoAnterior = cotacoesDoUsuario.find((item) => item.id === cotacaoIdAtual) || {};
+          const cotacaoAtualizada = {
+            ...cotacaoAnterior,
+            ...dadosCotacao,
+            id: cotacaoIdAtual,
+            criadoEm: dadosCotacao.criadoEm || cotacaoAnterior.criadoEm
+          };
+          cotacoesDoUsuario = [
+            cotacaoAtualizada,
+            ...cotacoesDoUsuario.filter((item) => item.id !== cotacaoIdAtual)
+          ];
+          atualizarPainelDeListas();
 
           if (versaoAlteracoes === versaoCapturada) {
             haAlteracoesPendentes = false;
             removerRascunhoLocal(usuarioTelefone);
+            rascunhoPendenteLogin = null;
+            document.getElementById('dashboardDraft').hidden = true;
             document.getElementById('statusSalvamento').innerText = "✅ Salvo";
 
             if (reconectarAposSalvarRascunho) {
@@ -918,7 +1198,7 @@
         exibirFalhaAoCarregarCotacao('Esta cotação não possui produtos. Peça um novo link para a loja.');
         return;
       } else {
-        adicionarNovoProduto('Arroz 5kg', 'Fardo c/ 6', '', 1, CotacaoCore.SEM_OFERTA, false, false);
+        adicionarNovoProduto('', '', '', 1, CotacaoCore.SEM_OFERTA, false, false);
       }
 
       cotacaoRenderizadaId = cotacaoId;

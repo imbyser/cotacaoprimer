@@ -4,17 +4,18 @@ Data inicial: 20 de agosto de 2026
 
 Última revisão: 21 de agosto de 2026
 
-Branches de trabalho: `redesign/cotacao-prime-preservado` e `fix/fluxo-fornecedor-calculos`
+Branches de trabalho: `redesign/cotacao-prime-preservado`, `fix/fluxo-fornecedor-calculos` e `feat/dashboard-listas-voz`
 
 ## Estado dos dados
 
 - Nenhum documento do Firebase foi criado, atualizado ou excluído durante este trabalho.
 - Nenhum cliente, assinatura, cotação, preço, pedido ou etapa em andamento foi usado nos testes.
-- A exportação do banco ainda não foi feita: a credencial antiga do repositório privado não tem mais permissão, e o segredo válido da Vercel não pode ser extraído pela CLI.
-- Um exportador local estritamente de leitura está pronto em `scripts/export-firestore-readonly.js`. Ele recusa sobrescrever arquivos e não contém operação de escrita no Firebase, mas ainda não foi executado.
+- Uma exportação estritamente de leitura foi concluída antes do dashboard e da lista por voz: 123 documentos, SHA-256 `50b98b9cee1501ad515fcd7970e4a6549abadba10668b20659a390e315c6772f`.
+- O exportador em `scripts/export-firestore-readonly.js` recusa sobrescrever arquivos e não contém operação de escrita no Firebase.
 - O backup completo do código anterior ao redesign foi criado e verificado em:
   `/home/lcientes sites/backups/cotacao-prime/2026-08-20-before-redesign/`.
 - O bundle Git verificado aponta para o commit anterior `44a74834273c282ad2a41c08b0b8245b8cf0da0c`.
+- Um segundo ponto de retorno, anterior ao dashboard e à voz, está documentado em `docs/DASHBOARD-LISTAS-E-VOZ.md` e aponta para `156ab169f5fcb9b8b8d901f1abb58db425fb9f14`.
 
 ## Infraestrutura encontrada
 
@@ -86,14 +87,10 @@ npm run backup:firestore -- /caminho/seguro/backup.json
 
 ## Pendências operacionais
 
-1. Fazer e verificar um backup somente de leitura do Firestore de produção.
-2. Obter no painel do Mercado Pago a chave secreta do webhook e cadastrar `MP_WEBHOOK_SECRET` na Vercel; até lá o sistema usa IPN temporário com consulta autenticada do pagamento.
-3. `CHECKOUT_DATA_SECRET` foi cadastrada como variável sensível em Production e Preview em 21/08/2026.
-4. Testar pagamento com usuário comprador de teste; não usar cobrança real.
-5. Auditar as regras atuais do Firestore e preparar autenticação compatível com clientes antigos.
-6. Publicar primeiro uma prévia privada, sem promover para produção.
-7. Receber aprovação visual e funcional do cliente.
-8. Só então integrar à `main`, com rollback pronto.
+1. Obter no painel do Mercado Pago a chave secreta do webhook e cadastrar `MP_WEBHOOK_SECRET` na Vercel; até lá o sistema usa IPN temporário com consulta autenticada do pagamento.
+2. `CHECKOUT_DATA_SECRET` foi cadastrada como variável sensível em Production e Preview em 21/08/2026.
+3. Testar pagamento com usuário comprador de teste; não usar cobrança real.
+4. Auditar as regras atuais do Firestore e preparar autenticação compatível com clientes antigos.
 
 ## Rollback
 
