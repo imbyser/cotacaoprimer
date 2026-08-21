@@ -137,7 +137,7 @@
     <span>👤 WhatsApp: <b id="userPhoneDisplay">-</b></span>
     <div style="display: flex; gap: 8px; align-items: center;">
       <a href="vendas.html" class="btn-assinar-topo">Gerenciar assinatura</a>
-      <button class="btn-logout" type="button" onclick="fazerLogout()">Sair</button>
+      <button class="btn-logout" id="btnLogout" type="button" onclick="fazerLogout()">Sair</button>
     </div>
   </div>
 
@@ -204,9 +204,9 @@
       <div class="carrinho-conteudo">
         <div class="linha-dados-cliente">
           <label class="sr-only" for="nomeCliente">Nome da loja</label>
-          <input type="text" id="nomeCliente" class="campo-cliente" placeholder="Nome da loja" autocomplete="organization" onchange="agendarSalvarAutomatico()">
+          <input type="text" id="nomeCliente" class="campo-cliente" placeholder="Nome da loja" autocomplete="organization" oninput="agendarSalvarAutomatico()">
           <label class="sr-only" for="telCliente">WhatsApp da loja</label>
-          <input type="tel" id="telCliente" class="campo-cliente" placeholder="WhatsApp da loja" inputmode="tel" autocomplete="tel" onchange="agendarSalvarAutomatico()">
+          <input type="tel" id="telCliente" class="campo-cliente" placeholder="WhatsApp da loja" inputmode="tel" autocomplete="tel" oninput="agendarSalvarAutomatico()">
         </div>
 
         <!-- REINCLUÍDO E AJUSTADO: FORMA DE PAGAMENTO E PRAZO -->
@@ -260,9 +260,16 @@
     let usuarioTelefone = null;
     let listenerSnapshot = null;
     let timerSalvarAuto = null;
+    let salvamentoEmAndamento = null;
+    let versaoAlteracoes = 0;
+    let versaoSalva = 0;
+    let haAlteracoesPendentes = false;
+    let reconectarAposSalvarRascunho = false;
     let cotacaoRenderizadaId = null;
     let assinaturaProdutosRenderizados = "";
     let ofertaEmEnvio = false;
+    const ATRASO_AUTOSAVE_MS = 700;
+    const PREFIXO_RASCUNHO = 'rascunhoCotacao_';
     window.cotacaoDadosGlobais = null;
 
     window.mascaraTelefone = function(input) {
@@ -317,6 +324,20 @@
       });
     });
 
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState !== 'hidden' || !haAlteracoesPendentes || modoFornecedor) return;
+      guardarRascunhoLocal();
+      clearTimeout(timerSalvarAuto);
+      timerSalvarAuto = null;
+      void window.salvarEstadoAutomatico();
+    });
+
+    window.addEventListener('pagehide', () => {
+      if (!haAlteracoesPendentes || modoFornecedor) return;
+      guardarRascunhoLocal();
+      void window.salvarEstadoAutomatico();
+    });
+
     window.processarAuthWhatsApp = async function() {
       const errorDiv = document.getElementById('authErrorMsg');
       const botaoEntrar = document.getElementById('btnAuthSubmit');
@@ -350,6 +371,136 @@
         botaoEntrar.querySelector('span').innerText = 'Entrar no sistema';
       }
     };
+
+    function chaveRascunhoLocal(telefone = usuarioTelefone) {
+      const telefoneLimpo = String(telefone || '').replace(/\D/g, '');
+      return telefoneLimpo ? PREFIXO_RASCUNHO + telefoneLimpo : '';
+    }
+
+    function coletarProdutosDaTela(incluirVazios = false) {
+      return Array.from(document.querySelectorAll('.produto-card')).reduce((produtos, card, index) => {
+        const campoNome = card.querySelector('.input-nome');
+        const campoEmbalagem = card.querySelector('.input-embalagem');
+        if (!campoNome || !campoEmbalagem) return produtos;
+
+        const nomeOriginal = campoNome.value;
+        const embalagemOriginal = campoEmbalagem.value;
+        if (!incluirVazios && nomeOriginal.trim() === '') return produtos;
+
+        const idTexto = card.dataset.produtoId || `item-${index + 1}`;
+        const id = card.dataset.produtoIdTipo === 'number' ? Number(idTexto) : idTexto;
+        produtos.push({
+          id,
+          nome: incluirVazios ? nomeOriginal : nomeOriginal.trim(),
+          emb: incluirVazios ? embalagemOriginal : embalagemOriginal.trim()
+        });
+        return produtos;
+      }, []);
+    }
+
+    function guardarRascunhoLocal() {
+      const chave = chaveRascunhoLocal();
+      if (!chave || modoFornecedor) return false;
+
+      try {
+        const rascunho = CotacaoCore.criarRascunhoCotacao({
+          usuario: usuarioTelefone,
+          cotacaoId: cotacaoIdAtual,
+          cliente: document.getElementById('nomeCliente').value,
+          tel: document.getElementById('telCliente').value,
+          prazo: document.getElementById('prazoPagamento').value,
+          tipo: document.getElementById('tipoCotacao').value,
+          produtos: coletarProdutosDaTela(true),
+          salvoEm: Date.now()
+        });
+        localStorage.setItem(chave, JSON.stringify(rascunho));
+        return true;
+      } catch (error) {
+        console.error('Não foi possível guardar o rascunho neste aparelho:', error);
+        return false;
+      }
+    }
+
+    function obterRascunhoLocal(telefone = usuarioTelefone) {
+      const chave = chaveRascunhoLocal(telefone);
+      if (!chave) return null;
+
+      try {
+        const conteudo = localStorage.getItem(chave);
+        if (!conteudo) return null;
+        const rascunho = JSON.parse(conteudo);
+        if (!CotacaoCore.rascunhoCotacaoValido(rascunho, telefone)) {
+          localStorage.removeItem(chave);
+          return null;
+        }
+        return rascunho;
+      } catch (error) {
+        localStorage.removeItem(chave);
+        return null;
+      }
+    }
+
+    function removerRascunhoLocal(telefone = usuarioTelefone) {
+      const chave = chaveRascunhoLocal(telefone);
+      if (chave) localStorage.removeItem(chave);
+    }
+
+    function definirOpcaoSeExistir(idSelect, valor) {
+      if (!valor) return;
+      const select = document.getElementById(idSelect);
+      if (Array.from(select.options).some((option) => option.value === valor)) {
+        select.value = valor;
+      }
+    }
+
+    function restaurarRascunhoLocal(rascunho) {
+      if (listenerSnapshot) {
+        listenerSnapshot();
+        listenerSnapshot = null;
+      }
+      clearTimeout(timerSalvarAuto);
+      timerSalvarAuto = null;
+
+      cotacaoIdAtual = rascunho.cotacaoId || null;
+      cotacaoRenderizadaId = cotacaoIdAtual;
+      assinaturaProdutosRenderizados = assinaturaDosProdutos(rascunho.produtos);
+      window.cotacaoDadosGlobais = null;
+
+      document.getElementById('nomeCliente').value = rascunho.cliente || '';
+      document.getElementById('telCliente').value = rascunho.tel || '';
+      definirOpcaoSeExistir('tipoCotacao', rascunho.tipo);
+      definirOpcaoSeExistir('prazoPagamento', rascunho.prazo);
+
+      const lista = document.getElementById('listaProdutos');
+      lista.replaceChildren();
+      rascunho.produtos.forEach((produto) => {
+        adicionarNovoProduto(
+          produto.nome,
+          produto.emb,
+          '',
+          1,
+          CotacaoCore.SEM_OFERTA,
+          false,
+          false,
+          produto.id
+        );
+      });
+
+      if (cotacaoIdAtual) {
+        localStorage.setItem('cotacaoAtiva_' + usuarioTelefone, cotacaoIdAtual);
+        document.getElementById('selectCotacoesUsuario').value = cotacaoIdAtual;
+      } else {
+        localStorage.removeItem('cotacaoAtiva_' + usuarioTelefone);
+        document.getElementById('selectCotacoesUsuario').value = '';
+      }
+
+      versaoAlteracoes += 1;
+      haAlteracoesPendentes = true;
+      reconectarAposSalvarRascunho = true;
+      alternarEtapa(1);
+      document.getElementById('statusSalvamento').innerText = '💾 Lista recuperada. Salvando...';
+      timerSalvarAuto = setTimeout(() => window.salvarEstadoAutomatico(), 80);
+    }
 
     async function validarEEntrar(phoneNum, senha, isAutoLogin = false) {
       const errorDiv = document.getElementById('authErrorMsg');
@@ -385,8 +536,11 @@
 
             await carregarListaCotacoesUsuario();
 
+            const rascunhoLocal = obterRascunhoLocal(usuarioTelefone);
             const cotacaoSalvaLocal = localStorage.getItem('cotacaoAtiva_' + usuarioTelefone);
-            if (cotacaoSalvaLocal) {
+            if (rascunhoLocal) {
+              restaurarRascunhoLocal(rascunhoLocal);
+            } else if (cotacaoSalvaLocal) {
               window.carregarCotacaoDoBanco(cotacaoSalvaLocal, 1);
             } else {
               await buscarUltimaCotacaoDoUsuario();
@@ -405,7 +559,26 @@
       }
     }
 
-    window.fazerLogout = function() {
+    window.fazerLogout = async function() {
+      const botao = document.getElementById('btnLogout');
+      if (botao) {
+        botao.disabled = true;
+        botao.innerText = haAlteracoesPendentes ? 'Salvando...' : 'Saindo...';
+      }
+
+      clearTimeout(timerSalvarAuto);
+      timerSalvarAuto = null;
+      if (haAlteracoesPendentes) guardarRascunhoLocal();
+
+      let salvoNaNuvem = true;
+      if (usuarioTelefone && !modoFornecedor && haAlteracoesPendentes) {
+        salvoNaNuvem = await window.salvarEstadoAutomatico();
+      }
+
+      if (!salvoNaNuvem && obterRascunhoLocal(usuarioTelefone)) {
+        alert('Sua lista ficou guardada neste aparelho e voltará quando você entrar novamente. Confira a internet para salvar na nuvem.');
+      }
+
       localStorage.removeItem('usuario_whatsapp');
       localStorage.removeItem('usuario_senha');
       location.reload();
@@ -453,88 +626,181 @@
       }
     }
 
-    window.novaCotacao = function() {
+    async function salvarAntesDeTrocarLista() {
+      clearTimeout(timerSalvarAuto);
+      timerSalvarAuto = null;
+      if (!haAlteracoesPendentes) return true;
+
+      const salvo = await window.salvarEstadoAutomatico();
+      if (!salvo) {
+        alert('Não foi possível salvar esta lista na nuvem. Confira sua internet antes de trocar de lista.');
+      }
+      return salvo;
+    }
+
+    function iniciarNovaCotacao() {
       if (listenerSnapshot) {
         listenerSnapshot();
         listenerSnapshot = null;
       }
+      clearTimeout(timerSalvarAuto);
+      timerSalvarAuto = null;
       cotacaoIdAtual = null;
       cotacaoRenderizadaId = null;
       assinaturaProdutosRenderizados = '';
       window.cotacaoDadosGlobais = null;
-      if (usuarioTelefone) localStorage.removeItem('cotacaoAtiva_' + usuarioTelefone);
+      versaoAlteracoes = 0;
+      versaoSalva = 0;
+      haAlteracoesPendentes = false;
+      reconectarAposSalvarRascunho = false;
+      if (usuarioTelefone) {
+        localStorage.removeItem('cotacaoAtiva_' + usuarioTelefone);
+        removerRascunhoLocal(usuarioTelefone);
+      }
       window.history.pushState({}, '', window.location.pathname);
       document.getElementById('listaProdutos').innerHTML = '';
       document.getElementById('selectCotacoesUsuario').value = '';
+      document.getElementById('statusSalvamento').innerText = '';
       adicionarNovoProduto("Arroz 5kg", "Fardo c/ 6", '', 1, 'Sem oferta', false);
       alternarEtapa(1);
+    }
+
+    window.novaCotacao = async function() {
+      if (!await salvarAntesDeTrocarLista()) return;
+      iniciarNovaCotacao();
     };
 
-    window.selecionarCotacaoSalva = function(id) {
+    window.selecionarCotacaoSalva = async function(id) {
+      if (!await salvarAntesDeTrocarLista()) {
+        document.getElementById('selectCotacoesUsuario').value = cotacaoIdAtual || '';
+        return;
+      }
       if (!id) {
-        window.novaCotacao();
+        iniciarNovaCotacao();
         return;
       }
       window.carregarCotacaoDoBanco(id, 1);
     };
 
     window.agendarSalvarAutomatico = function() {
-      if (etapaAtual !== 1) return;
+      if (modoFornecedor || etapaAtual !== 1 || !usuarioTelefone) return;
+      versaoAlteracoes += 1;
+      haAlteracoesPendentes = true;
+      guardarRascunhoLocal();
       document.getElementById('statusSalvamento').innerText = "💾 Salvando...";
       clearTimeout(timerSalvarAuto);
-      timerSalvarAuto = setTimeout(window.salvarEstadoAutomatico, 1000);
+      timerSalvarAuto = setTimeout(() => window.salvarEstadoAutomatico(), ATRASO_AUTOSAVE_MS);
     };
 
     window.salvarEstadoAutomatico = async function() {
-      if (!usuarioTelefone) return;
+      if (!usuarioTelefone || modoFornecedor) return false;
+
+      clearTimeout(timerSalvarAuto);
+      timerSalvarAuto = null;
+
+      if (salvamentoEmAndamento) {
+        const resultadoAnterior = await salvamentoEmAndamento;
+        if (resultadoAnterior && versaoSalva < versaoAlteracoes) {
+          return window.salvarEstadoAutomatico();
+        }
+        return resultadoAnterior;
+      }
+
+      if (!haAlteracoesPendentes && cotacaoIdAtual) {
+        document.getElementById('statusSalvamento').innerText = "✅ Salvo";
+        return true;
+      }
+
+      if (!haAlteracoesPendentes && !cotacaoIdAtual) {
+        versaoAlteracoes += 1;
+        haAlteracoesPendentes = true;
+        guardarRascunhoLocal();
+      }
+
+      const versaoCapturada = versaoAlteracoes;
 
       const cliente = document.getElementById('nomeCliente').value.trim() || 'Cliente';
       const tel = document.getElementById('telCliente').value.trim();
       const prazo = document.getElementById('prazoPagamento').value;
       const tipo = document.getElementById('tipoCotacao').value;
-
-      const cards = document.querySelectorAll('.produto-card');
-      let produtos = [];
-
-      cards.forEach((card, index) => {
-        const nome = card.querySelector('.input-nome').value.trim();
-        const emb = card.querySelector('.input-embalagem').value.trim();
-        const idTexto = card.dataset.produtoId || `item-${index + 1}`;
-        const id = card.dataset.produtoIdTipo === 'number' ? Number(idTexto) : idTexto;
-        if (nome !== "") produtos.push({ id, nome, emb });
-      });
+      const produtos = coletarProdutosDaTela(false);
 
       if (produtos.length === 0 && !cotacaoIdAtual) {
-        document.getElementById('statusSalvamento').innerText = "Adicione um produto";
+        const guardadoLocalmente = guardarRascunhoLocal();
+        document.getElementById('statusSalvamento').innerText = guardadoLocalmente
+          ? "Lista guardada neste aparelho. Digite um produto."
+          : "Adicione um produto";
         return false;
       }
 
       const cotacaoNova = !cotacaoIdAtual;
       if (cotacaoNova) {
         cotacaoIdAtual = `COT-${doc(collection(db, "cotacoes")).id}`;
+        guardarRascunhoLocal();
       }
 
       cotacaoRenderizadaId = cotacaoIdAtual;
       assinaturaProdutosRenderizados = assinaturaDosProdutos(produtos);
 
-      try {
-        const dadosCotacao = {
-          userId: usuarioTelefone,
-          cliente, tel, prazo, pagto: "Combinar", tipo, produtos,
-          atualizadoEm: new Date()
-        };
-        if (cotacaoNova) dadosCotacao.criadoEm = new Date();
+      const executarSalvamento = async () => {
+        try {
+          const dadosCotacao = {
+            userId: usuarioTelefone,
+            cliente, tel, prazo, pagto: "Combinar", tipo, produtos,
+            atualizadoEm: new Date()
+          };
+          if (cotacaoNova) dadosCotacao.criadoEm = new Date();
 
-        await setDoc(doc(db, "cotacoes", cotacaoIdAtual), dadosCotacao, { merge: true });
+          await setDoc(doc(db, "cotacoes", cotacaoIdAtual), dadosCotacao, { merge: true });
 
-        localStorage.setItem('cotacaoAtiva_' + usuarioTelefone, cotacaoIdAtual);
-        document.getElementById('statusSalvamento').innerText = "✅ Salvo";
-        document.getElementById('selectCotacoesUsuario').value = cotacaoIdAtual;
-        return true;
-      } catch (e) {
-        document.getElementById('statusSalvamento').innerText = "⚠️ Erro ao salvar";
-        return false;
+          versaoSalva = Math.max(versaoSalva, versaoCapturada);
+          localStorage.setItem('cotacaoAtiva_' + usuarioTelefone, cotacaoIdAtual);
+          const select = document.getElementById('selectCotacoesUsuario');
+          let opcao = Array.from(select.options).find((item) => item.value === cotacaoIdAtual);
+          if (!opcao) {
+            opcao = document.createElement('option');
+            opcao.value = cotacaoIdAtual;
+            select.appendChild(opcao);
+          }
+          opcao.innerText = `${cliente} — ${cotacaoIdAtual.slice(-6)}`;
+          select.value = cotacaoIdAtual;
+
+          if (versaoAlteracoes === versaoCapturada) {
+            haAlteracoesPendentes = false;
+            removerRascunhoLocal(usuarioTelefone);
+            document.getElementById('statusSalvamento').innerText = "✅ Salvo";
+
+            if (reconectarAposSalvarRascunho) {
+              const cotacaoRecuperadaId = cotacaoIdAtual;
+              reconectarAposSalvarRascunho = false;
+              setTimeout(() => {
+                if (!haAlteracoesPendentes && cotacaoIdAtual === cotacaoRecuperadaId) {
+                  window.carregarCotacaoDoBanco(cotacaoRecuperadaId, 1);
+                }
+              }, 0);
+            }
+          } else {
+            document.getElementById('statusSalvamento').innerText = "💾 Salvando...";
+          }
+          return true;
+        } catch (error) {
+          const guardadoLocalmente = guardarRascunhoLocal();
+          document.getElementById('statusSalvamento').innerText = guardadoLocalmente
+            ? "⚠️ Guardado neste aparelho"
+            : "⚠️ Erro ao salvar";
+          return false;
+        }
+      };
+
+      const promessaAtual = executarSalvamento();
+      salvamentoEmAndamento = promessaAtual;
+      const sucesso = await promessaAtual;
+      if (salvamentoEmAndamento === promessaAtual) salvamentoEmAndamento = null;
+
+      if (sucesso && versaoSalva < versaoAlteracoes) {
+        return window.salvarEstadoAutomatico();
       }
+      return sucesso;
     };
 
     window.salvarCotacaoEGerarLink = async function() {
@@ -582,6 +848,10 @@
     function aplicarDadosDaCotacao(cotacaoId, data, etapa) {
       const produtos = Array.isArray(data.produtos) ? data.produtos : [];
       const assinaturaAtual = assinaturaDosProdutos(produtos);
+      const preservarEdicaoLocal = !modoFornecedor &&
+        etapaAtual === 1 &&
+        haAlteracoesPendentes &&
+        cotacaoRenderizadaId === cotacaoId;
 
       window.cotacaoDadosGlobais = modoFornecedor
         ? {
@@ -592,18 +862,22 @@
           }
         : data;
 
-      document.getElementById('nomeCliente').value = data.cliente || '';
-      document.getElementById('telCliente').value = modoFornecedor ? '' : (data.tel || '');
-      if (!modoFornecedor && data.tipo) document.getElementById('tipoCotacao').value = data.tipo;
-      if (!modoFornecedor && data.prazo) document.getElementById('prazoPagamento').value = data.prazo;
+      if (!preservarEdicaoLocal) {
+        document.getElementById('nomeCliente').value = data.cliente || '';
+        document.getElementById('telCliente').value = modoFornecedor ? '' : (data.tel || '');
+        if (!modoFornecedor && data.tipo) document.getElementById('tipoCotacao').value = data.tipo;
+        if (!modoFornecedor && data.prazo) document.getElementById('prazoPagamento').value = data.prazo;
+      }
 
       if (modoFornecedor) {
         document.getElementById('fornecedorClienteNome').textContent = data.cliente || 'uma loja';
       }
 
-      const estruturaJaRenderizada = !modoFornecedor &&
+      const estruturaJaRenderizada = preservarEdicaoLocal || (
+        !modoFornecedor &&
         cotacaoRenderizadaId === cotacaoId &&
-        assinaturaProdutosRenderizados === assinaturaAtual;
+        assinaturaProdutosRenderizados === assinaturaAtual
+      );
 
       if (estruturaJaRenderizada) {
         if (etapaAtual === 3) {
@@ -647,6 +921,11 @@
 
       cotacaoRenderizadaId = cotacaoId;
       assinaturaProdutosRenderizados = assinaturaAtual;
+      if (!modoFornecedor && !preservarEdicaoLocal) {
+        versaoAlteracoes = 0;
+        versaoSalva = 0;
+        haAlteracoesPendentes = false;
+      }
       alternarEtapa(etapa);
 
       if (modoFornecedor) {
@@ -926,7 +1205,7 @@
       inputNome.placeholder = 'Nome do produto';
       inputNome.value = String(nome || '');
       inputNome.setAttribute('aria-label', 'Nome do produto');
-      inputNome.addEventListener('change', () => window.agendarSalvarAutomatico());
+      inputNome.addEventListener('input', () => window.agendarSalvarAutomatico());
 
       const inputEmbalagem = document.createElement('input');
       inputEmbalagem.type = 'text';
@@ -934,7 +1213,7 @@
       inputEmbalagem.placeholder = 'Embalagem';
       inputEmbalagem.value = String(emb || '');
       inputEmbalagem.setAttribute('aria-label', 'Embalagem do produto');
-      inputEmbalagem.addEventListener('change', () => window.agendarSalvarAutomatico());
+      inputEmbalagem.addEventListener('input', () => window.agendarSalvarAutomatico());
 
       linhaInputs.append(inputNome, inputEmbalagem);
 

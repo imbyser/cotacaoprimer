@@ -2,6 +2,7 @@
   "use strict";
 
   const SEM_OFERTA = "Sem oferta";
+  const VERSAO_RASCUNHO = 1;
 
   function normalizarEspacos(valor) {
     return String(valor || "").trim().replace(/\s+/g, " ");
@@ -179,8 +180,50 @@
     return { totalCentavos, fornecedores: Array.from(grupos.values()) };
   }
 
+  function criarRascunhoCotacao(dados = {}) {
+    const produtos = Array.isArray(dados.produtos)
+      ? dados.produtos.map((produto, indice) => ({
+          id: produto?.id ?? `item-${indice + 1}`,
+          nome: String(produto?.nome ?? ""),
+          emb: String(produto?.emb ?? "")
+        }))
+      : [];
+    const salvoEmInformado = Number(dados.salvoEm);
+
+    return {
+      versao: VERSAO_RASCUNHO,
+      usuario: String(dados.usuario || "").replace(/\D/g, ""),
+      cotacaoId: normalizarEspacos(dados.cotacaoId) || null,
+      cliente: String(dados.cliente ?? ""),
+      tel: String(dados.tel ?? ""),
+      prazo: String(dados.prazo ?? ""),
+      tipo: String(dados.tipo ?? ""),
+      produtos,
+      salvoEm: Number.isFinite(salvoEmInformado) && salvoEmInformado > 0
+        ? salvoEmInformado
+        : Date.now()
+    };
+  }
+
+  function rascunhoCotacaoValido(rascunho, usuario) {
+    if (!rascunho || typeof rascunho !== "object") return false;
+    if (rascunho.versao !== VERSAO_RASCUNHO) return false;
+    if (String(rascunho.usuario || "") !== String(usuario || "").replace(/\D/g, "")) return false;
+    if (!Array.isArray(rascunho.produtos) || rascunho.produtos.length > 5000) return false;
+    if (!Number.isFinite(Number(rascunho.salvoEm)) || Number(rascunho.salvoEm) <= 0) return false;
+
+    return rascunho.produtos.every((produto) =>
+      produto &&
+      typeof produto === "object" &&
+      (typeof produto.id === "string" || typeof produto.id === "number") &&
+      typeof produto.nome === "string" &&
+      typeof produto.emb === "string"
+    );
+  }
+
   global.CotacaoCore = Object.freeze({
     SEM_OFERTA,
+    VERSAO_RASCUNHO,
     normalizarEspacos,
     nomeCompletoValido,
     precoParaCentavos,
@@ -189,6 +232,8 @@
     chaveDoProduto,
     precoDaOfertaEmCentavos,
     calcularVencedores,
-    agruparPedidoPorFornecedor
+    agruparPedidoPorFornecedor,
+    criarRascunhoCotacao,
+    rascunhoCotacaoValido
   });
 })(globalThis);

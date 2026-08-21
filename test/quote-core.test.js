@@ -72,3 +72,44 @@ test("soma quantidades sem erro de ponto flutuante e separa fornecedores", () =>
     ["João Souza", 510]
   ]);
 });
+
+test("cria rascunho sem apagar o texto ainda incompleto", () => {
+  const rascunho = core.criarRascunhoCotacao({
+    usuario: "(81) 99999-9999",
+    cotacaoId: "COT-123",
+    cliente: "Mercado do Bairro ",
+    produtos: [
+      { id: "P-1", nome: "Arroz ", emb: "Fardo c/ 6" },
+      { id: 2, nome: "", emb: "Caixa" }
+    ],
+    salvoEm: 123456
+  });
+
+  assert.deepEqual(rascunho, {
+    versao: 1,
+    usuario: "81999999999",
+    cotacaoId: "COT-123",
+    cliente: "Mercado do Bairro ",
+    tel: "",
+    prazo: "",
+    tipo: "",
+    produtos: [
+      { id: "P-1", nome: "Arroz ", emb: "Fardo c/ 6" },
+      { id: 2, nome: "", emb: "Caixa" }
+    ],
+    salvoEm: 123456
+  });
+  assert.equal(core.rascunhoCotacaoValido(rascunho, "81999999999"), true);
+});
+
+test("não aceita rascunho de outro usuário ou em formato inválido", () => {
+  const rascunho = core.criarRascunhoCotacao({
+    usuario: "81999999999",
+    produtos: [{ id: "P-1", nome: "Feijão", emb: "Fardo" }],
+    salvoEm: 123456
+  });
+
+  assert.equal(core.rascunhoCotacaoValido(rascunho, "11999999999"), false);
+  assert.equal(core.rascunhoCotacaoValido({ ...rascunho, produtos: "Feijão" }, "81999999999"), false);
+  assert.equal(core.rascunhoCotacaoValido({ ...rascunho, versao: 99 }, "81999999999"), false);
+});
