@@ -22,7 +22,6 @@ const STATUS_APROVADO = "APROVADO";
 function obterConfiguracao() {
   const obrigatorias = [
     "MP_ACCESS_TOKEN",
-    "MP_WEBHOOK_SECRET",
     "FIREBASE_SERVICE_ACCOUNT",
     "CHECKOUT_DATA_SECRET"
   ];
@@ -34,7 +33,7 @@ function obterConfiguracao() {
 
   return {
     accessToken: process.env.MP_ACCESS_TOKEN,
-    webhookSecret: process.env.MP_WEBHOOK_SECRET,
+    webhookSecret: process.env.MP_WEBHOOK_SECRET || "",
     checkoutSecret: process.env.CHECKOUT_DATA_SECRET,
     serviceAccount: JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT)
   };
@@ -103,6 +102,12 @@ function obterBaseUrl(req) {
   } catch {
     throw new Error("URL_PUBLICA_INVALIDA");
   }
+}
+
+function obterUrlNotificacao(baseUrl, webhookSecret) {
+  return webhookSecret
+    ? `${baseUrl}/api/checkout?action=webhook`
+    : `${baseUrl}/api/checkout?action=ipn&source_news=ipn`;
 }
 
 function origemPermitida(req) {
@@ -175,6 +180,7 @@ async function iniciarCheckout(req, res) {
     const referencia = `CP:${checkoutId}`;
     const checkoutRef = db.collection(COLECAO_CHECKOUTS).doc(checkoutId);
     const baseUrl = obterBaseUrl(req);
+    const notificationUrl = obterUrlNotificacao(baseUrl, config.webhookSecret);
     const assinantes = await db.collection("assinantes")
       .where("telefone", "==", cadastro.telefone)
       .limit(1)
@@ -209,7 +215,7 @@ async function iniciarCheckout(req, res) {
           }
         },
         external_reference: referencia,
-        notification_url: `${baseUrl}/api/checkout?action=webhook`,
+        notification_url: notificationUrl,
         back_urls: {
           success: `${baseUrl}/index.html?pagamento=aprovado`,
           pending: `${baseUrl}/index.html?pagamento=pendente`,
@@ -263,6 +269,22 @@ function validarWebhook(req, secret) {
     secret
   });
 
+  return dataId;
+}
+
+function obterIdPagamentoIpn(req) {
+  const tipo = String(req.query?.topic || req.body?.type || req.body?.topic || "");
+  if (tipo && tipo !== "payment") return null;
+
+  const dataId = String(
+    req.query?.id ||
+    req.query?.["data.id"] ||
+    req.body?.data?.id ||
+    req.body?.id ||
+    ""
+  );
+
+  if (!/^\d{1,30}$/.test(dataId)) throw new Error("PAGAMENTO_ID_INVALIDO");
   return dataId;
 }
 
@@ -323,12 +345,14 @@ async function ativarAssinatura({ db, checkoutRef, checkout, paymentData, senha 
   });
 }
 
-async function receberWebhook(req, res) {
+async function receberNotificacao(req, res, modo) {
   try {
     const { config, db, mercadoPago } = obterServicos();
-    const dataId = validarWebhook(req, config.webhookSecret);
+    const dataId = modo === "webhook"
+      ? validarWebhook(req, config.webhookSecret)
+      : obterIdPagamentoIpn(req);
 
-    if (req.body?.type && req.body.type !== "payment") {
+    if (!dataId || (req.body?.type && req.body.type !== "payment")) {
       return res.status(200).send("OK");
     }
 
@@ -381,10 +405,16 @@ async function receberWebhook(req, res) {
       return res.status(401).send("Assinatura inválida");
     }
 
-    console.error("Falha ao processar webhook:", error?.message || error);
+    console.error("Falha ao processar notificação de pagamento:", error?.message || error);
     return res.status(500).send("Erro ao processar notificação");
   }
 }
+
+export const checkoutInternals = Object.freeze({
+  obterConfiguracao,
+  obterIdPagamentoIpn,
+  obterUrlNotificacao
+});
 
 export default async function handler(req, res) {
   configurarResposta(req, res);
@@ -401,8 +431,9 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: "Método não permitido." });
   }
 
-  if (String(req.query?.action || "") === "webhook") {
-    return receberWebhook(req, res);
+  const action = String(req.query?.action || "");
+  if (action === "webhook" || action === "ipn") {
+    return receberNotificacao(req, res, action);
   }
 
   return iniciarCheckout(req, res);

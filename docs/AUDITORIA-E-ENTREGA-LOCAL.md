@@ -1,8 +1,10 @@
 # Cotação Prime — auditoria e entrega local
 
-Data: 20 de agosto de 2026
+Data inicial: 20 de agosto de 2026
 
-Branch de trabalho: `redesign/cotacao-prime-preservado`
+Última revisão: 21 de agosto de 2026
+
+Branches de trabalho: `redesign/cotacao-prime-preservado` e `fix/fluxo-fornecedor-calculos`
 
 ## Estado dos dados
 
@@ -29,7 +31,7 @@ Branch de trabalho: `redesign/cotacao-prime-preservado`
 | Senhas consultadas diretamente no Firestore e guardadas no `localStorage` | Exposição de acesso caso as regras estejam abertas ou o navegador seja comprometido | Mapeado; exige migração gradual de autenticação antes de mudar regras |
 | Credencial administrativa em repositório privado antigo | Uma credencial vazada pode dar acesso administrativo | Não foi rotacionada para não quebrar sistemas desconhecidos; rotação deve ocorrer após mapear dependências |
 | Página aceitava o preço enviado pelo navegador | Alguém poderia tentar pagar um valor alterado | Corrigido: valores agora existem somente no servidor |
-| Webhook aceitava notificações sem assinatura | Ativação fraudulenta de assinatura | Corrigido no código com validação oficial `x-signature`; falta cadastrar o segredo na Vercel |
+| Webhook aceitava notificações sem conferir referência e valor | Ativação fraudulenta de assinatura | Corrigido: Webhook assinado quando a chave existir; até lá, IPN temporário consulta o pagamento pela API autenticada e confere referência, plano, moeda e valor |
 | Iniciar pagamento mudava cliente existente para `PENDENTE` | Um cliente ativo poderia perder o acesso antes de pagar | Corrigido: cliente existente só é alterado depois de pagamento aprovado |
 | Voltar para uma cotação salva disparava novo salvamento | A simples abertura podia regravar data e conteúdo | Corrigido: renderização não agenda gravação |
 | Ofertas usavam leitura e escrita separadas | Dois fornecedores ao mesmo tempo podiam apagar a resposta um do outro | Corrigido com transação atômica |
@@ -37,6 +39,10 @@ Branch de trabalho: `redesign/cotacao-prime-preservado`
 | Conteúdo do banco era inserido com `innerHTML` | Texto malicioso poderia executar código no navegador | Corrigido com criação segura de elementos e `textContent` |
 | Links de pagamento voltavam para GitHub Pages | Usuário podia cair em outro endereço/versão | Corrigido para usar o mesmo domínio da requisição |
 | Layout estourava em celulares estreitos | Campos e ações ficavam difíceis de usar | Corrigido e testado em 320, 375, 390 e 430 px |
+| Link do fornecedor mostrava navegação das três etapas | Fornecedor podia se confundir e sair da tarefa de preços | Corrigido: fornecedor fica bloqueado em uma tela exclusiva de preços |
+| Atualizações em tempo real reconstruíam a lista enquanto o fornecedor digitava | Campos podiam mudar e parecer travados | Corrigido: fornecedor faz uma leitura inicial e a tela não é reconstruída durante o preenchimento |
+| Fornecedor recebia o menor preço já enviado dentro dos campos | Uma resposta podia ser confundida com preço próprio | Corrigido: preços do fornecedor sempre começam vazios e respostas concorrentes não são exibidas |
+| Cálculos usavam ponto flutuante e ofertas por nome do produto | Centavos e produtos repetidos podiam gerar resultado confuso | Corrigido: cálculo inteiro em centavos, ID de produto e compatibilidade com ofertas antigas |
 
 ## O que foi construído
 
@@ -47,6 +53,8 @@ Branch de trabalho: `redesign/cotacao-prime-preservado`
 - Controles maiores, foco visível, rótulos acessíveis e correções de responsividade.
 - Checkout com catálogo de preços no servidor, dados temporários protegidos, retorno para o domínio correto, validação do pagamento e idempotência.
 - Renovações agora conferem a senha atual e não trocam nome ou senha de um cliente existente.
+- Fornecedor precisa informar nome e sobrenome; preço inválido é recusado com exemplo brasileiro.
+- O bloco “Adicionar rápido” foi removido da área do administrador por solicitação do responsável; “Adicionar outro produto” permanece.
 - Cabeçalhos básicos de segurança na Vercel.
 - Dependências atualizadas e travadas em `package-lock.json`.
 
@@ -59,6 +67,9 @@ Branch de trabalho: `redesign/cotacao-prime-preservado`
 - Verificação de largura em 320, 375, 390, 430 e 1440 px: nenhum overflow horizontal encontrado.
 - Rotas do Firestore foram bloqueadas durante a inspeção visual do sistema.
 - Controles e campos visíveis foram verificados em 390 px: nenhum ficou abaixo de 44 px e nenhum campo ficou sem rótulo acessível.
+- Fluxo fornecedor validado em 320, 390 e 430 px sem acesso visual às etapas, dados do cliente, pagamento ou pedido.
+- Divisão de pedido validada com dois fornecedores e quantidades diferentes: R$ 77,00 no cenário automatizado.
+- Testes unitários cobrem moeda brasileira, centavos, compatibilidade legada e produtos com nomes repetidos.
 
 Comandos locais aprovados:
 
@@ -73,12 +84,12 @@ O comando de backup, quando a credencial segura estiver disponível, será:
 npm run backup:firestore -- /caminho/seguro/backup.json
 ```
 
-## Pendências que bloqueiam produção
+## Pendências operacionais
 
 1. Fazer e verificar um backup somente de leitura do Firestore de produção.
-2. Obter no painel do Mercado Pago a chave secreta do webhook e cadastrar `MP_WEBHOOK_SECRET` na Vercel.
-3. Cadastrar `CHECKOUT_DATA_SECRET` na Vercel.
-4. Testar pagamento com credenciais e comprador de teste; não usar cobrança real.
+2. Obter no painel do Mercado Pago a chave secreta do webhook e cadastrar `MP_WEBHOOK_SECRET` na Vercel; até lá o sistema usa IPN temporário com consulta autenticada do pagamento.
+3. `CHECKOUT_DATA_SECRET` foi cadastrada como variável sensível em Production e Preview em 21/08/2026.
+4. Testar pagamento com usuário comprador de teste; não usar cobrança real.
 5. Auditar as regras atuais do Firestore e preparar autenticação compatível com clientes antigos.
 6. Publicar primeiro uma prévia privada, sem promover para produção.
 7. Receber aprovação visual e funcional do cliente.

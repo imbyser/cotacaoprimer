@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import handler from "../api/checkout.js";
+import handler, { checkoutInternals } from "../api/checkout.js";
 
 function criarResposta() {
   return {
@@ -102,4 +102,32 @@ test("não aceita GET no checkout", async () => {
 
   assert.equal(res.statusCode, 405);
   assert.equal(res.headers.get("allow"), "POST, OPTIONS");
+});
+
+test("usa IPN oficial quando o segredo moderno do webhook ainda não foi cadastrado", () => {
+  assert.equal(
+    checkoutInternals.obterUrlNotificacao("https://cotacao-prime.test", ""),
+    "https://cotacao-prime.test/api/checkout?action=ipn&source_news=ipn"
+  );
+  assert.equal(
+    checkoutInternals.obterUrlNotificacao("https://cotacao-prime.test", "segredo"),
+    "https://cotacao-prime.test/api/checkout?action=webhook"
+  );
+});
+
+test("aceita somente identificador numérico de pagamento no IPN", () => {
+  assert.equal(checkoutInternals.obterIdPagamentoIpn({
+    query: { topic: "payment", id: "123456789" },
+    body: {}
+  }), "123456789");
+
+  assert.equal(checkoutInternals.obterIdPagamentoIpn({
+    query: { topic: "merchant_order", id: "123" },
+    body: {}
+  }), null);
+
+  assert.throws(() => checkoutInternals.obterIdPagamentoIpn({
+    query: { topic: "payment", id: "id-invalido" },
+    body: {}
+  }), /PAGAMENTO_ID_INVALIDO/);
 });

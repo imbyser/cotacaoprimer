@@ -172,27 +172,28 @@
     </div>
 
     <div class="container">
+      <section class="fornecedor-intro" id="fornecedorIntro" hidden aria-labelledby="fornecedorIntroTitulo">
+        <span class="fornecedor-kicker">Cotação recebida</span>
+        <h2 id="fornecedorIntroTitulo">Informe seus preços</h2>
+        <p>Lista enviada por <strong id="fornecedorClienteNome">uma loja</strong>.</p>
+        <p>Preencha somente os produtos que você vende. Os outros fornecedores não verão os seus valores.</p>
+      </section>
+
       <div class="badge-etapa" id="badgeOrientacao">
         <span id="textoOrientacao"><b>Etapa 1:</b> Monte sua lista.</span>
         <span id="statusSalvamento" role="status" aria-live="polite"></span>
       </div>
 
       <div class="secao-vendedor" id="secaoVendedor">
-        <h4>Seus dados</h4>
+        <h4 id="tituloDadosVendedor">Seus dados</h4>
+        <p class="ajuda-vendedor">Digite nome e sobrenome. Empresa é opcional.</p>
         <div class="linha-dados-cliente">
-          <label class="sr-only" for="nomeVendedor">Seu nome</label>
-          <input type="text" id="nomeVendedor" class="campo-cliente" placeholder="Seu nome" autocomplete="name">
+          <label class="sr-only" for="nomeVendedor">Nome e sobrenome</label>
+          <input type="text" id="nomeVendedor" class="campo-cliente" placeholder="Nome e sobrenome" autocomplete="name" maxlength="100">
           <label class="sr-only" for="empresaVendedor">Empresa</label>
-          <input type="text" id="empresaVendedor" class="campo-cliente" placeholder="Empresa" autocomplete="organization">
+          <input type="text" id="empresaVendedor" class="campo-cliente" placeholder="Empresa (opcional)" autocomplete="organization" maxlength="100">
         </div>
-      </div>
-
-      <div class="secao-atalhos" id="secaoAtalhos">
-        <div class="titulo-atalhos">Adicionar rápido:</div>
-        <div class="botoes-categorias">
-          <button class="btn-cat" type="button" onclick="adicionarNovoProduto('Arroz 5kg', 'Fardo c/ 6')">+ Arroz</button>
-          <button class="btn-cat" type="button" onclick="adicionarNovoProduto('Feijão 1kg', 'Fardo c/ 10')">+ Feijão</button>
-        </div>
+        <p id="fornecedorStatus" class="fornecedor-status" role="status" aria-live="polite" hidden></p>
       </div>
 
       <div id="listaProdutos" style="margin-top: 10px;"></div>
@@ -239,9 +240,10 @@
     </div>
   </div>
 
+  <script src="assets/quote-core.js"></script>
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-    import { getFirestore, doc, setDoc, onSnapshot, collection, query, where, getDocs, orderBy, limit, runTransaction } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+    import { getFirestore, doc, setDoc, getDoc, onSnapshot, collection, query, where, getDocs, orderBy, limit, runTransaction } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyAPBH_zOO3xrdiyW1qk20b3b1ejMlyYSvg",
@@ -258,6 +260,9 @@
     let usuarioTelefone = null;
     let listenerSnapshot = null;
     let timerSalvarAuto = null;
+    let cotacaoRenderizadaId = null;
+    let assinaturaProdutosRenderizados = "";
+    let ofertaEmEnvio = false;
     window.cotacaoDadosGlobais = null;
 
     window.mascaraTelefone = function(input) {
@@ -290,12 +295,14 @@
       }
 
       if (cParam && eParam === 2) {
+        modoFornecedor = true;
+        configurarModoFornecedor(cParam);
         document.getElementById('authOverlay').style.display = 'none';
         document.getElementById('appContainer').style.display = 'block';
         document.getElementById('userBar').style.display = 'none';
         document.getElementById('trialBanner').style.display = 'none';
         document.getElementById('painelCotacoes').style.display = 'none';
-        window.carregarCotacaoDoBanco(cParam, 2);
+        await window.carregarCotacaoDoBanco(cParam, 2);
         return;
       }
 
@@ -447,7 +454,14 @@
     }
 
     window.novaCotacao = function() {
+      if (listenerSnapshot) {
+        listenerSnapshot();
+        listenerSnapshot = null;
+      }
       cotacaoIdAtual = null;
+      cotacaoRenderizadaId = null;
+      assinaturaProdutosRenderizados = '';
+      window.cotacaoDadosGlobais = null;
       if (usuarioTelefone) localStorage.removeItem('cotacaoAtiva_' + usuarioTelefone);
       window.history.pushState({}, '', window.location.pathname);
       document.getElementById('listaProdutos').innerHTML = '';
@@ -485,7 +499,9 @@
       cards.forEach((card, index) => {
         const nome = card.querySelector('.input-nome').value.trim();
         const emb = card.querySelector('.input-embalagem').value.trim();
-        if (nome !== "") produtos.push({ id: index, nome, emb });
+        const idTexto = card.dataset.produtoId || `item-${index + 1}`;
+        const id = card.dataset.produtoIdTipo === 'number' ? Number(idTexto) : idTexto;
+        if (nome !== "") produtos.push({ id, nome, emb });
       });
 
       if (produtos.length === 0 && !cotacaoIdAtual) {
@@ -497,6 +513,9 @@
       if (cotacaoNova) {
         cotacaoIdAtual = `COT-${doc(collection(db, "cotacoes")).id}`;
       }
+
+      cotacaoRenderizadaId = cotacaoIdAtual;
+      assinaturaProdutosRenderizados = assinaturaDosProdutos(produtos);
 
       try {
         const dadosCotacao = {
@@ -537,118 +556,271 @@
       alternarEtapa(3);
     };
 
+    function definirStatusFornecedor(mensagem, tipo = 'info') {
+      const status = document.getElementById('fornecedorStatus');
+      status.textContent = mensagem || '';
+      status.dataset.tipo = tipo;
+      status.hidden = !mensagem;
+    }
+
+    function assinaturaDosProdutos(produtos) {
+      return JSON.stringify((Array.isArray(produtos) ? produtos : []).map((produto, indice) => ({
+        id: CotacaoCore.chaveDoProduto(produto, indice),
+        nome: String(produto?.nome || ''),
+        emb: String(produto?.emb || '')
+      })));
+    }
+
+    function exibirFalhaAoCarregarCotacao(mensagem) {
+      definirStatusFornecedor(mensagem, 'erro');
+      document.getElementById('listaProdutos').replaceChildren();
+      const botao = document.getElementById('btnAcao');
+      botao.disabled = true;
+      botao.textContent = 'Não foi possível abrir a cotação';
+    }
+
+    function aplicarDadosDaCotacao(cotacaoId, data, etapa) {
+      const produtos = Array.isArray(data.produtos) ? data.produtos : [];
+      const assinaturaAtual = assinaturaDosProdutos(produtos);
+
+      window.cotacaoDadosGlobais = modoFornecedor
+        ? {
+            cliente: data.cliente || '',
+            prazo: data.prazo || '',
+            tipo: data.tipo || '',
+            produtos
+          }
+        : data;
+
+      document.getElementById('nomeCliente').value = data.cliente || '';
+      document.getElementById('telCliente').value = modoFornecedor ? '' : (data.tel || '');
+      if (!modoFornecedor && data.tipo) document.getElementById('tipoCotacao').value = data.tipo;
+      if (!modoFornecedor && data.prazo) document.getElementById('prazoPagamento').value = data.prazo;
+
+      if (modoFornecedor) {
+        document.getElementById('fornecedorClienteNome').textContent = data.cliente || 'uma loja';
+      }
+
+      const estruturaJaRenderizada = !modoFornecedor &&
+        cotacaoRenderizadaId === cotacaoId &&
+        assinaturaProdutosRenderizados === assinaturaAtual;
+
+      if (estruturaJaRenderizada) {
+        if (etapaAtual === 3) {
+          sincronizarResultadosNosCards();
+          calcularTotalEGerarSplits();
+        }
+        return;
+      }
+
+      const lista = document.getElementById('listaProdutos');
+      lista.replaceChildren();
+
+      if (produtos.length > 0) {
+        const vencedores = modoFornecedor
+          ? produtos.map((produto, indice) => ({
+              produtoId: CotacaoCore.chaveDoProduto(produto, indice),
+              precoCentavos: 0,
+              vencedor: CotacaoCore.SEM_OFERTA
+            }))
+          : CotacaoCore.calcularVencedores(produtos, data.ofertas || {});
+
+        produtos.forEach((produto, indice) => {
+          const resultado = vencedores[indice];
+          adicionarNovoProduto(
+            produto.nome,
+            produto.emb,
+            modoFornecedor ? '' : CotacaoCore.centavosParaNumero(resultado.precoCentavos),
+            1,
+            modoFornecedor ? CotacaoCore.SEM_OFERTA : resultado.vencedor,
+            false,
+            false,
+            produto.id
+          );
+        });
+      } else if (modoFornecedor) {
+        exibirFalhaAoCarregarCotacao('Esta cotação não possui produtos. Peça um novo link para a loja.');
+        return;
+      } else {
+        adicionarNovoProduto('Arroz 5kg', 'Fardo c/ 6', '', 1, CotacaoCore.SEM_OFERTA, false, false);
+      }
+
+      cotacaoRenderizadaId = cotacaoId;
+      assinaturaProdutosRenderizados = assinaturaAtual;
+      alternarEtapa(etapa);
+
+      if (modoFornecedor) {
+        const botao = document.getElementById('btnAcao');
+        botao.disabled = false;
+        botao.textContent = 'Enviar meus preços';
+        definirStatusFornecedor('Preencha os valores e toque em “Enviar meus preços”.');
+      }
+    }
+
     window.salvarPrecosVendedor = async function(cotacaoId) {
-      const vendedor = document.getElementById('nomeVendedor').value.trim();
-      const empresa = document.getElementById('empresaVendedor').value.trim();
+      if (ofertaEmEnvio) return;
+
+      const campoVendedor = document.getElementById('nomeVendedor');
+      const vendedor = CotacaoCore.normalizarEspacos(campoVendedor.value);
+      const empresa = CotacaoCore.normalizarEspacos(document.getElementById('empresaVendedor').value);
       const nomeIdentificacao = empresa ? `${vendedor} (${empresa})` : vendedor;
 
-      if (!vendedor) return alert("Preencha o seu nome!");
+      campoVendedor.value = vendedor;
+      if (!CotacaoCore.nomeCompletoValido(vendedor)) {
+        definirStatusFornecedor('Digite seu nome e sobrenome para enviar.', 'erro');
+        campoVendedor.focus();
+        return;
+      }
 
-      const cards = document.querySelectorAll('.produto-card');
-      let precos = {};
-      let preenchidos = 0;
+      if (!cotacaoId) {
+        definirStatusFornecedor('Cotação não encontrada. Peça um novo link para a loja.', 'erro');
+        return;
+      }
+
+      const cards = Array.from(document.querySelectorAll('.produto-card'));
+      const precos = {};
+      const precosPorProduto = {};
+      const itens = [];
+      let campoInvalido = null;
+      let nomeProdutoInvalido = '';
 
       cards.forEach((card) => {
         const nome = card.querySelector('.input-nome').value.trim();
-        const precoStr = card.querySelector('.input-preco').value.replace(',', '.');
-        const preco = parseFloat(precoStr);
+        const emb = card.querySelector('.input-embalagem').value.trim();
+        const campoPreco = card.querySelector('.input-preco');
+        const valorDigitado = campoPreco.value.trim();
+        if (!valorDigitado) return;
 
-        if (nome !== "" && !isNaN(preco) && preco > 0) {
-          precos[nome] = preco;
-          preenchidos++;
+        const precoCentavos = CotacaoCore.precoParaCentavos(valorDigitado);
+        if (precoCentavos === null || precoCentavos <= 0) {
+          if (!campoInvalido) {
+            campoInvalido = campoPreco;
+            nomeProdutoInvalido = nome;
+          }
+          return;
         }
+
+        const produtoId = card.dataset.produtoId;
+        const preco = CotacaoCore.centavosParaNumero(precoCentavos);
+        precos[nome] = preco;
+        precosPorProduto[produtoId] = preco;
+        itens.push({ produtoId, nomeProduto: nome, embProduto: emb, preco });
+        campoPreco.value = CotacaoCore.formatarCentavos(precoCentavos);
       });
 
-      if (preenchidos === 0) return alert("⚠️ Digite o preço de pelo menos um produto!");
+      if (campoInvalido) {
+        definirStatusFornecedor(`Confira o preço de “${nomeProdutoInvalido}”. Exemplo: 27,90.`, 'erro');
+        campoInvalido.focus();
+        return;
+      }
+
+      if (itens.length === 0) {
+        definirStatusFornecedor('Digite o preço de pelo menos um produto.', 'erro');
+        cards[0]?.querySelector('.input-preco')?.focus();
+        return;
+      }
+
+      const botao = document.getElementById('btnAcao');
+      ofertaEmEnvio = true;
+      botao.disabled = true;
+      botao.setAttribute('aria-busy', 'true');
+      botao.textContent = 'Enviando preços...';
+      definirStatusFornecedor('Enviando. Aguarde um momento.');
 
       try {
-        const docRef = doc(db, "cotacoes", cotacaoId);
+        const docRef = doc(db, 'cotacoes', cotacaoId);
 
         await runTransaction(db, async (transaction) => {
           const docSnap = await transaction.get(docRef);
-          if (!docSnap.exists()) throw new Error("COTACAO_NAO_ENCONTRADA");
+          if (!docSnap.exists()) throw new Error('COTACAO_NAO_ENCONTRADA');
 
           const ofertasAtuais = { ...(docSnap.data().ofertas || {}) };
           ofertasAtuais[nomeIdentificacao] = {
-            vendedor: vendedor,
-            empresa: empresa,
-            precos: precos
+            vendedor,
+            empresa,
+            precos,
+            precosPorProduto,
+            itens,
+            enviadoEm: new Date()
           };
 
           transaction.update(docRef, { ofertas: ofertasAtuais });
         });
 
-        alert("✅ Seus preços foram enviados com sucesso!");
+        definirStatusFornecedor('Preços enviados com sucesso. A loja já pode conferir.', 'sucesso');
+        alert('✅ Seus preços foram enviados com sucesso!');
       } catch (error) {
-        alert(error.message === "COTACAO_NAO_ENCONTRADA"
-          ? "Cotação não encontrada. Peça um novo link para a loja."
-          : "Não foi possível enviar os preços. Confira sua internet e tente novamente.");
+        const mensagem = error.message === 'COTACAO_NAO_ENCONTRADA'
+          ? 'Cotação não encontrada. Peça um novo link para a loja.'
+          : 'Não foi possível enviar. Confira sua internet e tente novamente.';
+        definirStatusFornecedor(mensagem, 'erro');
+      } finally {
+        ofertaEmEnvio = false;
+        botao.disabled = false;
+        botao.removeAttribute('aria-busy');
+        botao.textContent = modoFornecedor ? 'Atualizar meus preços' : 'Salvar meus preços';
       }
     };
 
-    window.carregarCotacaoDoBanco = function(cotacaoId, etapa) {
-      if (listenerSnapshot) listenerSnapshot();
+    window.carregarCotacaoDoBanco = async function(cotacaoId, etapa) {
+      if (listenerSnapshot) {
+        listenerSnapshot();
+        listenerSnapshot = null;
+      }
 
       cotacaoIdAtual = cotacaoId;
       if (usuarioTelefone) {
         localStorage.setItem('cotacaoAtiva_' + usuarioTelefone, cotacaoId);
       }
 
-      const docRef = doc(db, "cotacoes", cotacaoId);
+      const docRef = doc(db, 'cotacoes', cotacaoId);
+
+      if (modoFornecedor) {
+        try {
+          const docSnap = await getDoc(docRef);
+          if (!docSnap.exists()) {
+            exibirFalhaAoCarregarCotacao('Cotação não encontrada. Peça um novo link para a loja.');
+            return;
+          }
+          aplicarDadosDaCotacao(cotacaoId, docSnap.data(), 2);
+        } catch {
+          exibirFalhaAoCarregarCotacao('Não foi possível abrir a cotação. Confira sua internet e tente novamente.');
+        }
+        return;
+      }
 
       listenerSnapshot = onSnapshot(docRef, (docSnap) => {
-        if (docSnap.exists()) {
-          const data = docSnap.data();
-          window.cotacaoDadosGlobais = data;
-
-          document.getElementById('nomeCliente').value = data.cliente || '';
-          document.getElementById('telCliente').value = data.tel || '';
-          
-          if (data.tipo) document.getElementById('tipoCotacao').value = data.tipo;
-          if (data.prazo) document.getElementById('prazoPagamento').value = data.prazo;
-          
-          const ofertas = data.ofertas || {};
-
-          document.getElementById('listaProdutos').innerHTML = '';
-          if (data.produtos && data.produtos.length > 0) {
-            data.produtos.forEach(prod => {
-              let menorPreco = Infinity;
-              let vencedor = 'Sem oferta';
-
-              for (let vend in ofertas) {
-                const mapaPrecos = ofertas[vend] ? (ofertas[vend].precos || ofertas[vend]) : {};
-                if (mapaPrecos && mapaPrecos[prod.nome] !== undefined) {
-                  const precoVendedor = parseFloat(mapaPrecos[prod.nome]);
-                  if (!isNaN(precoVendedor) && precoVendedor > 0) {
-                    if (precoVendedor < menorPreco) {
-                      menorPreco = precoVendedor;
-                      vencedor = vend;
-                    }
-                  }
-                }
-              }
-
-              if (menorPreco === Infinity) {
-                menorPreco = 0;
-              }
-
-              adicionarNovoProduto(prod.nome, prod.emb, menorPreco, 1, vencedor, false);
-            });
-          } else {
-            adicionarNovoProduto("Arroz 5kg", "Fardo c/ 6", '', 1, 'Sem oferta', false);
-          }
-
-          alternarEtapa(etapa);
+        if (!docSnap.exists()) {
+          document.getElementById('statusSalvamento').innerText = 'Cotação não encontrada';
+          return;
         }
+        aplicarDadosDaCotacao(cotacaoId, docSnap.data(), etapa);
+      }, () => {
+        document.getElementById('statusSalvamento').innerText = 'Erro ao atualizar';
       });
     };
   </script>
 
   <script>
-    let etapaAtual = 1; 
+    let etapaAtual = 1;
     let cotacaoIdAtual = null;
+    let modoFornecedor = false;
+
+    function configurarModoFornecedor(cotacaoId) {
+      modoFornecedor = true;
+      document.body.classList.add('modo-fornecedor');
+      document.getElementById('fornecedorIntro').hidden = false;
+      document.getElementById('tituloHeader').textContent = 'Enviar preços da cotação';
+      document.getElementById('tituloDadosVendedor').textContent = 'Quem está enviando';
+      document.getElementById('textoOrientacao').innerHTML = '<b>Preços:</b> informe o valor de cada produto.';
+      document.getElementById('statusSalvamento').textContent = '';
+      document.getElementById('btnAcao').disabled = true;
+      document.getElementById('btnAcao').textContent = 'Carregando lista...';
+      document.body.dataset.cotacaoId = String(cotacaoId || '');
+    }
 
     function alternarEtapa(e) {
+      if (modoFornecedor) e = 2;
       etapaAtual = e;
 
       document.querySelectorAll('.btn-etapa').forEach(btn => {
@@ -663,7 +835,8 @@
       const isE3 = (e === 3);
 
       document.getElementById('secaoVendedor').style.display = isE2 ? 'block' : 'none';
-      document.getElementById('secaoAtalhos').style.display = isE1 ? 'block' : 'none';
+      const secaoAtalhos = document.getElementById('secaoAtalhos');
+      if (secaoAtalhos) secaoAtalhos.style.display = 'none';
       document.getElementById('btnAdicionarManual').style.display = isE1 ? 'block' : 'none';
       
       // AJUSTADO: EXIBIR SEÇÃO DE PAGAMENTO E PRAZO NAS ETAPAS 1 E 3
@@ -683,6 +856,8 @@
       document.querySelectorAll('.input-preco').forEach(input => {
         input.disabled = !isE2;
       });
+
+      if (isE3) sincronizarResultadosNosCards();
 
       // REGRA DE VISIBILIDADE DO VENCEDOR: Apenas na Etapa 3
       document.querySelectorAll('.badge-vencedor').forEach(badge => {
@@ -711,8 +886,10 @@
         btnAcao.innerText = 'Gerar Link e Enviar WhatsApp';
         btnAcao.style.display = 'block';
       } else if (isE2) {
-        txtOrientacao.innerHTML = '<b>Etapa 2:</b> Preencha os preços.';
-        btnAcao.innerText = 'Salvar Meus Preços';
+        txtOrientacao.innerHTML = modoFornecedor
+          ? '<b>Preços:</b> informe o valor de cada produto.'
+          : '<b>Etapa 2:</b> Preencha os preços.';
+        btnAcao.innerText = modoFornecedor ? 'Enviar meus preços' : 'Salvar meus preços';
         btnAcao.style.display = 'block';
       } else if (isE3) {
         txtOrientacao.innerHTML = '<b>Etapa 3:</b> Confira o vencedor e envie o pedido.';
@@ -721,10 +898,24 @@
       }
     }
 
-    function adicionarNovoProduto(nome = '', emb = '', preco = '', qtd = 1, vencedor = 'Sem oferta', salvar = true) {
+    function adicionarNovoProduto(
+      nome = '',
+      emb = '',
+      preco = '',
+      qtd = 1,
+      vencedor = 'Sem oferta',
+      salvar = true,
+      atualizarInterface = true,
+      produtoId = null
+    ) {
       const container = document.getElementById('listaProdutos');
       const card = document.createElement('div');
       card.className = 'produto-card';
+      const idEfetivo = produtoId !== null && produtoId !== undefined && String(produtoId) !== ''
+        ? produtoId
+        : `P-${globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(16).slice(2)}`}`;
+      card.dataset.produtoId = String(idEfetivo);
+      card.dataset.produtoIdTipo = typeof idEfetivo;
 
       const linhaInputs = document.createElement('div');
       linhaInputs.className = 'linha-inputs';
@@ -755,15 +946,23 @@
       const prefixoPreco = document.createElement('span');
       prefixoPreco.textContent = 'R$';
       const inputPreco = document.createElement('input');
-      inputPreco.type = 'number';
-      inputPreco.step = '0.01';
-      inputPreco.min = '0';
+      inputPreco.type = 'text';
       inputPreco.inputMode = 'decimal';
+      inputPreco.autocomplete = 'off';
       inputPreco.className = 'input-editavel input-preco';
       inputPreco.placeholder = '0,00';
-      inputPreco.value = Number(preco) > 0 ? String(preco) : '';
+      const precoCentavos = CotacaoCore.precoParaCentavos(preco);
+      inputPreco.value = precoCentavos && precoCentavos > 0
+        ? CotacaoCore.formatarCentavos(precoCentavos)
+        : '';
       inputPreco.setAttribute('aria-label', `Preço de ${nome || 'produto'}`);
       inputPreco.addEventListener('change', calcularTotalEGerarSplits);
+      inputPreco.addEventListener('blur', () => {
+        const centavos = CotacaoCore.precoParaCentavos(inputPreco.value);
+        if (centavos !== null && centavos > 0) {
+          inputPreco.value = CotacaoCore.formatarCentavos(centavos);
+        }
+      });
       blocoPreco.append(prefixoPreco, inputPreco);
 
       const badgeVencedor = document.createElement('span');
@@ -806,7 +1005,7 @@
       card.append(linhaInputs, linhaAcoes);
       container.appendChild(card);
 
-      alternarEtapa(etapaAtual);
+      if (atualizarInterface) alternarEtapa(etapaAtual);
       if (salvar && typeof window.agendarSalvarAutomatico === 'function') {
         window.agendarSalvarAutomatico();
       }
@@ -826,104 +1025,116 @@
       }
     }
 
-    function calcularTotalEGerarSplits() {
-      const cards = document.querySelectorAll('.produto-card');
-      let totalGeral = 0;
-      let splitsPorVencedor = {};
+    function sincronizarResultadosNosCards() {
+      if (modoFornecedor || !window.cotacaoDadosGlobais) return;
 
-      cards.forEach(card => {
-        const nome = card.querySelector('.input-nome').value.trim();
-        const precoStr = card.querySelector('.input-preco').value.replace(',', '.');
-        const preco = parseFloat(precoStr) || 0;
-        const qtd = parseInt(card.querySelector('.qtd-valor').value) || 1;
-        const vencedor = card.querySelector('.nome-vencedor') ? card.querySelector('.nome-vencedor').innerText : 'Sem oferta';
+      const produtos = Array.isArray(window.cotacaoDadosGlobais.produtos)
+        ? window.cotacaoDadosGlobais.produtos
+        : [];
+      const resultados = CotacaoCore.calcularVencedores(
+        produtos,
+        window.cotacaoDadosGlobais.ofertas || {}
+      );
+      const porId = new Map(resultados.map((resultado) => [resultado.produtoId, resultado]));
 
-        if (preco > 0) {
-          const subtotal = preco * qtd;
-          totalGeral += subtotal;
+      document.querySelectorAll('.produto-card').forEach((card, indice) => {
+        const resultado = porId.get(card.dataset.produtoId) || resultados[indice];
+        if (!resultado) return;
 
-          if (!splitsPorVencedor[vencedor]) {
-            splitsPorVencedor[vencedor] = { total: 0, itens: [] };
-          }
-          splitsPorVencedor[vencedor].total += subtotal;
-          splitsPorVencedor[vencedor].itens.push(`${nome} (${qtd}x)`);
-        }
+        const campoPreco = card.querySelector('.input-preco');
+        const nomeVencedor = card.querySelector('.nome-vencedor');
+        const badgeVencedor = card.querySelector('.badge-vencedor');
+        campoPreco.value = resultado.precoCentavos > 0
+          ? CotacaoCore.formatarCentavos(resultado.precoCentavos)
+          : '';
+        nomeVencedor.textContent = resultado.vencedor;
+        badgeVencedor.style.display = etapaAtual === 3 && resultado.vencedor !== CotacaoCore.SEM_OFERTA
+          ? 'inline-block'
+          : 'none';
       });
+    }
 
-      document.getElementById('totalDisplay').innerText = `R$ ${totalGeral.toFixed(2).replace('.', ',')}`;
+    function coletarItensDoPedido() {
+      return Array.from(document.querySelectorAll('.produto-card')).map((card) => ({
+        produtoId: card.dataset.produtoId,
+        nome: card.querySelector('.input-nome').value.trim(),
+        emb: card.querySelector('.input-embalagem').value.trim(),
+        precoCentavos: CotacaoCore.precoParaCentavos(card.querySelector('.input-preco').value),
+        quantidade: Number.parseInt(card.querySelector('.qtd-valor').value, 10) || 1,
+        vencedor: card.querySelector('.nome-vencedor')?.innerText || CotacaoCore.SEM_OFERTA
+      }));
+    }
 
+    function calcularTotalEGerarSplits() {
+      if (modoFornecedor) return;
+      const resumo = CotacaoCore.agruparPedidoPorFornecedor(coletarItensDoPedido());
+      document.getElementById('totalDisplay').innerText = `R$ ${CotacaoCore.formatarCentavos(resumo.totalCentavos)}`;
       const containerSplit = document.getElementById('painelEnvioDividido');
       containerSplit.replaceChildren();
 
-      if (Object.keys(splitsPorVencedor).length > 0) {
-        const titulo = document.createElement('strong');
-        titulo.className = 'titulo-divisao';
-        titulo.textContent = 'Pedido separado por fornecedor:';
-        containerSplit.appendChild(titulo);
-
-        for (let v in splitsPorVencedor) {
-          if (v !== 'Sem oferta') {
-            const div = document.createElement('div');
-            div.className = 'card-divisao-vendedor';
-
-            const dados = document.createElement('div');
-            const nome = document.createElement('b');
-            nome.textContent = v;
-            const total = document.createElement('span');
-            total.textContent = `Total: R$ ${splitsPorVencedor[v].total.toFixed(2).replace('.', ',')}`;
-            dados.append(nome, document.createElement('br'), total);
-
-            const botao = document.createElement('button');
-            botao.type = 'button';
-            botao.className = 'btn-send-vendor';
-            botao.textContent = 'Enviar pelo WhatsApp';
-            botao.addEventListener('click', () => enviarWhatsappVencedor(v));
-
-            div.append(dados, botao);
-            containerSplit.appendChild(div);
-          }
-        }
+      if (resumo.fornecedores.length === 0) {
+        const vazio = document.createElement('p');
+        vazio.className = 'pedido-vazio';
+        vazio.textContent = 'Aguardando os fornecedores enviarem preços. Os botões de pedido aparecerão aqui.';
+        containerSplit.appendChild(vazio);
+        return;
       }
+
+      const titulo = document.createElement('strong');
+      titulo.className = 'titulo-divisao';
+      titulo.textContent = 'Pedido separado por fornecedor:';
+      containerSplit.appendChild(titulo);
+
+      resumo.fornecedores.forEach((grupo) => {
+        const div = document.createElement('div');
+        div.className = 'card-divisao-vendedor';
+
+        const dados = document.createElement('div');
+        const nome = document.createElement('b');
+        nome.textContent = grupo.fornecedor;
+        const total = document.createElement('span');
+        total.textContent = `Total: R$ ${CotacaoCore.formatarCentavos(grupo.totalCentavos)}`;
+        dados.append(nome, document.createElement('br'), total);
+
+        const botao = document.createElement('button');
+        botao.type = 'button';
+        botao.className = 'btn-send-vendor';
+        botao.textContent = 'Enviar pedido pelo WhatsApp';
+        botao.addEventListener('click', () => enviarWhatsappVencedor(grupo.fornecedor));
+
+        div.append(dados, botao);
+        containerSplit.appendChild(div);
+      });
     }
 
     function enviarWhatsappVencedor(nomeVencedor) {
-      if (!window.cotacaoDadosGlobais) return alert("Dados da cotação não encontrados.");
+      if (!window.cotacaoDadosGlobais) {
+        alert('Dados da cotação não encontrados.');
+        return;
+      }
 
       const dados = window.cotacaoDadosGlobais;
-      const ofertas = dados.ofertas || {};
-      const dadosVendedor = ofertas[nomeVencedor] || {};
-
       const cliente = document.getElementById('nomeCliente').value || 'Cliente';
       const prazo = document.getElementById('prazoPagamento').value || 'A combinar';
       const tipo = document.getElementById('tipoCotacao').value || 'Caixa';
+      const resumo = CotacaoCore.agruparPedidoPorFornecedor(coletarItensDoPedido());
+      const grupo = resumo.fornecedores.find((item) => item.fornecedor === nomeVencedor);
 
-      const cards = document.querySelectorAll('.produto-card');
-      let itensVencedor = [];
-      let totalVencedor = 0;
+      if (!grupo || grupo.itens.length === 0) {
+        alert('Nenhum item encontrado para este fornecedor.');
+        return;
+      }
 
-      cards.forEach(card => {
-        const nome = card.querySelector('.input-nome').value.trim();
-        const emb = card.querySelector('.input-embalagem').value.trim();
-        const precoStr = card.querySelector('.input-preco').value.replace(',', '.');
-        const preco = parseFloat(precoStr) || 0;
-        const qtd = parseInt(card.querySelector('.qtd-valor').value) || 1;
-        const vencedor = card.querySelector('.nome-vencedor') ? card.querySelector('.nome-vencedor').innerText : 'Sem oferta';
-
-        if (vencedor === nomeVencedor && preco > 0) {
-          const subtotal = preco * qtd;
-          totalVencedor += subtotal;
-          itensVencedor.push(`• *${nome}* (${emb}) - ${qtd}x R$ ${preco.toFixed(2).replace('.', ',')} = R$ ${subtotal.toFixed(2).replace('.', ',')}`);
-        }
-      });
-
-      if (itensVencedor.length === 0) return alert("Nenhum item encontrado para este fornecedor.");
+      const itensVencedor = grupo.itens.map((item) =>
+        `• *${item.nome}* (${item.emb}) - ${item.quantidade}x R$ ${CotacaoCore.formatarCentavos(item.precoCentavos)} = R$ ${CotacaoCore.formatarCentavos(item.subtotalCentavos)}`
+      );
 
       let msg = `🛍️ *PEDIDO DE COMPRA*\n`;
       msg += `📍 *Cliente:* ${cliente}\n`;
       msg += `💳 *Prazo:* ${prazo} (${tipo})\n\n`;
       msg += `📦 *Itens do Pedido:*\n`;
       msg += itensVencedor.join('\n') + `\n\n`;
-      msg += `💰 *Total do Pedido: R$ ${totalVencedor.toFixed(2).replace('.', ',')}*\n\n`;
+      msg += `💰 *Total do Pedido: R$ ${CotacaoCore.formatarCentavos(grupo.totalCentavos)}*\n\n`;
       msg += `Por favor, confirme o recebimento e o prazo de entrega.`;
 
       window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(msg)}`, '_blank');

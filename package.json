@@ -8,8 +8,8 @@
   },
   "scripts": {
     "backup:firestore": "node scripts/export-firestore-readonly.js",
-    "check": "node --check api/checkout.js && node --check assets/landing.js && node --check scripts/export-firestore-readonly.js",
-    "test": "node test/checkout-validation.test.js"
+    "check": "node --check api/checkout.js && node --check assets/landing.js && node --check assets/quote-core.js && node --check scripts/export-firestore-readonly.js",
+    "test": "node --test test/*.test.js"
   },
   "dependencies": {
     "firebase-admin": "14.3.0",

@@ -21,11 +21,12 @@ Estas posições e relações são familiares aos usuários e ficam preservadas:
 3. As etapas continuam na mesma ordem: `1. Lista`, `2. Preços`, `3. Pedido`.
 4. A barra de etapas continua logo abaixo do cabeçalho.
 5. A orientação da etapa continua antes da lista.
-6. Os atalhos e itens continuam no corpo central.
+6. Os itens e o botão de adicionar continuam no corpo central; o bloco “Adicionar rápido” foi removido em 21/08/2026 por solicitação explícita do responsável.
 7. Dados da loja, pagamento e ação principal continuam na barra inferior.
 8. O link público do fornecedor continua usando `?c=...&e=2`.
 9. Cotações e assinantes existentes continuam legíveis sem conversão de schema.
 10. Nomes das ações usam palavras comuns e descrevem exatamente o que acontece.
+11. O administrador mantém as três etapas; o fornecedor que entra pelo link `?c=...&e=2` vê somente identificação, produtos, preços e envio.
 
 ## Público e linguagem
 

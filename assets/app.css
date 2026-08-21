@@ -620,6 +620,156 @@ select {
   font-size: 0.82rem;
 }
 
+.pedido-vazio {
+  margin: 4px 0;
+  padding: 12px;
+  border: 1px solid var(--cp-blue-300);
+  border-radius: 6px;
+  color: var(--cp-navy-900);
+  background: var(--cp-blue-100);
+  font-weight: 700;
+  line-height: 1.45;
+}
+
+.fornecedor-intro[hidden] {
+  display: none;
+}
+
+.fornecedor-intro {
+  margin-bottom: 12px;
+  padding: 17px;
+  border: 2px solid var(--cp-navy-900);
+  border-radius: 7px;
+  color: var(--cp-navy-950);
+  background: var(--cp-paper);
+  box-shadow: 5px 5px 0 var(--cp-blue-300);
+}
+
+.fornecedor-kicker {
+  display: block;
+  margin-bottom: 4px;
+  color: var(--cp-blue-700);
+  font-family: var(--cp-display);
+  font-size: 0.75rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.fornecedor-intro h2 {
+  margin-bottom: 7px;
+  font-family: var(--cp-display);
+  font-size: clamp(1.35rem, 5vw, 1.8rem);
+  line-height: 1.05;
+}
+
+.fornecedor-intro p {
+  color: var(--cp-ink-700);
+  line-height: 1.45;
+}
+
+.fornecedor-intro p + p {
+  margin-top: 5px;
+}
+
+.ajuda-vendedor {
+  margin: -2px 0 9px;
+  color: var(--cp-ink-700);
+  font-size: 0.82rem;
+  line-height: 1.4;
+}
+
+.fornecedor-status {
+  margin-top: 9px;
+  padding: 10px;
+  border: 1px solid var(--cp-blue-300);
+  border-radius: 5px;
+  color: var(--cp-navy-900);
+  background: var(--cp-blue-100);
+  font-size: 0.86rem;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.fornecedor-status[data-tipo="erro"] {
+  border-color: #e9b6b6;
+  color: #7b1818;
+  background: #fff1f0;
+}
+
+.fornecedor-status[data-tipo="sucesso"] {
+  border-color: var(--cp-green-600);
+  color: #06472d;
+  background: var(--cp-green-100);
+}
+
+body.modo-fornecedor {
+  padding-bottom: 100px;
+}
+
+.modo-fornecedor .etapas-bar,
+.modo-fornecedor #painelCotacoes,
+.modo-fornecedor .user-bar,
+.modo-fornecedor .trial-banner,
+.modo-fornecedor #btnAdicionarManual,
+.modo-fornecedor .carrinho-conteudo > .linha-dados-cliente,
+.modo-fornecedor #secaoPagamento,
+.modo-fornecedor #boxTotal,
+.modo-fornecedor #painelEnvioDividido,
+.modo-fornecedor .badge-vencedor,
+.modo-fornecedor .qtd-controle,
+.modo-fornecedor .btn-excluir {
+  display: none !important;
+}
+
+.modo-fornecedor header {
+  min-height: 76px;
+}
+
+.modo-fornecedor .container {
+  max-width: 720px;
+  padding-top: 14px;
+}
+
+.modo-fornecedor .badge-etapa {
+  margin-bottom: 12px;
+}
+
+.modo-fornecedor .secao-vendedor {
+  margin-bottom: 12px;
+  border: 2px solid var(--cp-blue-600);
+  background: var(--cp-blue-100);
+}
+
+.modo-fornecedor .produto-card {
+  border-left: 5px solid var(--cp-blue-600);
+}
+
+.modo-fornecedor .linha-acoes,
+.modo-fornecedor .bloco-preco {
+  width: 100%;
+}
+
+.modo-fornecedor .bloco-preco {
+  justify-content: flex-end;
+  font-size: 1rem;
+}
+
+.modo-fornecedor .input-preco {
+  width: min(180px, 70vw);
+  min-height: 50px;
+  font-size: 1.12rem;
+}
+
+.modo-fornecedor .carrinho-bar {
+  max-height: none;
+  padding-block: 10px max(10px, env(safe-area-inset-bottom));
+}
+
+.modo-fornecedor .btn-whatsapp {
+  display: block !important;
+}
+
 @media (max-width: 600px) {
   body {
     padding-bottom: 400px;
@@ -752,6 +902,11 @@ select {
   .card-divisao-vendedor {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .modo-fornecedor .secao-vendedor .linha-dados-cliente {
+    display: grid;
+    grid-template-columns: 1fr;
   }
 
   .btn-send-vendor {

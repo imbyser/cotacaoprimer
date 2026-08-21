@@ -6,7 +6,7 @@ Sistema de cotação para mercadinhos e pequenos comércios. A loja monta uma li
 
 - `index.html`: entrada e sistema existente, com as etapas Lista, Preços e Pedido.
 - `vendas.html`: apresentação, planos e início do pagamento.
-- `api/checkout.js`: criação da preferência e webhook do Mercado Pago.
+- `api/checkout.js`: criação da preferência e confirmação de pagamento do Mercado Pago.
 
 ## Desenvolvimento local
 
@@ -23,10 +23,12 @@ Para inspecionar apenas as páginas estáticas, use um servidor HTTP local. Não
 O checkout exige:
 
 - `MP_ACCESS_TOKEN`
-- `MP_WEBHOOK_SECRET`
 - `FIREBASE_SERVICE_ACCOUNT`
 - `CHECKOUT_DATA_SECRET`
+- `MP_WEBHOOK_SECRET` (recomendado; ativa o Webhook assinado)
 - `PUBLIC_SITE_URL` (opcional; útil quando houver domínio próprio)
+
+Enquanto `MP_WEBHOOK_SECRET` não estiver cadastrado, novas preferências usam temporariamente o IPN oficial e a API autenticada do Mercado Pago. A ativação só ocorre depois de conferir pagamento aprovado, referência interna, plano, moeda e valor. O Webhook assinado deve substituir esse modo de compatibilidade assim que a chave for copiada do painel do Mercado Pago.
 
 Nunca colocar valores dessas variáveis no Git.
 
