@@ -104,6 +104,7 @@
     #statusSalvamento { font-size: 0.75em; color: #2b6cb0; font-weight: bold; }
   </style>
   <link rel="stylesheet" href="assets/app.css">
+  <link rel="stylesheet" href="assets/order-panel.css">
 </head>
 <body>
 
@@ -241,6 +242,7 @@
   </div>
 
   <script src="assets/quote-core.js"></script>
+  <script src="assets/order-panel.js"></script>
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
     import { getFirestore, doc, setDoc, getDoc, onSnapshot, collection, query, where, getDocs, orderBy, limit, runTransaction } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
@@ -1112,6 +1114,7 @@
       const isE1 = (e === 1);
       const isE2 = (e === 2);
       const isE3 = (e === 3);
+      document.body.classList.toggle('etapa-pedido', isE3 && !modoFornecedor);
 
       document.getElementById('secaoVendedor').style.display = isE2 ? 'block' : 'none';
       const secaoAtalhos = document.getElementById('secaoAtalhos');
@@ -1349,40 +1352,11 @@
       const resumo = CotacaoCore.agruparPedidoPorFornecedor(coletarItensDoPedido());
       document.getElementById('totalDisplay').innerText = `R$ ${CotacaoCore.formatarCentavos(resumo.totalCentavos)}`;
       const containerSplit = document.getElementById('painelEnvioDividido');
-      containerSplit.replaceChildren();
-
-      if (resumo.fornecedores.length === 0) {
-        const vazio = document.createElement('p');
-        vazio.className = 'pedido-vazio';
-        vazio.textContent = 'Aguardando os fornecedores enviarem preços. Os botões de pedido aparecerão aqui.';
-        containerSplit.appendChild(vazio);
-        return;
-      }
-
-      const titulo = document.createElement('strong');
-      titulo.className = 'titulo-divisao';
-      titulo.textContent = 'Pedido separado por fornecedor:';
-      containerSplit.appendChild(titulo);
-
-      resumo.fornecedores.forEach((grupo) => {
-        const div = document.createElement('div');
-        div.className = 'card-divisao-vendedor';
-
-        const dados = document.createElement('div');
-        const nome = document.createElement('b');
-        nome.textContent = grupo.fornecedor;
-        const total = document.createElement('span');
-        total.textContent = `Total: R$ ${CotacaoCore.formatarCentavos(grupo.totalCentavos)}`;
-        dados.append(nome, document.createElement('br'), total);
-
-        const botao = document.createElement('button');
-        botao.type = 'button';
-        botao.className = 'btn-send-vendor';
-        botao.textContent = 'Enviar pedido pelo WhatsApp';
-        botao.addEventListener('click', () => enviarWhatsappVencedor(grupo.fornecedor));
-
-        div.append(dados, botao);
-        containerSplit.appendChild(div);
+      CotacaoPedidoUI.renderizar({
+        container: containerSplit,
+        resumo,
+        formatarCentavos: CotacaoCore.formatarCentavos,
+        aoEnviar: enviarWhatsappVencedor
       });
     }
 

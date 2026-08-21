@@ -10,9 +10,9 @@ import { cert, getApps, initializeApp } from "firebase-admin/app";
 import { FieldValue, getFirestore } from "firebase-admin/firestore";
 
 const PLANOS = Object.freeze({
-  Mensal: Object.freeze({ valor: 98.9, descricao: "Plano Mensal" }),
-  Trimestral: Object.freeze({ valor: 275.7, descricao: "Plano Trimestral" }),
-  Anual: Object.freeze({ valor: 1006.8, descricao: "Plano Anual" })
+  Mensal: Object.freeze({ valor: 149, descricao: "Plano Mensal" }),
+  Trimestral: Object.freeze({ valor: 327, descricao: "Plano Trimestral" }),
+  Anual: Object.freeze({ valor: 1068, descricao: "Plano Anual" })
 });
 
 const COLECAO_CHECKOUTS = "checkoutsCotacaoPrime";
@@ -411,6 +411,7 @@ async function receberNotificacao(req, res, modo) {
 }
 
 export const checkoutInternals = Object.freeze({
+  PLANOS,
   obterConfiguracao,
   obterIdPagamentoIpn,
   obterUrlNotificacao

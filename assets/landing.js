@@ -1,12 +1,12 @@
 const planos = Object.freeze({
   Mensal: {
-    resumo: "R$ 98,90 por mês"
+    resumo: "R$ 149,00 por mês"
   },
   Trimestral: {
-    resumo: "R$ 275,70 a cada 3 meses"
+    resumo: "R$ 327,00 a cada 3 meses"
   },
   Anual: {
-    resumo: "R$ 1.006,80 por ano"
+    resumo: "R$ 1.068,00 por ano"
   }
 });
 

@@ -131,3 +131,16 @@ test("aceita somente identificador numérico de pagamento no IPN", () => {
     body: {}
   }), /PAGAMENTO_ID_INVALIDO/);
 });
+
+test("mantém os valores cobrados iguais aos planos exibidos", () => {
+  assert.deepEqual(
+    Object.fromEntries(
+      Object.entries(checkoutInternals.PLANOS).map(([nome, plano]) => [nome, plano.valor])
+    ),
+    {
+      Mensal: 149,
+      Trimestral: 327,
+      Anual: 1068
+    }
+  );
+});
