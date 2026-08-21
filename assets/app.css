@@ -8,6 +8,7 @@
   --cp-green-700: #0d7d4b;
   --cp-green-600: #16a765;
   --cp-green-300: #74d9a5;
+  --cp-green-200: #c8efdb;
   --cp-green-100: #dff6e9;
   --cp-paper: #fffaf0;
   --cp-paper-deep: #f2eadb;
@@ -545,6 +546,18 @@ select {
   font-size: 0.95rem;
 }
 
+.btn-adicionar-voz {
+  border-style: solid;
+  border-color: var(--cp-green-600);
+  color: #075232;
+  background: var(--cp-green-100);
+}
+
+.btn-adicionar-voz:hover {
+  border-color: var(--cp-green-700);
+  background: var(--cp-green-200);
+}
+
 .carrinho-bar {
   max-height: min(52dvh, 470px);
   padding: 13px 14px max(13px, env(safe-area-inset-bottom));
@@ -712,6 +725,7 @@ body.modo-fornecedor {
 .modo-fornecedor .user-bar,
 .modo-fornecedor .trial-banner,
 .modo-fornecedor #btnAdicionarManual,
+.modo-fornecedor #btnAdicionarVoz,
 .modo-fornecedor .carrinho-conteudo > .linha-dados-cliente,
 .modo-fornecedor #secaoPagamento,
 .modo-fornecedor #boxTotal,

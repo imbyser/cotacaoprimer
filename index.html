@@ -298,6 +298,7 @@
 
       <div id="listaProdutos" style="margin-top: 10px;"></div>
       <button class="btn-adicionar" id="btnAdicionarManual" type="button" onclick="adicionarNovoProduto('', '')">+ Adicionar outro produto</button>
+      <button class="btn-adicionar btn-adicionar-voz" id="btnAdicionarVoz" type="button" onclick="adicionarNaListaPorVoz()">Adicionar produtos falando</button>
     </div>
 
     <div class="carrinho-bar">
@@ -350,7 +351,7 @@
           </div>
           <span class="dashboard-kicker">Criar falando</span>
           <h2 id="voiceTitle">Fale os produtos da lista.</h2>
-          <p>Diga os nomes e, se souber, a embalagem. Você vai conferir tudo antes de criar.</p>
+          <p>Diga os nomes e, se souber, a embalagem. Você vai conferir tudo antes de usar.</p>
           <div class="voice-exemplo"><strong>Exemplo:</strong> “Arroz cinco quilos, feijão, cebola, tomate e óleo caixa com vinte.”</div>
           <p class="voice-erro" data-voice-error hidden role="alert"></p>
           <button class="voice-principal" type="button" data-voice-start>Começar a falar</button>
@@ -422,6 +423,7 @@
     let cotacoesDoUsuario = [];
     let rascunhoPendenteLogin = null;
     let voiceController = null;
+    let acaoVozAtual = 'nova';
     const ATRASO_AUTOSAVE_MS = 700;
     const PREFIXO_RASCUNHO = 'rascunhoCotacao_';
     window.cotacaoDadosGlobais = null;
@@ -504,7 +506,9 @@
           telefone: localStorage.getItem('usuario_whatsapp') || '',
           senha: localStorage.getItem('usuario_senha') || ''
         }),
-        aoConfirmar: (produtos) => window.criarNovaListaComProdutos(produtos)
+        aoConfirmar: (produtos) => acaoVozAtual === 'adicionar'
+          ? window.adicionarProdutosNaListaAtual(produtos)
+          : window.criarNovaListaComProdutos(produtos)
       });
       window.cotacaoVoiceController = voiceController;
 
@@ -925,7 +929,48 @@
 
     window.abrirListaPorVoz = function() {
       if (modoFornecedor) return;
+      acaoVozAtual = 'nova';
       voiceController?.abrir();
+    };
+
+    window.adicionarNaListaPorVoz = function() {
+      if (modoFornecedor) return;
+      acaoVozAtual = 'adicionar';
+      voiceController?.abrir();
+    };
+
+    window.adicionarProdutosNaListaAtual = async function(produtos) {
+      if (modoFornecedor || !Array.isArray(produtos) || !produtos.length) return;
+
+      const cardsAtuais = Array.from(document.querySelectorAll('#listaProdutos .produto-card'));
+      cardsAtuais.forEach((card) => {
+        const nome = card.querySelector('.input-nome')?.value.trim() || '';
+        const embalagem = card.querySelector('.input-embalagem')?.value.trim() || '';
+        if (!nome && !embalagem) card.remove();
+      });
+
+      const quantidadeAtual = document.querySelectorAll('#listaProdutos .produto-card').length;
+      const produtosNovos = produtos.slice(0, Math.max(0, 80 - quantidadeAtual));
+      if (!produtosNovos.length) {
+        alert('Esta lista já chegou ao limite de 80 produtos.');
+        return;
+      }
+
+      const primeiroNovo = document.querySelectorAll('#listaProdutos .produto-card').length;
+      produtosNovos.forEach((produto) => {
+        adicionarNovoProduto(
+          produto.nome || '',
+          produto.emb || '',
+          '',
+          1,
+          CotacaoCore.SEM_OFERTA,
+          false,
+          false
+        );
+      });
+      alternarEtapa(1);
+      window.agendarSalvarAutomatico();
+      document.querySelectorAll('#listaProdutos .input-nome')[primeiroNovo]?.focus();
     };
 
     window.continuarRascunho = function() {
@@ -1402,6 +1447,7 @@
       const secaoAtalhos = document.getElementById('secaoAtalhos');
       if (secaoAtalhos) secaoAtalhos.style.display = 'none';
       document.getElementById('btnAdicionarManual').style.display = isE1 ? 'block' : 'none';
+      document.getElementById('btnAdicionarVoz').style.display = isE1 ? 'block' : 'none';
       
       // AJUSTADO: EXIBIR SEÇÃO DE PAGAMENTO E PRAZO NAS ETAPAS 1 E 3
       document.getElementById('secaoPagamento').style.display = (isE1 || isE3) ? 'flex' : 'none';

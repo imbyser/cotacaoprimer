@@ -8,6 +8,7 @@ Branch de implementação: `feat/dashboard-listas-voz`
 
 - A entrada autenticada agora abre uma página inicial simples, sem entrar automaticamente no editor.
 - O administrador encontra ações grandes para criar lista, ver listas e criar lista falando.
+- Dentro da etapa Lista, “Adicionar produtos falando” acrescenta itens a uma lista nova ou já salva sem apagar o conteúdo existente.
 - “Minhas listas” mostra primeiro as cotações atualizadas mais recentemente.
 - A ação “Criar nova lista” existe no topo e fixa na parte inferior da tela de listas.
 - Ao abrir uma cotação, as três etapas conhecidas continuam na mesma ordem: Lista, Preços e Pedido.
