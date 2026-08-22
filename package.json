@@ -8,7 +8,7 @@
   },
   "scripts": {
     "backup:firestore": "node scripts/export-firestore-readonly.js",
-    "check": "node --check api/checkout.js && node --check api/voice-list.js && node --check assets/dashboard.js && node --check assets/landing.js && node --check assets/order-panel.js && node --check assets/quote-core.js && node --check assets/voice-list.js && node --check scripts/export-firestore-readonly.js",
+    "check": "node --check api/admin-users.js && node --check api/checkout.js && node --check api/voice-list.js && node --check assets/admin.js && node --check assets/dashboard.js && node --check assets/landing.js && node --check assets/order-panel.js && node --check assets/quote-core.js && node --check assets/voice-list.js && node --check scripts/export-firestore-readonly.js",
     "test": "node --test test/*.test.js"
   },
   "dependencies": {

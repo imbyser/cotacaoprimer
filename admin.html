@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#0d2947">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Administração — Cotação Prime</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800;900&family=Atkinson+Hyperlegible:wght@400;700&display=swap" rel="stylesheet">
+  <link rel="icon" href="assets/cotacao-prime-mark.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="assets/admin.css">
+</head>
+<body>
+  <section class="admin-login" id="adminLogin" aria-labelledby="loginTitle">
+    <div class="admin-login-card">
+      <img src="assets/cotacao-prime-logo.svg" alt="Cotação Prime" width="240" height="54">
+      <span class="admin-kicker">Área reservada</span>
+      <h1 id="loginTitle">Administração</h1>
+      <p>Entre com o WhatsApp e a senha da conta administradora.</p>
+
+      <form id="loginForm">
+        <label for="adminTelefone">WhatsApp do administrador</label>
+        <input id="adminTelefone" name="telefone" type="tel" inputmode="tel" autocomplete="username" placeholder="(81) 99999-9999" required>
+
+        <label for="adminSenha">Senha</label>
+        <input id="adminSenha" name="senha" type="password" autocomplete="current-password" placeholder="Sua senha" maxlength="128" required>
+
+        <p class="admin-form-erro" id="loginErro" role="alert" hidden></p>
+        <button class="admin-btn admin-btn-primary" id="loginButton" type="submit">Entrar na administração</button>
+      </form>
+      <a class="admin-voltar-site" href="index.html">← Voltar ao sistema</a>
+    </div>
+  </section>
+
+  <div class="admin-app" id="adminApp" hidden>
+    <header class="admin-header">
+      <div class="admin-header-inner">
+        <a class="admin-brand" href="admin.html" aria-label="Início da administração">
+          <img src="assets/cotacao-prime-mark.svg" alt="" width="42" height="42">
+          <span><strong>Cotação Prime</strong><small>Administração</small></span>
+        </a>
+        <div class="admin-header-actions">
+          <span id="adminIdentificacao"></span>
+          <button class="admin-btn admin-btn-quiet" id="logoutButton" type="button">Sair</button>
+        </div>
+      </div>
+    </header>
+
+    <main class="admin-main">
+      <section class="admin-intro" aria-labelledby="adminTitle">
+        <div>
+          <span class="admin-kicker">Controle de acesso</span>
+          <h1 id="adminTitle">Clientes e contas</h1>
+          <p>Libere acessos, altere planos e acompanhe quantas listas cada cliente possui.</p>
+        </div>
+        <button class="admin-btn admin-btn-create" id="newUserButton" type="button">+ Nova conta</button>
+      </section>
+
+      <section class="admin-resumo" aria-label="Resumo das contas">
+        <article><span>Total de contas</span><strong id="statTotal">—</strong></article>
+        <article><span>Acessos liberados</span><strong id="statAtivas">—</strong></article>
+        <article><span>Acessos bloqueados</span><strong id="statSuspensas">—</strong></article>
+        <article><span>Listas dos clientes</span><strong id="statListas">—</strong></article>
+      </section>
+
+      <section class="admin-clientes" aria-labelledby="clientesTitle">
+        <div class="admin-section-header">
+          <div>
+            <h2 id="clientesTitle">Todos os clientes</h2>
+            <p id="resultadoContagem">Carregando contas...</p>
+          </div>
+          <label class="admin-busca" for="userSearch">
+            <span>Buscar</span>
+            <input id="userSearch" type="search" placeholder="Nome ou WhatsApp" autocomplete="off">
+          </label>
+        </div>
+
+        <div class="admin-legend" aria-hidden="true">
+          <span>Cliente</span><span>Acesso</span><span>Conta</span><span>Ações</span>
+        </div>
+        <div class="admin-users" id="usersList" aria-live="polite"></div>
+      </section>
+    </main>
+  </div>
+
+  <dialog class="admin-dialog" id="accountDialog" aria-labelledby="accountDialogTitle">
+    <form method="dialog" class="admin-dialog-shell" id="accountForm">
+      <div class="admin-dialog-header">
+        <div>
+          <span class="admin-kicker" id="accountDialogKicker">Cadastro</span>
+          <h2 id="accountDialogTitle">Nova conta</h2>
+        </div>
+        <button class="admin-dialog-close" type="button" data-close-dialog="accountDialog" aria-label="Fechar">×</button>
+      </div>
+
+      <input type="hidden" id="accountId">
+      <label for="accountName">Nome do cliente ou da loja</label>
+      <input id="accountName" type="text" maxlength="100" autocomplete="organization" placeholder="Ex.: Mercado Central">
+
+      <label for="accountPhone">WhatsApp com DDD</label>
+      <input id="accountPhone" type="tel" inputmode="tel" autocomplete="tel" placeholder="(81) 99999-9999" required>
+      <small id="accountPhoneHelp" hidden>Para não perder o acesso administrativo, este WhatsApp só pode ser trocado na configuração da Vercel.</small>
+
+      <div class="admin-form-grid">
+        <label for="accountPlan">Plano
+          <select id="accountPlan">
+            <option value="">Sem plano registrado</option>
+            <option value="Mensal">Mensal</option>
+            <option value="Trimestral">Trimestral</option>
+            <option value="Anual">Anual</option>
+          </select>
+        </label>
+        <label for="accountStatus">Acesso
+          <select id="accountStatus" required>
+            <option value="ATIVA">Liberado</option>
+            <option value="SUSPENSA">Bloqueado</option>
+            <option value="PENDENTE">Aguardando</option>
+          </select>
+        </label>
+      </div>
+
+      <div class="admin-account-meta" id="accountMeta" hidden>
+        <div><span>Listas salvas</span><strong id="accountMetaLists">0</strong></div>
+        <div><span>Última atividade</span><strong id="accountMetaActivity">Sem registro</strong></div>
+        <div><span>Último pagamento</span><strong id="accountMetaPaymentDate">Sem registro</strong></div>
+        <div><span>Código do pagamento</span><strong id="accountMetaPaymentId">Sem registro</strong></div>
+      </div>
+
+      <div id="newPasswordField">
+        <label for="accountPassword">Senha inicial</label>
+        <input id="accountPassword" type="password" minlength="8" maxlength="128" autocomplete="new-password" placeholder="Pelo menos 8 caracteres">
+        <small>A senha não ficará visível depois. Se necessário, use “Redefinir senha”.</small>
+      </div>
+
+      <p class="admin-form-erro" id="accountError" role="alert" hidden></p>
+      <div class="admin-dialog-actions">
+        <button class="admin-btn admin-btn-secondary" type="button" data-close-dialog="accountDialog">Cancelar</button>
+        <button class="admin-btn admin-btn-primary" id="accountSubmit" type="submit">Criar conta</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog class="admin-dialog" id="passwordDialog" aria-labelledby="passwordDialogTitle">
+    <form method="dialog" class="admin-dialog-shell" id="passwordForm">
+      <div class="admin-dialog-header">
+        <div>
+          <span class="admin-kicker">Acesso do cliente</span>
+          <h2 id="passwordDialogTitle">Redefinir senha</h2>
+        </div>
+        <button class="admin-dialog-close" type="button" data-close-dialog="passwordDialog" aria-label="Fechar">×</button>
+      </div>
+      <input type="hidden" id="passwordAccountId">
+      <p class="admin-dialog-help" id="passwordAccountLabel"></p>
+      <label for="newPassword">Nova senha</label>
+      <input id="newPassword" type="password" minlength="8" maxlength="128" autocomplete="new-password" placeholder="Pelo menos 8 caracteres" required>
+      <label for="confirmPassword">Repita a nova senha</label>
+      <input id="confirmPassword" type="password" minlength="8" maxlength="128" autocomplete="new-password" required>
+      <p class="admin-form-erro" id="passwordError" role="alert" hidden></p>
+      <div class="admin-dialog-actions">
+        <button class="admin-btn admin-btn-secondary" type="button" data-close-dialog="passwordDialog">Cancelar</button>
+        <button class="admin-btn admin-btn-primary" id="passwordSubmit" type="submit">Salvar nova senha</button>
+      </div>
+    </form>
+  </dialog>
+
+  <div class="admin-toast" id="adminToast" role="status" aria-live="polite" hidden></div>
+  <script src="assets/admin.js" defer></script>
+</body>
+</html>
