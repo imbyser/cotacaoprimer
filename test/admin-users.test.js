@@ -110,3 +110,25 @@ test("nunca devolve a senha ao painel e calcula somente o resumo necessário", (
     { statusAssinatura: "PENDENTE", listas: 0 }
   ]), { total: 3, ativas: 1, suspensas: 1, pendentes: 1, listas: 6 });
 });
+
+test("erro de login fica no painel e não abre o popup nativo do navegador", () => {
+  const headers = {};
+  let payload;
+  const res = {
+    setHeader(nome, valor) { headers[nome] = valor; },
+    status(valor) {
+      assert.equal(valor, 401);
+      return this;
+    },
+    json(valor) {
+      payload = valor;
+      return valor;
+    }
+  };
+  const error = new Error("ACESSO_NEGADO");
+  error.status = 401;
+  admin.responderErro(res, error);
+
+  assert.equal(Object.hasOwn(headers, "WWW-Authenticate"), false);
+  assert.match(payload.error, /senha de administrador incorretos/i);
+});

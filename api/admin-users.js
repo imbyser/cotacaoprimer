@@ -389,7 +389,6 @@ function configurarResposta(req, res) {
 
 function responderErro(res, error) {
   const status = Number(error?.status) || 500;
-  if (status === 401) res.setHeader("WWW-Authenticate", 'Basic realm="Cotacao Prime Admin"');
   const mensagens = {
     ACESSO_NEGADO: "WhatsApp ou senha de administrador incorretos.",
     MUITAS_TENTATIVAS: "Muitas tentativas. Aguarde alguns minutos antes de tentar novamente.",
@@ -480,5 +479,6 @@ export const _internals = {
   alteracaoProtegidaDoAdmin,
   paraIso,
   sanitizarAssinante,
-  calcularResumo
+  calcularResumo,
+  responderErro
 };
