@@ -347,7 +347,13 @@
         </div>
 
         <div id="painelEnvioDividido" style="display: none; margin-bottom: 8px;"></div>
-        <button class="btn-whatsapp" id="btnAcao" type="button" onclick="executarAcaoPrincipal()">Gerar Link e Enviar WhatsApp</button>
+        <div class="acoes-envio" id="acoesEnvio">
+          <button class="btn-compartilhar" id="btnCompartilhar" type="button" onclick="compartilharCotacao()" aria-label="Compartilhar link da cotação">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16V3m0 0L7.5 7.5M12 3l4.5 4.5M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/></svg>
+            <span>Compartilhar</span>
+          </button>
+          <button class="btn-whatsapp" id="btnAcao" type="button" onclick="executarAcaoPrincipal()">Enviar no WhatsApp</button>
+        </div>
       </div>
     </div>
     </section>
@@ -1170,26 +1176,113 @@
       return sucesso;
     };
 
-    window.salvarCotacaoEGerarLink = async function() {
-      const dadosLoja = window.validarDadosLojaParaEnvio?.();
-      if (!dadosLoja) return;
+    function obterPacoteEnvioCotacao(dadosLoja) {
+      const linkVendedor = CotacaoCore.criarLinkVendedor(window.location.href, cotacaoIdAtual);
+      if (!linkVendedor) return null;
+      const mensagem = CotacaoCore.criarMensagemSolicitacao(dadosLoja.nome, linkVendedor);
+      return {
+        linkVendedor,
+        mensagem,
+        whatsappUrl: CotacaoCore.criarUrlWhatsApp(mensagem),
+        compartilhar: CotacaoCore.criarDadosCompartilhamento(dadosLoja.nome, linkVendedor)
+      };
+    }
 
-      const cotacaoSalva = await window.salvarEstadoAutomatico();
-      if (!cotacaoSalva || !cotacaoIdAtual) return alert("Adicione pelo menos um produto para continuar.");
+    function validarListaParaCompartilhar() {
+      if (coletarProdutosDaTela(false).length > 0) return true;
+      alert("Adicione pelo menos um produto para continuar.");
+      return false;
+    }
 
-      await carregarListaCotacoesUsuario();
-      document.getElementById('selectCotacoesUsuario').value = cotacaoIdAtual;
-
-      const baseUrl = window.location.href.split('?')[0];
-      const linkVendedor = `${baseUrl}?c=${cotacaoIdAtual}&e=2`;
-      const cliente = dadosLoja.nome;
-
-      let msg = `🛒 *SOLICITAÇÃO DE COTAÇÃO*\nCliente: *${cliente}*\n\nPreencha seus preços no link:\n${linkVendedor}`;
-
-      alert(`✅ Cotação Salva! Link gerado.`);
-      window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(msg)}`, '_blank');
+    function concluirEnvioDaCotacao() {
       window.marcarDadosPedidoComoConhecidos?.();
       alternarEtapa(3);
+    }
+
+    window.salvarCotacaoEGerarLink = async function() {
+      const dadosLoja = window.validarDadosLojaParaEnvio?.();
+      if (!dadosLoja || !validarListaParaCompartilhar()) return;
+
+      const botao = document.getElementById('btnAcao');
+      const textoOriginal = botao.textContent;
+      botao.disabled = true;
+      botao.textContent = 'Gerando link...';
+
+      // O Safari só permite abrir uma nova página a partir do toque original.
+      // A aba fica reservada enquanto o Firebase confirma o salvamento.
+      const janelaWhatsapp = window.open('', '_blank');
+
+      try {
+        const cotacaoSalva = await window.salvarEstadoAutomatico();
+        const pacote = cotacaoSalva && cotacaoIdAtual
+          ? obterPacoteEnvioCotacao(dadosLoja)
+          : null;
+        if (!pacote) {
+          janelaWhatsapp?.close();
+          alert("Não foi possível salvar e gerar o link. Confira sua internet e tente novamente.");
+          return;
+        }
+
+        concluirEnvioDaCotacao();
+        if (janelaWhatsapp && !janelaWhatsapp.closed) {
+          janelaWhatsapp.location.replace(pacote.whatsappUrl);
+        } else {
+          window.location.assign(pacote.whatsappUrl);
+        }
+      } finally {
+        botao.disabled = false;
+        botao.textContent = textoOriginal;
+      }
+    };
+
+    window.compartilharCotacao = function() {
+      const dadosLoja = window.validarDadosLojaParaEnvio?.();
+      if (!dadosLoja || !validarListaParaCompartilhar()) return;
+
+      const botao = document.getElementById('btnCompartilhar');
+      const textoBotao = botao.querySelector('span');
+      botao.disabled = true;
+      textoBotao.textContent = 'Preparando...';
+
+      // A chamada começa sem await para manter a permissão do toque no Safari.
+      const salvamento = window.salvarEstadoAutomatico();
+      const pacote = cotacaoIdAtual ? obterPacoteEnvioCotacao(dadosLoja) : null;
+      if (!pacote) {
+        botao.disabled = false;
+        textoBotao.textContent = 'Compartilhar';
+        alert("Não foi possível gerar o link. Tente novamente.");
+        return;
+      }
+
+      let compartilhamento;
+      try {
+        if (typeof navigator.share === 'function') {
+          compartilhamento = navigator.share(pacote.compartilhar);
+        } else if (navigator.clipboard?.writeText) {
+          compartilhamento = navigator.clipboard
+            .writeText(`${pacote.compartilhar.text}\n${pacote.linkVendedor}`)
+            .then(() => alert("Link copiado. Agora é só colar onde quiser enviar."));
+        } else {
+          window.prompt("Copie o link da cotação:", pacote.linkVendedor);
+          compartilhamento = Promise.resolve();
+        }
+      } catch (error) {
+        compartilhamento = Promise.reject(error);
+      }
+
+      Promise.all([Promise.resolve(salvamento), Promise.resolve(compartilhamento)])
+        .then(([cotacaoSalva]) => {
+          if (!cotacaoSalva) throw new Error('SALVAMENTO_FALHOU');
+          concluirEnvioDaCotacao();
+        })
+        .catch((error) => {
+          if (error?.name === 'AbortError') return;
+          alert("Não foi possível compartilhar agora. Confira sua internet e tente novamente.");
+        })
+        .finally(() => {
+          botao.disabled = false;
+          textoBotao.textContent = 'Compartilhar';
+        });
     };
 
     function definirStatusFornecedor(mensagem, tipo = 'info') {
@@ -1566,6 +1659,7 @@
       document.getElementById('statusSalvamento').textContent = '';
       document.getElementById('btnAcao').disabled = true;
       document.getElementById('btnAcao').textContent = 'Carregando lista...';
+      document.getElementById('btnCompartilhar').hidden = true;
       document.body.dataset.cotacaoId = String(cotacaoId || '');
     }
 
@@ -1632,21 +1726,25 @@
       });
 
       const btnAcao = document.getElementById('btnAcao');
+      const btnCompartilhar = document.getElementById('btnCompartilhar');
       const txtOrientacao = document.getElementById('textoOrientacao');
 
       if (isE1) {
         txtOrientacao.innerHTML = '<b>Etapa 1:</b> Monte sua lista.';
-        btnAcao.innerText = 'Gerar Link e Enviar WhatsApp';
+        btnAcao.innerText = 'Enviar no WhatsApp';
         btnAcao.style.display = 'block';
+        btnCompartilhar.hidden = modoFornecedor;
       } else if (isE2) {
         txtOrientacao.innerHTML = modoFornecedor
           ? '<b>Preços:</b> informe o valor de cada produto.'
           : '<b>Etapa 2:</b> Preencha os preços.';
         btnAcao.innerText = modoFornecedor ? 'Enviar meus preços' : 'Salvar meus preços';
         btnAcao.style.display = 'block';
+        btnCompartilhar.hidden = true;
       } else if (isE3) {
         txtOrientacao.innerHTML = '<b>Etapa 3:</b> Confira o vencedor e envie o pedido.';
         btnAcao.style.display = 'none';
+        btnCompartilhar.hidden = true;
         calcularTotalEGerarSplits();
       }
     }

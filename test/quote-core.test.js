@@ -34,6 +34,27 @@ test("exige nome da loja e WhatsApp com DDD antes do envio", () => {
   });
 });
 
+test("gera link, mensagem de WhatsApp e dados do compartilhamento sem carregar parâmetros antigos", () => {
+  const link = core.criarLinkVendedor(
+    "https://cotacaoprimer.vercel.app/index.html?pagamento=aprovado#listas",
+    "COT-123"
+  );
+  assert.equal(link, "https://cotacaoprimer.vercel.app/index.html?c=COT-123&e=2");
+
+  const mensagem = core.criarMensagemSolicitacao("  Mercado   Central ", link);
+  assert.match(mensagem, /Cliente: \*Mercado Central\*/);
+  assert.match(mensagem, /COT-123/);
+  assert.equal(
+    core.criarUrlWhatsApp(mensagem),
+    `https://wa.me/?text=${encodeURIComponent(mensagem)}`
+  );
+  assert.deepEqual(core.criarDadosCompartilhamento("Mercado Central", link), {
+    title: "Cotação de Mercado Central",
+    text: "Mercado Central enviou uma lista para você informar seus preços.",
+    url: link
+  });
+});
+
 test("interpreta preços brasileiros e calcula em centavos", () => {
   assert.equal(core.precoParaCentavos("27,90"), 2790);
   assert.equal(core.precoParaCentavos("1.234,56"), 123456);

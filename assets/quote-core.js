@@ -35,6 +35,40 @@
     return { valido: true, nome, telefone };
   }
 
+  function criarLinkVendedor(urlAtual, cotacaoId) {
+    const id = normalizarEspacos(cotacaoId);
+    if (!id) return "";
+    try {
+      const url = new URL(String(urlAtual || ""));
+      url.search = "";
+      url.hash = "";
+      url.searchParams.set("c", id);
+      url.searchParams.set("e", "2");
+      return url.toString();
+    } catch {
+      return "";
+    }
+  }
+
+  function criarMensagemSolicitacao(clienteInformado, linkVendedor) {
+    const cliente = normalizarEspacos(clienteInformado) || "Cliente";
+    const link = String(linkVendedor || "").trim();
+    return `🛒 *SOLICITAÇÃO DE COTAÇÃO*\nCliente: *${cliente}*\n\nPreencha seus preços no link:\n${link}`;
+  }
+
+  function criarUrlWhatsApp(mensagem) {
+    return `https://wa.me/?text=${encodeURIComponent(String(mensagem || ""))}`;
+  }
+
+  function criarDadosCompartilhamento(clienteInformado, linkVendedor) {
+    const cliente = normalizarEspacos(clienteInformado) || "Uma loja";
+    return {
+      title: `Cotação de ${cliente}`,
+      text: `${cliente} enviou uma lista para você informar seus preços.`,
+      url: String(linkVendedor || "").trim()
+    };
+  }
+
   function precoParaCentavos(valor) {
     if (typeof valor === "number") {
       if (!Number.isFinite(valor) || valor < 0) return null;
@@ -249,6 +283,10 @@
     normalizarEspacos,
     nomeCompletoValido,
     validarDadosLoja,
+    criarLinkVendedor,
+    criarMensagemSolicitacao,
+    criarUrlWhatsApp,
+    criarDadosCompartilhamento,
     precoParaCentavos,
     centavosParaNumero,
     formatarCentavos,

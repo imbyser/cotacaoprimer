@@ -14,6 +14,8 @@ Branch de implementação: `feat/dashboard-listas-voz`
 - Ao abrir uma cotação, as três etapas conhecidas continuam na mesma ordem: Lista, Preços e Pedido.
 - O fornecedor que recebe `?c=...&e=2` continua isolado na página de preenchimento de preços, mesmo quando existe uma conta administrativa salva no navegador.
 - A lista por voz transcreve e organiza os itens, permite corrigir nomes e embalagens reconhecidos e só cria a lista depois da confirmação do usuário.
+- Na etapa Lista, o rodapé mantém “Enviar no WhatsApp” como ação principal e mostra “Compartilhar” ao lado. Em aparelhos compatíveis, “Compartilhar” abre a folha nativa do sistema; nos demais, copia ou exibe o link.
+- No Safari, o toque em “Enviar no WhatsApp” reserva imediatamente a navegação permitida pelo navegador e só a encaminha ao WhatsApp depois que o Firebase confirma o salvamento.
 
 ## Segurança dos dados
 
@@ -60,4 +62,11 @@ Se uma restauração de dados algum dia for realmente necessária, ela deve ser 
 - Compatibilidade de gravação validada para MP4/AAC do Safari no iPhone, inclusive quando o navegador acrescenta parâmetros de codec ao tipo do arquivo.
 - Na primeira utilização, os dados da loja continuam abertos. Depois do primeiro envio, a etapa Lista usa um resumo compacto com “Editar dados” e mantém o botão principal no mesmo lugar.
 - O link e os pedidos por WhatsApp são bloqueados até o preenchimento do nome da loja e de um número válido com DDD.
+- O link compartilhado remove parâmetros antigos da página e usa somente `c=<cotacaoId>&e=2`, preservando o isolamento do fornecedor.
 - No Safari móvel, “Minhas listas” e “Início” trocam de tela imediatamente. Alterações pendentes são guardadas primeiro no aparelho e sincronizadas em segundo plano.
+
+## Backup anterior ao compartilhamento nativo
+
+- branch: `backup/antes-compartilhar-nativo-20260822`
+- tag: `backup-antes-compartilhar-nativo-20260822`
+- commit preservado: `309fab9`

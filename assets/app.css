@@ -180,6 +180,7 @@ select {
 .btn-etapa,
 .btn-cat,
 .btn-adicionar,
+.btn-compartilhar,
 .btn-whatsapp,
 .btn-send-vendor,
 .btn-logout,
@@ -682,7 +683,54 @@ select {
   font-family: inherit;
 }
 
+.acoes-envio {
+  display: flex;
+  align-items: stretch;
+  gap: 9px;
+}
+
+.btn-compartilhar {
+  display: inline-flex;
+  flex: 0 1 41%;
+  min-width: 0;
+  min-height: 54px;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  border: 2px solid var(--cp-navy-950);
+  border-radius: 8px;
+  padding: 10px 12px;
+  color: var(--cp-navy-950);
+  background: var(--cp-paper);
+  box-shadow: 3px 3px 0 rgba(13, 41, 71, 0.18);
+  font-family: var(--cp-display);
+  font-size: 0.88rem;
+  font-weight: 900;
+}
+
+.btn-compartilhar svg {
+  flex: 0 0 auto;
+  width: 20px;
+  height: 20px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2;
+}
+
+.btn-compartilhar:hover {
+  background: var(--cp-blue-100);
+}
+
+.btn-compartilhar:disabled {
+  cursor: wait;
+  opacity: 0.62;
+}
+
 .btn-whatsapp {
+  flex: 1 1 59%;
+  width: auto;
   min-height: 54px;
   border: 2px solid var(--cp-navy-950);
   color: #062b1c;
@@ -869,6 +917,10 @@ body.modo-fornecedor {
   display: block !important;
 }
 
+.modo-fornecedor .btn-compartilhar {
+  display: none !important;
+}
+
 @media (max-width: 600px) {
   body {
     padding-bottom: 400px;
@@ -984,6 +1036,16 @@ body.modo-fornecedor {
   .carrinho-bar {
     max-height: 56dvh;
     padding: 10px 10px max(10px, env(safe-area-inset-bottom));
+  }
+
+  .acoes-envio {
+    gap: 7px;
+  }
+
+  .btn-compartilhar,
+  .btn-whatsapp {
+    padding-inline: 8px;
+    font-size: 0.84rem;
   }
 
   body.rodape-compacto {
