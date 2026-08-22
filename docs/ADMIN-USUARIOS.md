@@ -28,4 +28,4 @@
 ## Retorno
 
 - Código anterior: branch `backup/antes-admin-20260822` e tag `backup-antes-admin-20260822`.
-- Banco anterior: backup somente de leitura em `/tmp/cotacao-prime-before-admin-20260822.json`, SHA-256 `849037b603d21947aa3e2ce78dbfcbaa885d860d6cb3f533a7672cee7e86ccda`.
+- Banco anterior: backup somente de leitura em `/home/lcientes sites/backups-privados/cotacao-prime/cotacao-prime-before-admin-20260822.json`, com permissão `600` e SHA-256 `849037b603d21947aa3e2ce78dbfcbaa885d860d6cb3f533a7672cee7e86ccda`.
