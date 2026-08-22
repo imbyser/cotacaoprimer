@@ -108,7 +108,54 @@ test("nunca devolve a senha ao painel e calcula somente o resumo necessário", (
     usuario,
     { statusAssinatura: "SUSPENSA", listas: 2 },
     { statusAssinatura: "PENDENTE", listas: 0 }
-  ]), { total: 3, ativas: 1, suspensas: 1, pendentes: 1, listas: 6 });
+  ]), {
+    total: 3,
+    contas: 3,
+    semConta: 0,
+    ativas: 1,
+    suspensas: 1,
+    pendentes: 1,
+    listas: 6,
+    listasVinculadas: 6,
+    listasSemUsuario: 0
+  });
+});
+
+test("une contas cadastradas e números encontrados nas listas sem alterar o histórico", () => {
+  const resultado = admin.montarListagemUsuarios([
+    {
+      id: "conta-1",
+      data: {
+        nome: "Conta existente",
+        telefone: "81999999999",
+        senha: "segredo",
+        statusAssinatura: "ATIVA"
+      }
+    }
+  ], [
+    { id: "lista-1", data: { userId: "81999999999", cliente: "Loja A", criadoEm: "2026-08-20T10:00:00.000Z" } },
+    { id: "lista-2", data: { userId: "81988888888", cliente: "Loja antiga", criadoEm: "2026-08-19T10:00:00.000Z" } },
+    { id: "lista-3", data: { userId: "81988888888", cliente: "Loja atual", atualizadoEm: "2026-08-21T10:00:00.000Z" } },
+    { id: "lista-legada", data: { cliente: "Sem dono salvo", criadoEm: "2026-08-18T10:00:00.000Z" } }
+  ]);
+
+  assert.equal(resultado.usuarios.length, 2);
+  const historico = resultado.usuarios.find((usuario) => usuario.contaCadastrada === false);
+  assert.equal(historico.telefone, "81988888888");
+  assert.equal(historico.nome, "Loja atual");
+  assert.equal(historico.listas, 2);
+  assert.equal(Object.hasOwn(historico, "senha"), false);
+  assert.deepEqual(resultado.resumo, {
+    total: 2,
+    contas: 1,
+    semConta: 1,
+    ativas: 1,
+    suspensas: 0,
+    pendentes: 0,
+    listas: 4,
+    listasVinculadas: 3,
+    listasSemUsuario: 1
+  });
 });
 
 test("erro de login fica no painel e não abre o popup nativo do navegador", () => {

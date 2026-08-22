@@ -186,6 +186,8 @@ function paraIso(valor) {
 function sanitizarAssinante(id, dados, atividade = {}) {
   return {
     id,
+    contaCadastrada: true,
+    origem: "assinantes",
     nome: limparTexto(dados?.nome, 100),
     telefone: limparTelefone(dados?.telefone),
     plano: PLANOS.includes(dados?.plano) ? dados.plano : "",
@@ -203,15 +205,109 @@ function sanitizarAssinante(id, dados, atividade = {}) {
   };
 }
 
-function calcularResumo(usuarios) {
-  return usuarios.reduce((resumo, usuario) => {
-    resumo.total += 1;
-    resumo.listas += usuario.listas;
-    if (usuario.statusAssinatura === "ATIVA") resumo.ativas += 1;
-    else if (usuario.statusAssinatura === "SUSPENSA") resumo.suspensas += 1;
-    else resumo.pendentes += 1;
-    return resumo;
-  }, { total: 0, ativas: 0, suspensas: 0, pendentes: 0, listas: 0 });
+function calcularResumo(usuarios, metricas = {}) {
+  const resumo = usuarios.reduce((acumulado, usuario) => {
+    acumulado.total += 1;
+    acumulado.listasVinculadas += usuario.listas;
+    if (usuario.contaCadastrada === false) {
+      acumulado.semConta += 1;
+      return acumulado;
+    }
+    acumulado.contas += 1;
+    if (usuario.statusAssinatura === "ATIVA") acumulado.ativas += 1;
+    else if (usuario.statusAssinatura === "SUSPENSA") acumulado.suspensas += 1;
+    else acumulado.pendentes += 1;
+    return acumulado;
+  }, {
+    total: 0,
+    contas: 0,
+    semConta: 0,
+    ativas: 0,
+    suspensas: 0,
+    pendentes: 0,
+    listas: 0,
+    listasVinculadas: 0,
+    listasSemUsuario: 0
+  });
+  resumo.listas = Number.isFinite(metricas.totalListas)
+    ? metricas.totalListas
+    : resumo.listasVinculadas;
+  resumo.listasSemUsuario = Number.isFinite(metricas.listasSemUsuario)
+    ? metricas.listasSemUsuario
+    : Math.max(0, resumo.listas - resumo.listasVinculadas);
+  return resumo;
+}
+
+function montarListagemUsuarios(assinantes, cotacoes) {
+  const atividade = new Map();
+  let listasSemUsuario = 0;
+
+  for (const documento of cotacoes) {
+    const dados = documento.data || {};
+    const telefone = limparTelefone(dados.userId);
+    if (!telefone) {
+      listasSemUsuario += 1;
+      continue;
+    }
+    const atual = atividade.get(telefone) || {
+      listas: 0,
+      ultimaAtividade: null,
+      nomeHistorico: ""
+    };
+    atual.listas += 1;
+    const data = paraIso(dados.atualizadoEm || dados.criadoEm);
+    if (data && (!atual.ultimaAtividade || data > atual.ultimaAtividade)) {
+      atual.ultimaAtividade = data;
+      atual.nomeHistorico = limparTexto(dados.cliente, 100) || atual.nomeHistorico;
+    } else if (!atual.nomeHistorico) {
+      atual.nomeHistorico = limparTexto(dados.cliente, 100);
+    }
+    atividade.set(telefone, atual);
+  }
+
+  const usuarios = assinantes.map((documento) => sanitizarAssinante(
+    documento.id,
+    documento.data,
+    atividade.get(limparTelefone(documento.data?.telefone))
+  ));
+  const telefonesComConta = new Set(
+    usuarios.map((usuario) => usuario.telefone).filter(Boolean)
+  );
+
+  for (const [telefone, dados] of atividade) {
+    if (telefonesComConta.has(telefone)) continue;
+    usuarios.push({
+      id: `historico-${telefone}`,
+      contaCadastrada: false,
+      origem: "historico",
+      nome: dados.nomeHistorico || "Cliente do histórico",
+      telefone,
+      plano: "",
+      statusAssinatura: "SEM_CONTA",
+      temSenha: false,
+      criadoEm: null,
+      atualizadoEm: null,
+      dataPagamento: null,
+      senhaAtualizadaEm: null,
+      ultimoPagamentoId: "",
+      listas: dados.listas,
+      ultimaAtividade: dados.ultimaAtividade
+    });
+  }
+
+  usuarios.sort((a, b) => {
+    const atividadeA = a.ultimaAtividade || a.atualizadoEm || a.criadoEm || "";
+    const atividadeB = b.ultimaAtividade || b.atualizadoEm || b.criadoEm || "";
+    return atividadeB.localeCompare(atividadeA) || a.telefone.localeCompare(b.telefone);
+  });
+
+  return {
+    usuarios,
+    resumo: calcularResumo(usuarios, {
+      totalListas: cotacoes.length,
+      listasSemUsuario
+    })
+  };
 }
 
 function obterServicos() {
@@ -456,35 +552,12 @@ function limparCookieSessao(res) {
 async function listarUsuarios(db) {
   const [assinantes, cotacoes] = await Promise.all([
     db.collection("assinantes").get(),
-    db.collection("cotacoes").select("userId", "criadoEm", "atualizadoEm").get()
+    db.collection("cotacoes").select("userId", "cliente", "criadoEm", "atualizadoEm").get()
   ]);
-  const atividade = new Map();
-
-  for (const documento of cotacoes.docs) {
-    const dados = documento.data();
-    const telefone = limparTelefone(dados.userId);
-    if (!telefone) continue;
-    const atual = atividade.get(telefone) || { listas: 0, ultimaAtividade: null };
-    atual.listas += 1;
-    const data = paraIso(dados.atualizadoEm || dados.criadoEm);
-    if (data && (!atual.ultimaAtividade || data > atual.ultimaAtividade)) atual.ultimaAtividade = data;
-    atividade.set(telefone, atual);
-  }
-
-  const usuarios = assinantes.docs.map((documento) => {
-    const dados = documento.data();
-    return sanitizarAssinante(
-      documento.id,
-      dados,
-      atividade.get(limparTelefone(dados.telefone))
-    );
-  }).sort((a, b) => {
-    const atividadeA = a.ultimaAtividade || a.atualizadoEm || a.criadoEm || "";
-    const atividadeB = b.ultimaAtividade || b.atualizadoEm || b.criadoEm || "";
-    return atividadeB.localeCompare(atividadeA) || a.telefone.localeCompare(b.telefone);
-  });
-
-  return { usuarios, resumo: calcularResumo(usuarios) };
+  return montarListagemUsuarios(
+    assinantes.docs.map((documento) => ({ id: documento.id, data: documento.data() })),
+    cotacoes.docs.map((documento) => ({ id: documento.id, data: documento.data() }))
+  );
 }
 
 async function criarUsuario(db, body, admin) {
@@ -575,32 +648,10 @@ async function listarUsuariosRest(repositorio) {
       ]
     }),
     repositorio.consultar("cotacoes", {
-      campos: ["userId", "criadoEm", "atualizadoEm"]
+      campos: ["userId", "cliente", "criadoEm", "atualizadoEm"]
     })
   ]);
-  const atividade = new Map();
-
-  for (const documento of cotacoes) {
-    const telefone = limparTelefone(documento.data.userId);
-    if (!telefone) continue;
-    const atual = atividade.get(telefone) || { listas: 0, ultimaAtividade: null };
-    atual.listas += 1;
-    const data = paraIso(documento.data.atualizadoEm || documento.data.criadoEm);
-    if (data && (!atual.ultimaAtividade || data > atual.ultimaAtividade)) atual.ultimaAtividade = data;
-    atividade.set(telefone, atual);
-  }
-
-  const usuarios = assinantes.map((documento) => sanitizarAssinante(
-    documento.id,
-    documento.data,
-    atividade.get(limparTelefone(documento.data.telefone))
-  )).sort((a, b) => {
-    const atividadeA = a.ultimaAtividade || a.atualizadoEm || a.criadoEm || "";
-    const atividadeB = b.ultimaAtividade || b.atualizadoEm || b.criadoEm || "";
-    return atividadeB.localeCompare(atividadeA) || a.telefone.localeCompare(b.telefone);
-  });
-
-  return { usuarios, resumo: calcularResumo(usuarios) };
+  return montarListagemUsuarios(assinantes, cotacoes);
 }
 
 async function criarUsuarioRest(repositorio, body, admin) {
@@ -834,5 +885,6 @@ export const _internals = {
   paraIso,
   sanitizarAssinante,
   calcularResumo,
+  montarListagemUsuarios,
   responderErro
 };

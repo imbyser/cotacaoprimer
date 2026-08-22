@@ -11,6 +11,9 @@
 ## Operações disponíveis
 
 - Listar contas sem devolver o campo `senha`.
+- Unir na mesma visão as contas cadastradas e os números encontrados em `cotacoes.userId`.
+- Identificar como “Só no histórico” um número que possui listas, mas ainda não possui conta; o botão “Criar acesso” apenas cria a conta e mantém as listas existentes no mesmo número.
+- Informar separadamente quantas listas legadas não possuem `userId`, sem atribuí-las automaticamente a ninguém.
 - Mostrar plano, situação de acesso, quantidade de listas e última atividade.
 - Criar conta com nome, WhatsApp, plano, situação e senha inicial.
 - Editar nome, WhatsApp, plano e situação.
@@ -30,3 +33,4 @@
 
 - Código anterior: branch `backup/antes-admin-20260822` e tag `backup-antes-admin-20260822`.
 - Banco anterior: backup somente de leitura em `/home/lcientes sites/backups-privados/cotacao-prime/cotacao-prime-before-admin-20260822.json`, com permissão `600` e SHA-256 `849037b603d21947aa3e2ce78dbfcbaa885d860d6cb3f533a7672cee7e86ccda`.
+- Antes da união com o histórico: branch/tag `backup/antes-admin-historico-20260822` e backup somente de leitura `cotacao-prime-before-admin-history-merge-20260822.json`, com 128 documentos e SHA-256 `90d343d2d0db5390c45a9d1f162cd35bc3004587203d87b0b9d721d6cbcd8aa7`.

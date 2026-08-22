@@ -70,10 +70,12 @@
   function statusDaConta(status) {
     if (status === "ATIVA") return { texto: "Liberado", classe: "liberado" };
     if (status === "SUSPENSA") return { texto: "Bloqueado", classe: "bloqueado" };
+    if (status === "SEM_CONTA") return { texto: "Sem conta", classe: "historico" };
     return { texto: "Aguardando", classe: "aguardando" };
   }
 
   function textoDaConta(usuario) {
+    if (usuario.contaCadastrada === false) return "Histórico encontrado · sem acesso";
     const plano = usuario.plano || "Sem plano";
     const senha = usuario.temSenha ? "Senha cadastrada" : "Sem senha";
     return `${plano} · ${senha}`;
@@ -88,6 +90,7 @@
 
   function renderizarUsuario(usuario) {
     const linha = criarElemento("article", "admin-user-row");
+    if (usuario.contaCadastrada === false) linha.classList.add("admin-user-row-history");
     linha.dataset.userId = usuario.id;
 
     const identidade = criarElemento("div", "admin-user-identity");
@@ -113,13 +116,20 @@
     );
 
     const acoes = criarElemento("div", "admin-user-actions");
-    const editar = criarElemento("button", "admin-btn admin-btn-edit", "Editar conta");
-    editar.type = "button";
-    editar.addEventListener("click", () => abrirEdicao(usuario));
-    const senha = criarElemento("button", "admin-btn admin-btn-password", "Redefinir senha");
-    senha.type = "button";
-    senha.addEventListener("click", () => abrirSenha(usuario));
-    acoes.append(editar, senha);
+    if (usuario.contaCadastrada === false) {
+      const criar = criarElemento("button", "admin-btn admin-btn-history", "Criar acesso");
+      criar.type = "button";
+      criar.addEventListener("click", () => prepararConta(null, usuario));
+      acoes.append(criar);
+    } else {
+      const editar = criarElemento("button", "admin-btn admin-btn-edit", "Editar conta");
+      editar.type = "button";
+      editar.addEventListener("click", () => abrirEdicao(usuario));
+      const senha = criarElemento("button", "admin-btn admin-btn-password", "Redefinir senha");
+      senha.type = "button";
+      senha.addEventListener("click", () => abrirSenha(usuario));
+      acoes.append(editar, senha);
+    }
 
     linha.append(identidade, acesso, conta, acoes);
     return linha;
@@ -128,7 +138,7 @@
   function filtrarUsuarios() {
     const busca = estado.busca.toLocaleLowerCase("pt-BR");
     return estado.usuarios.filter((usuario) => {
-      const alvo = `${usuario.nome} ${usuario.telefone} ${formatarTelefone(usuario.telefone)} ${usuario.plano}`
+      const alvo = `${usuario.nome} ${usuario.telefone} ${formatarTelefone(usuario.telefone)} ${usuario.plano} ${usuario.origem}`
         .toLocaleLowerCase("pt-BR");
       return alvo.includes(busca);
     });
@@ -138,12 +148,12 @@
     const container = porId("usersList");
     const usuarios = filtrarUsuarios();
     container.replaceChildren();
-    porId("resultadoContagem").textContent = `${usuarios.length} ${usuarios.length === 1 ? "conta encontrada" : "contas encontradas"}`;
+    porId("resultadoContagem").textContent = `${usuarios.length} ${usuarios.length === 1 ? "pessoa encontrada" : "pessoas encontradas"}`;
 
     if (!usuarios.length) {
       const vazio = criarElemento("div", "admin-empty");
       vazio.append(
-        criarElemento("strong", "", estado.busca ? "Nenhuma conta combina com a busca." : "Nenhuma conta cadastrada."),
+        criarElemento("strong", "", estado.busca ? "Nenhuma pessoa combina com a busca." : "Nenhuma pessoa encontrada."),
         criarElemento("p", "", estado.busca ? "Confira o nome ou o WhatsApp digitado." : "Use “Nova conta” para fazer o primeiro cadastro.")
       );
       container.appendChild(vazio);
@@ -157,8 +167,15 @@
     const resumo = estado.resumo || {};
     porId("statTotal").textContent = resumo.total ?? "—";
     porId("statAtivas").textContent = resumo.ativas ?? "—";
-    porId("statSuspensas").textContent = resumo.suspensas ?? "—";
+    porId("statSemConta").textContent = resumo.semConta ?? "—";
     porId("statListas").textContent = resumo.listas ?? "—";
+    porId("statAcessosDetalhe").textContent = `${resumo.suspensas || 0} bloqueadas · ${resumo.pendentes || 0} aguardando`;
+    porId("statListasDetalhe").textContent = `${resumo.listasVinculadas || 0} com número · ${resumo.listasSemUsuario || 0} antigas`;
+    const listasSemUsuario = Number(resumo.listasSemUsuario || 0);
+    porId("historyNote").hidden = listasSemUsuario === 0;
+    porId("historyNoteText").textContent = listasSemUsuario === 1
+      ? "Existe 1 lista antiga sem o número do dono salvo. Ela continua intacta e não foi atribuída automaticamente."
+      : `Existem ${listasSemUsuario} listas antigas sem o número do dono salvo. Elas continuam intactas e não foram atribuídas automaticamente.`;
   }
 
   async function carregarUsuarios() {
@@ -181,29 +198,32 @@
     else dialogo.removeAttribute("open");
   }
 
-  function prepararConta(usuario = null) {
+  function prepararConta(usuario = null, origemHistorico = null) {
     const criando = !usuario;
+    const dadosBase = usuario || origemHistorico || {};
+    const criandoDoHistorico = criando && Boolean(origemHistorico);
     porId("accountForm").reset();
+    porId("accountForm").dataset.origemHistorico = criandoDoHistorico ? "true" : "false";
     definirErro(porId("accountError"));
     porId("accountId").value = usuario?.id || "";
-    porId("accountName").value = usuario?.nome || "";
-    porId("accountPhone").value = formatarTelefone(usuario?.telefone || "").replace("Não informado", "");
-    porId("accountPlan").value = usuario?.plano || "";
+    porId("accountName").value = dadosBase.nome || "";
+    porId("accountPhone").value = formatarTelefone(dadosBase.telefone || "").replace("Não informado", "");
+    porId("accountPlan").value = dadosBase.plano || "";
     porId("accountStatus").value = usuario?.statusAssinatura || "ATIVA";
     const contaAdministradora = !criando && somenteDigitos(usuario?.telefone) === estado.adminTelefone;
     porId("accountPhone").disabled = contaAdministradora;
     porId("accountStatus").disabled = contaAdministradora;
     porId("accountPhoneHelp").hidden = !contaAdministradora;
-    porId("accountMeta").hidden = criando;
-    porId("accountMetaLists").textContent = usuario?.listas ?? 0;
-    porId("accountMetaActivity").textContent = formatarData(usuario?.ultimaAtividade || usuario?.atualizadoEm);
-    porId("accountMetaPaymentDate").textContent = formatarData(usuario?.dataPagamento);
-    porId("accountMetaPaymentId").textContent = usuario?.ultimoPagamentoId || "Sem registro";
+    porId("accountMeta").hidden = criando && !criandoDoHistorico;
+    porId("accountMetaLists").textContent = dadosBase.listas ?? 0;
+    porId("accountMetaActivity").textContent = formatarData(dadosBase.ultimaAtividade || dadosBase.atualizadoEm);
+    porId("accountMetaPaymentDate").textContent = formatarData(dadosBase.dataPagamento);
+    porId("accountMetaPaymentId").textContent = dadosBase.ultimoPagamentoId || "Sem registro";
     porId("newPasswordField").hidden = !criando;
     porId("accountPassword").required = criando;
-    porId("accountDialogKicker").textContent = criando ? "Cadastro" : "Dados do cliente";
-    porId("accountDialogTitle").textContent = criando ? "Nova conta" : "Editar conta";
-    porId("accountSubmit").textContent = criando ? "Criar conta" : "Salvar alterações";
+    porId("accountDialogKicker").textContent = criandoDoHistorico ? "Histórico encontrado" : (criando ? "Cadastro" : "Dados do cliente");
+    porId("accountDialogTitle").textContent = criandoDoHistorico ? "Criar acesso" : (criando ? "Nova conta" : "Editar conta");
+    porId("accountSubmit").textContent = criandoDoHistorico ? "Criar acesso" : (criando ? "Criar conta" : "Salvar alterações");
     abrirDialogo(porId("accountDialog"));
     setTimeout(() => porId(criando ? "accountName" : "accountPhone").focus(), 20);
   }
@@ -231,6 +251,7 @@
     event.preventDefault();
     const id = porId("accountId").value;
     const criando = !id;
+    const criandoDoHistorico = criando && porId("accountForm").dataset.origemHistorico === "true";
     const status = porId("accountStatus").value;
     const usuarioAtual = estado.usuarios.find((usuario) => usuario.id === id);
     if (!criando && status === "SUSPENSA" && usuarioAtual?.statusAssinatura !== "SUSPENSA") {
@@ -262,7 +283,11 @@
       await requisitar("", { method: "POST", body: JSON.stringify(body) });
       fecharDialogo(porId("accountDialog"));
       await carregarUsuarios();
-      mostrarToast(criando ? "Conta criada e pronta para entrar." : "Alterações salvas.");
+      mostrarToast(
+        criandoDoHistorico
+          ? "Acesso criado. As listas existentes continuam ligadas a esse número."
+          : (criando ? "Conta criada e pronta para entrar." : "Alterações salvas.")
+      );
     } catch (error) {
       definirErro(porId("accountError"), mensagensErro[error.message] || error.message);
     } finally {

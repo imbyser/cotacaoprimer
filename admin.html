@@ -53,23 +53,28 @@
         <div>
           <span class="admin-kicker">Controle de acesso</span>
           <h1 id="adminTitle">Clientes e contas</h1>
-          <p>Libere acessos, altere planos e acompanhe quantas listas cada cliente possui.</p>
+          <p>Veja todos os números encontrados nas listas, identifique quem já possui conta e libere novos acessos.</p>
         </div>
         <button class="admin-btn admin-btn-create" id="newUserButton" type="button">+ Nova conta</button>
       </section>
 
       <section class="admin-resumo" aria-label="Resumo das contas">
-        <article><span>Total de contas</span><strong id="statTotal">—</strong></article>
-        <article><span>Acessos liberados</span><strong id="statAtivas">—</strong></article>
-        <article><span>Acessos bloqueados</span><strong id="statSuspensas">—</strong></article>
-        <article><span>Listas dos clientes</span><strong id="statListas">—</strong></article>
+        <article><span>Pessoas encontradas</span><strong id="statTotal">—</strong><small>Contas e históricos</small></article>
+        <article><span>Contas liberadas</span><strong id="statAtivas">—</strong><small id="statAcessosDetalhe">—</small></article>
+        <article><span>Só no histórico</span><strong id="statSemConta">—</strong><small>Ainda sem conta de acesso</small></article>
+        <article><span>Listas no banco</span><strong id="statListas">—</strong><small id="statListasDetalhe">—</small></article>
       </section>
+
+      <aside class="admin-history-note" id="historyNote" hidden>
+        <strong id="historyNoteTitle">Listas antigas preservadas</strong>
+        <p id="historyNoteText"></p>
+      </aside>
 
       <section class="admin-clientes" aria-labelledby="clientesTitle">
         <div class="admin-section-header">
           <div>
-            <h2 id="clientesTitle">Todos os clientes</h2>
-            <p id="resultadoContagem">Carregando contas...</p>
+            <h2 id="clientesTitle">Pessoas encontradas</h2>
+            <p id="resultadoContagem">Carregando pessoas...</p>
           </div>
           <label class="admin-busca" for="userSearch">
             <span>Buscar</span>
@@ -78,7 +83,7 @@
         </div>
 
         <div class="admin-legend" aria-hidden="true">
-          <span>Cliente</span><span>Acesso</span><span>Conta</span><span>Ações</span>
+          <span>Pessoa</span><span>Situação</span><span>Origem</span><span>Ações</span>
         </div>
         <div class="admin-users" id="usersList" aria-live="polite"></div>
       </section>

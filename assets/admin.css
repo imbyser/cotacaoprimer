@@ -365,7 +365,8 @@ button {
 }
 
 .admin-resumo span,
-.admin-resumo strong {
+.admin-resumo strong,
+.admin-resumo small {
   display: block;
 }
 
@@ -382,6 +383,39 @@ button {
   font-size: 2.3rem;
   font-weight: 900;
   line-height: 1;
+}
+
+.admin-resumo small {
+  margin-top: 9px;
+  color: var(--admin-muted);
+  font-size: 0.74rem;
+  line-height: 1.25;
+}
+
+.admin-history-note {
+  margin: -12px 0 30px;
+  padding: 13px 15px;
+  border: 1px solid #dbc56f;
+  border-left: 5px solid #a87a00;
+  border-radius: 5px;
+  color: #5e4706;
+  background: #fff6cf;
+}
+
+.admin-history-note strong,
+.admin-history-note p {
+  display: block;
+}
+
+.admin-history-note strong {
+  font-family: var(--admin-display);
+  font-size: 0.9rem;
+  font-weight: 900;
+}
+
+.admin-history-note p {
+  margin: 3px 0 0;
+  font-size: 0.84rem;
 }
 
 .admin-clientes {
@@ -455,6 +489,17 @@ button {
   border-radius: 6px;
   background: var(--admin-paper);
   box-shadow: 3px 3px 0 rgba(21, 59, 102, 0.08);
+}
+
+.admin-user-row-history {
+  border-left-color: #a87a00;
+  background: #fffcf0;
+}
+
+.admin-user-row-history .admin-user-mark {
+  border-color: #806000;
+  color: #5e4706;
+  background: #fff4c7;
 }
 
 .admin-user-identity {
@@ -534,6 +579,11 @@ button {
   background: #fff4c7;
 }
 
+.admin-status-historico {
+  color: #5e4706;
+  background: #fff4c7;
+}
+
 .admin-user-account {
   min-width: 0;
 }
@@ -564,6 +614,11 @@ button {
 .admin-btn-secondary {
   color: var(--admin-navy-950);
   background: var(--admin-paper);
+}
+
+.admin-btn-history {
+  color: #3f3108;
+  background: #f6d96f;
 }
 
 .admin-empty {
