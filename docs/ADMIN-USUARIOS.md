@@ -6,6 +6,7 @@
 - Acesso exclusivo ao WhatsApp configurado em `ADMIN_WHATSAPP`.
 - Sessão assinada no servidor por `ADMIN_SESSION_SECRET`, em cookie `HttpOnly`, `SameSite=Strict` e `Secure` na Vercel.
 - A senha administrativa é enviada somente no login e não fica salva no navegador.
+- Se a credencial técnica do Firebase estiver sem a função IAM necessária, o servidor usa automaticamente a mesma compatibilidade REST já adotada pelo checkout; a sessão administrativa continua obrigatória e nenhuma senha é devolvida ao navegador.
 
 ## Operações disponíveis
 

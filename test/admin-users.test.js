@@ -132,3 +132,88 @@ test("erro de login fica no painel e não abre o popup nativo do navegador", () 
   assert.equal(Object.hasOwn(headers, "WWW-Authenticate"), false);
   assert.match(payload.error, /senha de administrador incorretos/i);
 });
+
+test("troca para o acesso REST quando a conta técnica do Firebase está sem permissão", async () => {
+  const servicos = {
+    db: {},
+    firestoreRest: { projectId: "projeto-teste", apiKey: "chave-teste" }
+  };
+  const resultado = await admin.executarComCompatibilidade(
+    servicos,
+    async () => {
+      const error = new Error("Missing or insufficient permissions.");
+      error.code = 7;
+      throw error;
+    },
+    async (repositorio) => {
+      assert.equal(typeof repositorio.consultar, "function");
+      assert.equal(typeof repositorio.commit, "function");
+      return "compatibilidade-ativa";
+    }
+  );
+  assert.equal(resultado, "compatibilidade-ativa");
+});
+
+test("converte documentos do Firestore REST sem devolver formatos internos", () => {
+  const documento = admin.documentoRestNormalizado({
+    name: "projects/p/databases/(default)/documents/assinantes/conta-1",
+    updateTime: "2026-08-22T12:00:00.000Z",
+    fields: {
+      nome: { stringValue: "Mercado Central" },
+      ativo: { booleanValue: true },
+      listas: { integerValue: "3" },
+      atualizadoEm: { timestampValue: "2026-08-22T12:00:00.000Z" }
+    }
+  });
+  assert.deepEqual(documento, {
+    id: "conta-1",
+    name: "projects/p/databases/(default)/documents/assinantes/conta-1",
+    updateTime: "2026-08-22T12:00:00.000Z",
+    data: {
+      nome: "Mercado Central",
+      ativo: true,
+      listas: 3,
+      atualizadoEm: "2026-08-22T12:00:00.000Z"
+    }
+  });
+});
+
+test("consulta o Firestore REST somente com os campos pedidos", async () => {
+  const fetchOriginal = globalThis.fetch;
+  let requisicao;
+  globalThis.fetch = async (url, options) => {
+    requisicao = { url: String(url), body: JSON.parse(options.body) };
+    return {
+      ok: true,
+      status: 200,
+      async json() {
+        return [{
+          document: {
+            name: "projects/p/databases/(default)/documents/assinantes/conta-1",
+            fields: { telefone: { stringValue: "81999999999" } }
+          }
+        }];
+      }
+    };
+  };
+
+  try {
+    const repositorio = admin.criarRepositorioRest({ projectId: "p", apiKey: "chave" });
+    const documentos = await repositorio.consultar("assinantes", {
+      campo: "telefone",
+      valor: "81999999999",
+      campos: ["telefone"]
+    });
+    assert.equal(documentos[0].data.telefone, "81999999999");
+    assert.match(requisicao.url, /documents:runQuery\?key=chave$/);
+    assert.deepEqual(requisicao.body.structuredQuery.select, {
+      fields: [{ fieldPath: "telefone" }]
+    });
+    assert.equal(
+      requisicao.body.structuredQuery.where.fieldFilter.value.stringValue,
+      "81999999999"
+    );
+  } finally {
+    globalThis.fetch = fetchOriginal;
+  }
+});

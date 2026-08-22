@@ -1,4 +1,4 @@
-import { createHash, createHmac, timingSafeEqual } from "node:crypto";
+import { createHash, createHmac, randomUUID, timingSafeEqual } from "node:crypto";
 import { cert, getApps, initializeApp } from "firebase-admin/app";
 import { FieldValue, getFirestore } from "firebase-admin/firestore";
 
@@ -8,6 +8,8 @@ const COOKIE_SESSAO = "cotacao_prime_admin";
 const DURACAO_SESSAO_SEGUNDOS = 8 * 60 * 60;
 const JANELA_TENTATIVAS_MS = 15 * 60 * 1000;
 const LIMITE_TENTATIVAS = 8;
+const FIREBASE_PROJECT_ID = "supercotacao-6a43c";
+const FIREBASE_WEB_API_KEY = "AIzaSyAPBH_zOO3xrdiyW1qk20b3b1ejMlyYSvg";
 const tentativasLogin = new Map();
 
 function erro(codigo, status = 400) {
@@ -212,11 +214,17 @@ function calcularResumo(usuarios) {
   }, { total: 0, ativas: 0, suspensas: 0, pendentes: 0, listas: 0 });
 }
 
-function obterDb() {
+function obterServicos() {
   if (!process.env.FIREBASE_SERVICE_ACCOUNT) throw erro("ADMIN_NAO_CONFIGURADO", 503);
   const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
   if (!getApps().length) initializeApp({ credential: cert(serviceAccount) });
-  return getFirestore();
+  return {
+    db: getFirestore(),
+    firestoreRest: {
+      projectId: process.env.FIREBASE_PROJECT_ID || FIREBASE_PROJECT_ID,
+      apiKey: process.env.FIREBASE_WEB_API_KEY || FIREBASE_WEB_API_KEY
+    }
+  };
 }
 
 function obterConfiguracaoAdmin() {
@@ -256,6 +264,177 @@ function autenticarSessao(req, esperado, segredoSessao) {
   const sessao = validarSessao(req.headers.cookie, esperado, segredoSessao);
   if (!sessao) throw erro("ACESSO_NEGADO", 401);
   return { telefone: sessao.telefone };
+}
+
+function erroDePermissaoFirestore(error) {
+  const codigo = String(error?.code || "").toLowerCase();
+  const mensagem = String(error?.message || "").toLowerCase();
+  return codigo === "7" ||
+    codigo === "permission-denied" ||
+    codigo.includes("permission_denied") ||
+    mensagem.includes("permission_denied") ||
+    mensagem.includes("missing or insufficient permissions");
+}
+
+function valorParaFirestore(valor) {
+  if (valor === null) return { nullValue: null };
+  if (valor instanceof Date) return { timestampValue: valor.toISOString() };
+  if (typeof valor === "string") return { stringValue: valor };
+  if (typeof valor === "boolean") return { booleanValue: valor };
+  if (typeof valor === "number") {
+    return Number.isInteger(valor)
+      ? { integerValue: String(valor) }
+      : { doubleValue: valor };
+  }
+  if (Array.isArray(valor)) {
+    return { arrayValue: { values: valor.map(valorParaFirestore) } };
+  }
+  if (valor && typeof valor === "object") {
+    return { mapValue: { fields: objetoParaFirestore(valor) } };
+  }
+  throw new Error("VALOR_FIRESTORE_INVALIDO");
+}
+
+function objetoParaFirestore(objeto) {
+  return Object.fromEntries(
+    Object.entries(objeto)
+      .filter(([, valor]) => valor !== undefined)
+      .map(([campo, valor]) => [campo, valorParaFirestore(valor)])
+  );
+}
+
+function valorDoFirestore(valor) {
+  if (!valor || typeof valor !== "object") return undefined;
+  if ("nullValue" in valor) return null;
+  if ("stringValue" in valor) return valor.stringValue;
+  if ("booleanValue" in valor) return Boolean(valor.booleanValue);
+  if ("integerValue" in valor) return Number(valor.integerValue);
+  if ("doubleValue" in valor) return Number(valor.doubleValue);
+  if ("timestampValue" in valor) return valor.timestampValue;
+  if ("arrayValue" in valor) return (valor.arrayValue.values || []).map(valorDoFirestore);
+  if ("mapValue" in valor) return objetoDoFirestore(valor.mapValue.fields || {});
+  return undefined;
+}
+
+function objetoDoFirestore(campos = {}) {
+  return Object.fromEntries(
+    Object.entries(campos).map(([campo, valor]) => [campo, valorDoFirestore(valor)])
+  );
+}
+
+function documentoRestNormalizado(documento) {
+  if (!documento?.name) return null;
+  return {
+    id: documento.name.split("/").pop(),
+    data: objetoDoFirestore(documento.fields || {}),
+    name: documento.name,
+    updateTime: documento.updateTime
+  };
+}
+
+function criarRepositorioRest(config) {
+  const raiz = `https://firestore.googleapis.com/v1/projects/${encodeURIComponent(config.projectId)}/databases/(default)`;
+  const apiKey = encodeURIComponent(config.apiKey);
+
+  function nomeDocumento(colecao, id) {
+    return `projects/${config.projectId}/databases/(default)/documents/${colecao}/${id}`;
+  }
+
+  async function requisitar(caminho, options = {}) {
+    const separador = caminho.includes("?") ? "&" : "?";
+    const response = await fetch(`${raiz}/${caminho}${separador}key=${apiKey}`, {
+      ...options,
+      headers: {
+        "Content-Type": "application/json",
+        ...(options.headers || {})
+      },
+      signal: options.signal || AbortSignal.timeout(15000)
+    });
+    const payload = response.status === 204
+      ? null
+      : await response.json().catch(() => null);
+    if (!response.ok) {
+      const error = new Error(payload?.error?.message || `FIRESTORE_REST_${response.status}`);
+      error.code = payload?.error?.status || String(response.status);
+      throw error;
+    }
+    return payload;
+  }
+
+  async function consultar(colecao, { campo, valor, campos } = {}) {
+    const structuredQuery = { from: [{ collectionId: colecao }] };
+    if (Array.isArray(campos) && campos.length) {
+      structuredQuery.select = { fields: campos.map((fieldPath) => ({ fieldPath })) };
+    }
+    if (campo) {
+      structuredQuery.where = {
+        fieldFilter: {
+          field: { fieldPath: campo },
+          op: "EQUAL",
+          value: valorParaFirestore(valor)
+        }
+      };
+    }
+    const resultados = await requisitar("documents:runQuery", {
+      method: "POST",
+      body: JSON.stringify({ structuredQuery })
+    });
+    return (resultados || [])
+      .map((resultado) => documentoRestNormalizado(resultado.document))
+      .filter(Boolean);
+  }
+
+  async function buscarDocumento(colecao, id) {
+    try {
+      return documentoRestNormalizado(
+        await requisitar(`documents/${colecao}/${encodeURIComponent(id)}`)
+      );
+    } catch (error) {
+      if (String(error.code) === "NOT_FOUND" || String(error.code) === "404") return null;
+      throw error;
+    }
+  }
+
+  async function commit(writes) {
+    return requisitar("documents:commit", {
+      method: "POST",
+      body: JSON.stringify({ writes })
+    });
+  }
+
+  return { nomeDocumento, consultar, buscarDocumento, commit };
+}
+
+async function executarComCompatibilidade(servicos, operacaoAdmin, operacaoRest) {
+  try {
+    return await operacaoAdmin(servicos.db);
+  } catch (error) {
+    if (!erroDePermissaoFirestore(error)) throw error;
+    console.warn("Firebase Admin sem permissão; usando compatibilidade das regras atuais.");
+    return operacaoRest(criarRepositorioRest(servicos.firestoreRest));
+  }
+}
+
+async function autenticarCredenciaisRest(req, repositorio, esperado) {
+  const credenciais = lerCredenciaisBasicas(req.headers.authorization);
+  if (!credenciais || !textoIgualSeguro(credenciais.telefone, esperado)) {
+    throw erro("ACESSO_NEGADO", 401);
+  }
+  const [assinante] = await repositorio.consultar("assinantes", {
+    campo: "telefone",
+    valor: esperado,
+    campos: ["telefone", "senha", "statusAssinatura"]
+  });
+  const dados = assinante?.data;
+  if (
+    !assinante ||
+    dados.statusAssinatura !== "ATIVA" ||
+    !dados.senha ||
+    !textoIgualSeguro(credenciais.senha, dados.senha)
+  ) {
+    throw erro("ACESSO_NEGADO", 401);
+  }
+  return { id: assinante.id, telefone: esperado };
 }
 
 function definirCookieSessao(res, token) {
@@ -379,6 +558,148 @@ async function redefinirSenha(db, body) {
   });
 }
 
+async function listarUsuariosRest(repositorio) {
+  const [assinantes, cotacoes] = await Promise.all([
+    repositorio.consultar("assinantes", {
+      campos: [
+        "nome",
+        "telefone",
+        "plano",
+        "statusAssinatura",
+        "senha",
+        "criadoEm",
+        "atualizadoEm",
+        "dataPagamento",
+        "senhaAtualizadaEm",
+        "ultimoPagamentoId"
+      ]
+    }),
+    repositorio.consultar("cotacoes", {
+      campos: ["userId", "criadoEm", "atualizadoEm"]
+    })
+  ]);
+  const atividade = new Map();
+
+  for (const documento of cotacoes) {
+    const telefone = limparTelefone(documento.data.userId);
+    if (!telefone) continue;
+    const atual = atividade.get(telefone) || { listas: 0, ultimaAtividade: null };
+    atual.listas += 1;
+    const data = paraIso(documento.data.atualizadoEm || documento.data.criadoEm);
+    if (data && (!atual.ultimaAtividade || data > atual.ultimaAtividade)) atual.ultimaAtividade = data;
+    atividade.set(telefone, atual);
+  }
+
+  const usuarios = assinantes.map((documento) => sanitizarAssinante(
+    documento.id,
+    documento.data,
+    atividade.get(limparTelefone(documento.data.telefone))
+  )).sort((a, b) => {
+    const atividadeA = a.ultimaAtividade || a.atualizadoEm || a.criadoEm || "";
+    const atividadeB = b.ultimaAtividade || b.atualizadoEm || b.criadoEm || "";
+    return atividadeB.localeCompare(atividadeA) || a.telefone.localeCompare(b.telefone);
+  });
+
+  return { usuarios, resumo: calcularResumo(usuarios) };
+}
+
+async function criarUsuarioRest(repositorio, body, admin) {
+  const dados = validarCriacao(body);
+  const existente = await repositorio.consultar("assinantes", {
+    campo: "telefone",
+    valor: dados.telefone,
+    campos: ["telefone"]
+  });
+  if (existente.length) throw erro("TELEFONE_JA_CADASTRADO", 409);
+
+  const id = randomUUID();
+  const agora = new Date();
+  await repositorio.commit([{
+    update: {
+      name: repositorio.nomeDocumento("assinantes", id),
+      fields: objetoParaFirestore({
+        ...dados,
+        criadoEm: agora,
+        atualizadoEm: agora,
+        criadoPorAdmin: admin.telefone
+      })
+    },
+    currentDocument: { exists: false }
+  }]);
+  return { id };
+}
+
+async function atualizarUsuarioRest(repositorio, body, admin) {
+  const { id, atualizacao } = validarAtualizacao(body);
+  const atual = await repositorio.buscarDocumento("assinantes", id);
+  if (!atual) throw erro("CONTA_NAO_ENCONTRADA", 404);
+  const telefoneAtual = limparTelefone(atual.data.telefone);
+  if (alteracaoProtegidaDoAdmin(telefoneAtual, atualizacao, admin.telefone)) {
+    throw erro("ADMIN_CONTA_PROTEGIDA", 409);
+  }
+
+  let cotacoesDoTelefone = [];
+  if (atualizacao.telefone && atualizacao.telefone !== telefoneAtual) {
+    const existente = await repositorio.consultar("assinantes", {
+      campo: "telefone",
+      valor: atualizacao.telefone,
+      campos: ["telefone"]
+    });
+    if (existente.some((documento) => documento.id !== id)) {
+      throw erro("TELEFONE_JA_CADASTRADO", 409);
+    }
+    if (/^\d{10,11}$/.test(telefoneAtual)) {
+      cotacoesDoTelefone = await repositorio.consultar("cotacoes", {
+        campo: "userId",
+        valor: telefoneAtual,
+        campos: ["userId"]
+      });
+      if (cotacoesDoTelefone.length > 450) throw erro("MUITAS_LISTAS_PARA_MIGRAR", 409);
+    }
+  }
+
+  const dadosConta = { ...atualizacao, atualizadoEm: new Date() };
+  const writes = [{
+    update: {
+      name: atual.name,
+      fields: objetoParaFirestore(dadosConta)
+    },
+    updateMask: { fieldPaths: Object.keys(dadosConta) },
+    ...(atual.updateTime ? { currentDocument: { updateTime: atual.updateTime } } : {})
+  }];
+
+  for (const cotacao of cotacoesDoTelefone) {
+    writes.push({
+      update: {
+        name: cotacao.name,
+        fields: objetoParaFirestore({ userId: atualizacao.telefone })
+      },
+      updateMask: { fieldPaths: ["userId"] }
+    });
+  }
+  await repositorio.commit(writes);
+}
+
+async function redefinirSenhaRest(repositorio, body) {
+  if (!idValido(body?.id)) throw erro("CONTA_INVALIDA");
+  const senha = validarSenhaNova(body?.senha);
+  const atual = await repositorio.buscarDocumento("assinantes", String(body.id));
+  if (!atual) throw erro("CONTA_NAO_ENCONTRADA", 404);
+  const dados = {
+    senha,
+    senhaAtualizadaEm: new Date(),
+    atualizadoEm: new Date()
+  };
+  await repositorio.commit([{
+    update: {
+      name: atual.name,
+      fields: objetoParaFirestore(dados)
+    },
+    updateMask: { fieldPaths: Object.keys(dados) },
+    ...(atual.updateTime ? { currentDocument: { updateTime: atual.updateTime } } : {})
+  }]);
+}
+
 function configurarResposta(req, res) {
   res.setHeader("Cache-Control", "no-store, max-age=0");
   res.setHeader("Content-Type", "application/json; charset=utf-8");
@@ -418,7 +739,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    const db = obterDb();
+    const servicos = obterServicos();
     const { esperado, segredoSessao } = obterConfiguracaoAdmin();
     const body = req.method === "POST"
       ? (typeof req.body === "string" ? JSON.parse(req.body || "{}") : (req.body || {}))
@@ -429,7 +750,11 @@ export default async function handler(req, res) {
       verificarLimiteLogin(chave);
       let admin;
       try {
-        admin = await autenticarCredenciais(req, db, esperado);
+        admin = await executarComCompatibilidade(
+          servicos,
+          (db) => autenticarCredenciais(req, db, esperado),
+          (repositorio) => autenticarCredenciaisRest(req, repositorio, esperado)
+        );
         tentativasLogin.delete(chave);
       } catch (error) {
         if (error?.status === 401) registrarFalhaLogin(chave);
@@ -446,12 +771,33 @@ export default async function handler(req, res) {
     const admin = autenticarSessao(req, esperado, segredoSessao);
 
     if (req.method === "GET") {
-      return res.status(200).json({ ...(await listarUsuarios(db)), admin: { telefone: admin.telefone } });
+      const dados = await executarComCompatibilidade(
+        servicos,
+        (db) => listarUsuarios(db),
+        (repositorio) => listarUsuariosRest(repositorio)
+      );
+      return res.status(200).json({ ...dados, admin: { telefone: admin.telefone } });
     }
 
-    if (body.action === "create") await criarUsuario(db, body, admin);
-    else if (body.action === "update") await atualizarUsuario(db, body, admin);
-    else if (body.action === "reset-password") await redefinirSenha(db, body);
+    if (body.action === "create") {
+      await executarComCompatibilidade(
+        servicos,
+        (db) => criarUsuario(db, body, admin),
+        (repositorio) => criarUsuarioRest(repositorio, body, admin)
+      );
+    } else if (body.action === "update") {
+      await executarComCompatibilidade(
+        servicos,
+        (db) => atualizarUsuario(db, body, admin),
+        (repositorio) => atualizarUsuarioRest(repositorio, body, admin)
+      );
+    } else if (body.action === "reset-password") {
+      await executarComCompatibilidade(
+        servicos,
+        (db) => redefinirSenha(db, body),
+        (repositorio) => redefinirSenhaRest(repositorio, body)
+      );
+    }
     else throw erro("ACAO_INVALIDA");
 
     return res.status(200).json({ ok: true });
@@ -477,6 +823,14 @@ export const _internals = {
   validarCriacao,
   validarAtualizacao,
   alteracaoProtegidaDoAdmin,
+  erroDePermissaoFirestore,
+  valorParaFirestore,
+  objetoParaFirestore,
+  valorDoFirestore,
+  objetoDoFirestore,
+  documentoRestNormalizado,
+  criarRepositorioRest,
+  executarComCompatibilidade,
   paraIso,
   sanitizarAssinante,
   calcularResumo,
