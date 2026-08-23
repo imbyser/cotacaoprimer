@@ -1,9 +1,22 @@
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
 import test from "node:test";
 
 await import("../assets/dashboard.js");
 
 const painel = globalThis.CotacaoDashboardUI;
+
+test("usa a logo colorida correta no dashboard escuro sem filtro branco", async () => {
+  const [html, css, logo] = await Promise.all([
+    readFile(new URL("../index.html", import.meta.url), "utf8"),
+    readFile(new URL("../assets/dashboard.css", import.meta.url), "utf8"),
+    readFile(new URL("../assets/cotacao-prime-logo-on-dark.svg", import.meta.url), "utf8")
+  ]);
+  assert.match(html, /class="dashboard-logo" src="assets\/cotacao-prime-logo-on-dark\.svg"/);
+  assert.doesNotMatch(css, /\.dashboard-logo\s*\{[^}]*filter:/s);
+  assert.match(logo, /fill="#fffaf0"[^>]*>COTAÇÃO</);
+  assert.match(logo, /fill="#74d9a5"[^>]*>PRIME</);
+});
 
 test("ordena listas pela última atualização e usa criação como fallback", () => {
   const listas = painel.ordenarCotacoesRecentes([

@@ -16,6 +16,7 @@ Branch de implementação: `feat/dashboard-listas-voz`
 - A lista por voz transcreve e organiza os itens, permite corrigir nomes e embalagens reconhecidos e só cria a lista depois da confirmação do usuário.
 - Na etapa Lista, o rodapé mantém “Enviar no WhatsApp” como ação principal e mostra “Compartilhar” ao lado. Em aparelhos compatíveis, “Compartilhar” abre a folha nativa do sistema; nos demais, copia ou exibe o link.
 - No Safari, o toque em “Enviar no WhatsApp” reserva imediatamente a navegação permitida pelo navegador e só a encaminha ao WhatsApp depois que o Firebase confirma o salvamento.
+- A marca no dashboard logado usa uma variante própria para o fundo azul: “COTAÇÃO” em marfim, “PRIME” em verde e símbolo colorido. Nenhum filtro transforma mais a imagem inteira em branco; a logo da tela de login permanece inalterada.
 
 ## Segurança dos dados
 
@@ -70,3 +71,9 @@ Se uma restauração de dados algum dia for realmente necessária, ela deve ser 
 - branch: `backup/antes-compartilhar-nativo-20260822`
 - tag: `backup-antes-compartilhar-nativo-20260822`
 - commit preservado: `309fab9`
+
+## Backup anterior à correção da logo logada
+
+- branch: `backup/antes-logo-dashboard-20260823`
+- tag: `backup-antes-logo-dashboard-20260823`
+- commit preservado: `7fabb36`

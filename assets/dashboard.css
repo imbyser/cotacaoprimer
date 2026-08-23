@@ -58,7 +58,6 @@ body.tela-listas {
 .dashboard-logo {
   width: min(242px, 64vw);
   height: auto;
-  filter: brightness(0) invert(1);
 }
 
 .dashboard-conta-resumo {
