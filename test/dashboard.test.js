@@ -38,6 +38,52 @@ test("não altera a ordem original recebida", () => {
   assert.deepEqual(original.map((item) => item.id), ["a", "b"]);
 });
 
+test("separa listas ativas, apagadas e vencidas sem alterar documentos antigos", () => {
+  const agora = new Date("2026-08-27T12:00:00Z").getTime();
+  const grupos = painel.separarCotacoes([
+    { id: "antiga-sem-campos", cliente: "Mercado Antigo" },
+    {
+      id: "apagada-recente",
+      excluidoEm: new Date("2026-08-25T12:00:00Z"),
+      excluirDefinitivamenteEm: new Date("2026-09-01T12:00:00Z")
+    },
+    {
+      id: "apagada-vencida",
+      excluidoEm: new Date("2026-08-10T12:00:00Z"),
+      excluirDefinitivamenteEm: new Date("2026-08-17T12:00:00Z")
+    }
+  ], agora);
+
+  assert.deepEqual(grupos.ativas.map((item) => item.id), ["antiga-sem-campos"]);
+  assert.deepEqual(grupos.apagadas.map((item) => item.id), ["apagada-recente"]);
+  assert.deepEqual(grupos.expiradas.map((item) => item.id), ["apagada-vencida"]);
+});
+
+test("calcula os 7 dias mesmo para uma lista sem data final explícita", () => {
+  const excluidoEm = new Date("2026-08-27T12:00:00Z");
+  const cotacao = { excluidoEm };
+  assert.equal(
+    painel.dataDaExclusaoDefinitiva(cotacao),
+    excluidoEm.getTime() + (7 * 24 * 60 * 60 * 1000)
+  );
+  assert.equal(painel.textoPrazoExclusao(cotacao, excluidoEm.getTime()), "Será apagada em 7 dias");
+});
+
+test("mantém lixeira, confirmação e restauração dentro do painel", async () => {
+  const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
+  assert.match(html, /id="deletedLists"/);
+  assert.match(html, /id="listaExcluirModal"[^>]*role="dialog"/);
+  assert.match(html, /excluidoEm: serverTimestamp\(\)/);
+  assert.match(html, /excluidoEm: null,[\s\S]*excluirDefinitivamenteEm: null/);
+});
+
+test("permite digitar a quantidade e repetir mais ou menos ao manter pressionado", async () => {
+  const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
+  assert.match(html, /quantidade\.inputMode = 'numeric'/);
+  assert.doesNotMatch(html, /quantidade\.readOnly = true/);
+  assert.match(html, /setTimeout\(\(\) => \{[\s\S]*setInterval\(\(\) => alterarQtd\(botao, delta\), 130\);[\s\S]*\}, 450\);/);
+});
+
 test("usa os primeiros produtos quando a lista ainda não recebeu nome", () => {
   assert.equal(painel.tituloDaCotacao({
     cliente: "Cliente",

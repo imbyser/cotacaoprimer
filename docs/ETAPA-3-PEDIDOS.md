@@ -14,6 +14,9 @@ O agrupamento e os totais já estavam corretos em `assets/quote-core.js`. Nenhum
 - Ao abrir, aparecem itens, embalagem, quantidade, preço, subtotal e o mesmo envio pelo WhatsApp.
 - Apenas um fornecedor permanece aberto por vez.
 - A partir de oito fornecedores, aparece a busca por nome.
+- A quantidade de cada produto pode ser digitada diretamente entre 1 e 9.999.
+- Um toque em `−` ou `+` altera uma unidade. Ao manter pressionado por 450 ms, o botão repete a alteração a cada 130 ms até o usuário soltar.
+- Toda mudança de quantidade recalcula imediatamente o total geral, o subtotal e o pedido separado por fornecedor.
 
 ## Módulos
 

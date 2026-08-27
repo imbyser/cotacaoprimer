@@ -17,6 +17,8 @@ Branch de implementação: `feat/dashboard-listas-voz`
 - Na etapa Lista, o rodapé mantém “Enviar no WhatsApp” como ação principal e mostra “Compartilhar” ao lado. Em aparelhos compatíveis, “Compartilhar” abre a folha nativa do sistema; nos demais, copia ou exibe o link.
 - No Safari, o toque em “Enviar no WhatsApp” reserva imediatamente a navegação permitida pelo navegador e só a encaminha ao WhatsApp depois que o Firebase confirma o salvamento.
 - A marca no dashboard logado usa uma variante própria para o fundo azul: “COTAÇÃO” em marfim, “PRIME” em verde e símbolo colorido. Nenhum filtro transforma mais a imagem inteira em branco; a logo da tela de login permanece inalterada.
+- Cada cartão em “Minhas listas” possui “Excluir lista”. Depois da confirmação dentro do painel, a lista vai para “Apagados” por 7 dias e pode ser restaurada com produtos e respostas intactos.
+- Listas em “Apagados” deixam de abrir pelo link do fornecedor. Ao terminar o prazo, a exclusão definitiva é concluída na próxima abertura do painel ou pelo temporizador enquanto a sessão estiver aberta.
 
 ## Segurança dos dados
 
@@ -27,6 +29,9 @@ Branch de implementação: `feat/dashboard-listas-voz`
 - Resultados da IA passam por limites, limpeza e remoção de duplicados.
 - Um item reconhecido incorretamente não é salvo automaticamente: a lista precisa ser confirmada.
 - Rascunhos digitados continuam no navegador e são enviados ao Firestore pelo autosave já existente; ao sair do editor, o sistema tenta concluir o salvamento antes de trocar de tela.
+- Documentos antigos sem os campos de lixeira continuam sendo tratados como listas ativas. Não há migração nem regravação em massa.
+- Excluir e restaurar usam transação e conferem novamente o `userId` do documento antes de qualquer alteração.
+- O início dos 7 dias usa o horário oficial do Firebase, sem depender da data configurada no celular do cliente.
 
 ## Backup anterior à mudança
 
@@ -77,3 +82,12 @@ Se uma restauração de dados algum dia for realmente necessária, ela deve ser 
 - branch: `backup/antes-logo-dashboard-20260823`
 - tag: `backup-antes-logo-dashboard-20260823`
 - commit preservado: `7fabb36`
+
+## Backup anterior à lixeira de listas
+
+- branch: `backup/antes-lixeira-listas-20260827`
+- tag: `backup-antes-lixeira-listas-20260827`
+- commit preservado: `186db75`
+- pasta privada local: `/home/lcientes sites/backups/cotacao-prime/2026-08-27-before-list-trash/`
+- Firestore somente leitura: 141 documentos; SHA-256 `5ee8e80d8587d1f69dd1c8ec9d27e0bb06363b7e9bf8c073febb6faae2610bb6`
+- bundle Git verificado: SHA-256 `f0c6ead31ce20f0f34b4064fe2c65c521d24c3954441299e6e69d63220dcb97c`

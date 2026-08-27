@@ -3,6 +3,7 @@
 
   const SEM_OFERTA = "Sem oferta";
   const VERSAO_RASCUNHO = 1;
+  const QUANTIDADE_MAXIMA = 9999;
 
   function normalizarEspacos(valor) {
     return String(valor || "").trim().replace(/\s+/g, " ");
@@ -11,6 +12,14 @@
   function nomeCompletoValido(valor) {
     const partes = normalizarEspacos(valor).split(" ").filter(Boolean);
     return partes.length >= 2 && partes.every((parte) => /[\p{L}\p{N}]/u.test(parte));
+  }
+
+  function normalizarQuantidade(valor) {
+    const texto = String(valor ?? "").trim();
+    if (texto.startsWith("-")) return 1;
+    const quantidade = Number.parseInt(texto.match(/\d+/)?.[0] || "", 10);
+    if (!Number.isFinite(quantidade)) return 1;
+    return Math.min(QUANTIDADE_MAXIMA, Math.max(1, quantidade));
   }
 
   function validarDadosLoja(nomeInformado, telefoneInformado) {
@@ -208,7 +217,7 @@
     let totalCentavos = 0;
 
     for (const item of Array.isArray(itens) ? itens : []) {
-      const quantidade = Math.max(1, Number.parseInt(item?.quantidade, 10) || 1);
+      const quantidade = normalizarQuantidade(item?.quantidade);
       const precoCentavos = Number.parseInt(item?.precoCentavos, 10);
       const vencedor = normalizarEspacos(item?.vencedor) || SEM_OFERTA;
 
@@ -280,7 +289,9 @@
   global.CotacaoCore = Object.freeze({
     SEM_OFERTA,
     VERSAO_RASCUNHO,
+    QUANTIDADE_MAXIMA,
     normalizarEspacos,
+    normalizarQuantidade,
     nomeCompletoValido,
     validarDadosLoja,
     criarLinkVendedor,

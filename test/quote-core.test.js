@@ -63,6 +63,15 @@ test("interpreta preços brasileiros e calcula em centavos", () => {
   assert.equal(core.precoParaCentavos("texto"), null);
 });
 
+test("aceita quantidade digitada e mantém o pedido entre 1 e 9.999 unidades", () => {
+  assert.equal(core.normalizarQuantidade("25"), 25);
+  assert.equal(core.normalizarQuantidade("2 caixas"), 2);
+  assert.equal(core.normalizarQuantidade(""), 1);
+  assert.equal(core.normalizarQuantidade(0), 1);
+  assert.equal(core.normalizarQuantidade(-5), 1);
+  assert.equal(core.normalizarQuantidade("999999"), 9999);
+});
+
 test("mantém compatibilidade com ofertas antigas por nome", () => {
   const produtos = [{ id: 0, nome: "Arroz 5kg", emb: "Fardo c/ 6" }];
   const ofertas = {

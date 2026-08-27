@@ -249,11 +249,37 @@
       <div class="listas-main">
         <p class="listas-resumo" id="listasResumo"><strong>0 listas</strong> — as mais recentes aparecem primeiro.</p>
         <div class="listas-cards" id="allLists"></div>
+        <details class="listas-lixeira" id="listasLixeira">
+          <summary>
+            <span class="listas-lixeira-titulo">
+              <strong>Apagados</strong>
+              <small>As listas ficam aqui por 7 dias.</small>
+            </span>
+            <span class="listas-lixeira-contador" id="listasLixeiraContador">0</span>
+          </summary>
+          <div class="listas-lixeira-conteudo">
+            <div class="listas-cards" id="deletedLists"></div>
+          </div>
+        </details>
       </div>
       <div class="listas-fixed-action">
         <button class="listas-nova-fixa" type="button" onclick="criarNovaLista()">+ Criar nova lista</button>
       </div>
     </section>
+
+    <div class="lista-excluir-modal" id="listaExcluirModal" hidden role="dialog" aria-modal="true" aria-labelledby="listaExcluirTitulo" aria-describedby="listaExcluirDescricao">
+      <section class="lista-excluir-painel">
+        <span class="dashboard-kicker">Confirmar exclusão</span>
+        <h2 id="listaExcluirTitulo">Excluir esta lista?</h2>
+        <p class="lista-excluir-nome" id="listaExcluirNome"></p>
+        <p id="listaExcluirDescricao">Ela irá para <strong>Apagados</strong> por 7 dias. Nesse período, você poderá restaurar a lista com todos os produtos e respostas.</p>
+        <p class="lista-excluir-erro" id="listaExcluirErro" role="alert" hidden></p>
+        <div class="lista-excluir-botoes">
+          <button class="lista-excluir-cancelar" type="button" onclick="fecharConfirmacaoExclusao()">Cancelar</button>
+          <button class="lista-excluir-confirmar" id="listaExcluirConfirmar" type="button" onclick="confirmarExclusaoLista()">Sim, excluir lista</button>
+        </div>
+      </section>
+    </div>
 
     <section class="app-view workspace-view" id="workspaceView" hidden aria-labelledby="tituloHeader">
       <header class="workspace-header">
@@ -412,7 +438,7 @@
   <script src="assets/order-panel.js"></script>
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-    import { getFirestore, doc, setDoc, getDoc, onSnapshot, collection, query, where, getDocs, runTransaction } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+    import { getFirestore, doc, setDoc, getDoc, onSnapshot, collection, query, where, getDocs, runTransaction, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyAPBH_zOO3xrdiyW1qk20b3b1ejMlyYSvg",
@@ -438,6 +464,12 @@
     let assinaturaProdutosRenderizados = "";
     let ofertaEmEnvio = false;
     let cotacoesDoUsuario = [];
+    let cotacoesExcluidas = [];
+    let listaPendenteExclusaoId = null;
+    let elementoAntesDoModalExclusao = null;
+    let timerLimpezaLixeira = null;
+    let restauracaoEmAndamento = false;
+    let versaoCarregamentoListas = 0;
     let rascunhoPendenteLogin = null;
     let voiceController = null;
     let acaoVozAtual = 'nova';
@@ -507,7 +539,16 @@
       CotacaoDashboardUI.renderizarListas({
         container: document.getElementById('allLists'),
         cotacoes: ordenadas,
-        aoAbrir: (id) => window.abrirCotacao(id)
+        aoAbrir: (id) => window.abrirCotacao(id),
+        aoExcluir: (id) => window.solicitarExclusaoLista(id)
+      });
+
+      const quantidadeApagadas = cotacoesExcluidas.length;
+      document.getElementById('listasLixeiraContador').textContent = String(quantidadeApagadas);
+      CotacaoDashboardUI.renderizarApagadas({
+        container: document.getElementById('deletedLists'),
+        cotacoes: cotacoesExcluidas,
+        aoRestaurar: (id) => window.restaurarLista(id)
       });
     }
 
@@ -537,6 +578,30 @@
         });
       });
       window.inicializarRodapeDadosPedido?.();
+
+      const modalExclusao = document.getElementById('listaExcluirModal');
+      modalExclusao.addEventListener('click', (event) => {
+        if (event.target === modalExclusao) window.fecharConfirmacaoExclusao();
+      });
+      document.addEventListener('keydown', (event) => {
+        if (modalExclusao.hidden) return;
+        if (event.key === 'Escape') {
+          window.fecharConfirmacaoExclusao();
+          return;
+        }
+        if (event.key === 'Tab') {
+          const botoes = Array.from(modalExclusao.querySelectorAll('button:not(:disabled)'));
+          const primeiro = botoes[0];
+          const ultimo = botoes[botoes.length - 1];
+          if (event.shiftKey && document.activeElement === primeiro) {
+            event.preventDefault();
+            ultimo?.focus();
+          } else if (!event.shiftKey && document.activeElement === ultimo) {
+            event.preventDefault();
+            primeiro?.focus();
+          }
+        }
+      });
 
       if (pagamento === 'aprovado' || pagamento === 'pendente') {
         const paymentMsg = document.getElementById('authPaymentMsg');
@@ -825,8 +890,7 @@
       location.reload();
     };
 
-    async function carregarListaCotacoesUsuario() {
-      if (!usuarioTelefone) return;
+    function preencherSeletorCotacoes() {
       const select = document.getElementById('selectCotacoesUsuario');
       select.replaceChildren();
       const opcaoNova = document.createElement('option');
@@ -834,25 +898,227 @@
       opcaoNova.textContent = '-- Criar Nova Cotação --';
       select.appendChild(opcaoNova);
 
+      cotacoesDoUsuario.forEach((data) => {
+        const option = document.createElement('option');
+        option.value = data.id;
+        option.innerText = `${data.cliente || 'Sem nome'} — ${data.id.slice(-6)}`;
+        select.appendChild(option);
+      });
+    }
+
+    function agendarProximaLimpezaLixeira() {
+      clearTimeout(timerLimpezaLixeira);
+      timerLimpezaLixeira = null;
+      const limites = cotacoesExcluidas
+        .map((cotacao) => CotacaoDashboardUI.dataDaExclusaoDefinitiva(cotacao))
+        .filter((limite) => limite > Date.now())
+        .sort((a, b) => a - b);
+      if (!limites.length) return;
+
+      const espera = Math.max(1000, limites[0] - Date.now() + 1000);
+      timerLimpezaLixeira = setTimeout(() => {
+        void carregarListaCotacoesUsuario();
+      }, espera);
+    }
+
+    async function limparCotacoesExpiradas(cotacoes) {
+      const telefoneDaLimpeza = usuarioTelefone;
+      const resultados = await Promise.allSettled(cotacoes.map((cotacao) => {
+        const docRef = doc(db, 'cotacoes', cotacao.id);
+        return runTransaction(db, async (transaction) => {
+          const docSnap = await transaction.get(docRef);
+          if (!docSnap.exists()) return;
+          const dados = docSnap.data();
+          if (String(dados.userId || '') !== String(telefoneDaLimpeza || '')) return;
+          if (!CotacaoDashboardUI.cotacaoExpirada(dados)) return;
+          transaction.delete(docRef);
+        });
+      }));
+      resultados.forEach((resultado) => {
+        if (resultado.status === 'rejected') {
+          console.error('Não foi possível concluir a limpeza de uma lista expirada:', resultado.reason);
+        }
+      });
+    }
+
+    async function carregarListaCotacoesUsuario() {
+      if (!usuarioTelefone) return;
+      const versaoDesteCarregamento = ++versaoCarregamentoListas;
+
       try {
         const q = query(collection(db, "cotacoes"), where("userId", "==", usuarioTelefone));
         const querySnapshot = await getDocs(q);
-        cotacoesDoUsuario = CotacaoDashboardUI.ordenarCotacoesRecentes(
+        if (versaoDesteCarregamento !== versaoCarregamentoListas) return;
+        const grupos = CotacaoDashboardUI.separarCotacoes(
           querySnapshot.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }))
         );
-
-        cotacoesDoUsuario.forEach((data) => {
-          const option = document.createElement('option');
-          option.value = data.id;
-          option.innerText = `${data.cliente || 'Sem nome'} — ${data.id.slice(-6)}`;
-          select.appendChild(option);
-        });
+        cotacoesDoUsuario = CotacaoDashboardUI.ordenarCotacoesRecentes(grupos.ativas);
+        cotacoesExcluidas = CotacaoDashboardUI.ordenarCotacoesApagadas(grupos.apagadas);
+        preencherSeletorCotacoes();
         atualizarPainelDeListas();
+        agendarProximaLimpezaLixeira();
+        if (grupos.expiradas.length) void limparCotacoesExpiradas(grupos.expiradas);
       } catch (e) {
+        if (versaoDesteCarregamento !== versaoCarregamentoListas) return;
         console.error("Erro ao carregar cotações:", e);
         atualizarPainelDeListas();
       }
     }
+
+    window.solicitarExclusaoLista = function(id) {
+      const cotacao = cotacoesDoUsuario.find((item) => item.id === id);
+      if (!cotacao) return;
+
+      listaPendenteExclusaoId = id;
+      elementoAntesDoModalExclusao = document.activeElement;
+      document.getElementById('listaExcluirNome').textContent = CotacaoDashboardUI.tituloDaCotacao(cotacao);
+      const erro = document.getElementById('listaExcluirErro');
+      erro.hidden = true;
+      erro.textContent = '';
+      const modal = document.getElementById('listaExcluirModal');
+      modal.hidden = false;
+      document.body.classList.add('modal-exclusao-aberto');
+      document.getElementById('listaExcluirConfirmar').focus();
+    };
+
+    window.fecharConfirmacaoExclusao = function(forcar = false) {
+      const confirmar = document.getElementById('listaExcluirConfirmar');
+      if (confirmar.disabled && !forcar) return;
+      document.getElementById('listaExcluirModal').hidden = true;
+      document.body.classList.remove('modal-exclusao-aberto');
+      listaPendenteExclusaoId = null;
+      if (elementoAntesDoModalExclusao?.isConnected) elementoAntesDoModalExclusao.focus();
+      elementoAntesDoModalExclusao = null;
+    };
+
+    function desvincularCotacaoAtivaExcluida(id) {
+      if (cotacaoIdAtual !== id) return;
+      pararListenerCotacao();
+      clearTimeout(timerSalvarAuto);
+      timerSalvarAuto = null;
+      cotacaoIdAtual = null;
+      cotacaoRenderizadaId = null;
+      assinaturaProdutosRenderizados = '';
+      window.cotacaoDadosGlobais = null;
+      versaoAlteracoes = 0;
+      versaoSalva = 0;
+      haAlteracoesPendentes = false;
+      reconectarAposSalvarRascunho = false;
+      localStorage.removeItem('cotacaoAtiva_' + usuarioTelefone);
+      const rascunho = obterRascunhoLocal(usuarioTelefone);
+      if (rascunho?.cotacaoId === id) removerRascunhoLocal(usuarioTelefone);
+      document.getElementById('selectCotacoesUsuario').value = '';
+    }
+
+    window.confirmarExclusaoLista = async function() {
+      const id = listaPendenteExclusaoId;
+      const cotacao = cotacoesDoUsuario.find((item) => item.id === id);
+      if (!id || !cotacao) return;
+
+      const confirmar = document.getElementById('listaExcluirConfirmar');
+      const erro = document.getElementById('listaExcluirErro');
+      confirmar.disabled = true;
+      confirmar.setAttribute('aria-busy', 'true');
+      confirmar.textContent = 'Excluindo...';
+      erro.hidden = true;
+
+      try {
+        if (id === cotacaoIdAtual && !await salvarAntesDeTrocarLista()) {
+          throw new Error('SALVAMENTO_PENDENTE');
+        }
+
+        const excluidoEm = new Date();
+        const docRef = doc(db, 'cotacoes', id);
+        await runTransaction(db, async (transaction) => {
+          const docSnap = await transaction.get(docRef);
+          if (!docSnap.exists()) throw new Error('LISTA_NAO_ENCONTRADA');
+          const dados = docSnap.data();
+          if (String(dados.userId || '') !== String(usuarioTelefone || '')) {
+            throw new Error('LISTA_DE_OUTRO_USUARIO');
+          }
+          if (CotacaoDashboardUI.cotacaoExcluida(dados)) throw new Error('LISTA_JA_EXCLUIDA');
+          transaction.update(docRef, {
+            excluidoEm: serverTimestamp(),
+            excluirDefinitivamenteEm: null
+          });
+        });
+
+        const cotacaoExcluida = { ...cotacao, excluidoEm, excluirDefinitivamenteEm: null };
+        cotacoesDoUsuario = cotacoesDoUsuario.filter((item) => item.id !== id);
+        cotacoesExcluidas = CotacaoDashboardUI.ordenarCotacoesApagadas([
+          cotacaoExcluida,
+          ...cotacoesExcluidas.filter((item) => item.id !== id)
+        ]);
+        desvincularCotacaoAtivaExcluida(id);
+        preencherSeletorCotacoes();
+        atualizarPainelDeListas();
+        agendarProximaLimpezaLixeira();
+        document.getElementById('listasLixeira').open = true;
+        window.fecharConfirmacaoExclusao(true);
+        void carregarListaCotacoesUsuario();
+      } catch (error) {
+        console.error('Não foi possível excluir a lista:', error);
+        erro.textContent = error.message === 'SALVAMENTO_PENDENTE'
+          ? 'A lista ainda não terminou de salvar. Confira sua internet e tente novamente.'
+          : 'Não foi possível excluir agora. Confira sua internet e tente novamente.';
+        erro.hidden = false;
+      } finally {
+        confirmar.disabled = false;
+        confirmar.removeAttribute('aria-busy');
+        confirmar.textContent = 'Sim, excluir lista';
+      }
+    };
+
+    window.restaurarLista = async function(id) {
+      if (restauracaoEmAndamento) return;
+      const cotacao = cotacoesExcluidas.find((item) => item.id === id);
+      if (!cotacao) return;
+      restauracaoEmAndamento = true;
+
+      try {
+        const docRef = doc(db, 'cotacoes', id);
+        const resultado = await runTransaction(db, async (transaction) => {
+          const docSnap = await transaction.get(docRef);
+          if (!docSnap.exists()) return { removida: true };
+          const dados = docSnap.data();
+          if (String(dados.userId || '') !== String(usuarioTelefone || '')) {
+            throw new Error('LISTA_DE_OUTRO_USUARIO');
+          }
+          if (!CotacaoDashboardUI.cotacaoExcluida(dados)) return { restaurada: true };
+          if (CotacaoDashboardUI.cotacaoExpirada(dados)) {
+            transaction.delete(docRef);
+            return { removida: true };
+          }
+          transaction.update(docRef, {
+            excluidoEm: null,
+            excluirDefinitivamenteEm: null
+          });
+          return { restaurada: true };
+        });
+
+        cotacoesExcluidas = cotacoesExcluidas.filter((item) => item.id !== id);
+        if (resultado?.removida) {
+          atualizarPainelDeListas();
+          agendarProximaLimpezaLixeira();
+          alert('O prazo de 7 dias desta lista já terminou.');
+          return;
+        }
+
+        cotacoesDoUsuario = CotacaoDashboardUI.ordenarCotacoesRecentes([
+          { ...cotacao, excluidoEm: null, excluirDefinitivamenteEm: null },
+          ...cotacoesDoUsuario.filter((item) => item.id !== id)
+        ]);
+        preencherSeletorCotacoes();
+        atualizarPainelDeListas();
+        agendarProximaLimpezaLixeira();
+        void carregarListaCotacoesUsuario();
+      } catch (error) {
+        console.error('Não foi possível restaurar a lista:', error);
+        alert('Não foi possível restaurar agora. Confira sua internet e tente novamente.');
+      } finally {
+        restauracaoEmAndamento = false;
+      }
+    };
 
     async function salvarAntesDeTrocarLista() {
       clearTimeout(timerSalvarAuto);
@@ -1309,6 +1575,14 @@
     }
 
     function aplicarDadosDaCotacao(cotacaoId, data, etapa) {
+      if (CotacaoDashboardUI.cotacaoExcluida(data)) {
+        exibirFalhaAoCarregarCotacao(
+          modoFornecedor
+            ? 'Esta cotação não está mais disponível. Peça um novo link para a loja.'
+            : 'Esta lista está em Apagados. Restaure a lista para abri-la novamente.'
+        );
+        return;
+      }
       const produtos = Array.isArray(data.produtos) ? data.produtos : [];
       const assinaturaAtual = assinaturaDosProdutos(produtos);
       const preservarEdicaoLocal = !modoFornecedor &&
@@ -1477,6 +1751,10 @@
           const docSnap = await transaction.get(docRef);
           if (!docSnap.exists()) throw new Error('COTACAO_NAO_ENCONTRADA');
 
+          if (CotacaoDashboardUI.cotacaoExcluida(docSnap.data())) {
+            throw new Error('COTACAO_INDISPONIVEL');
+          }
+
           const ofertasAtuais = { ...(docSnap.data().ofertas || {}) };
           ofertasAtuais[nomeIdentificacao] = {
             vendedor,
@@ -1495,6 +1773,8 @@
       } catch (error) {
         const mensagem = error.message === 'COTACAO_NAO_ENCONTRADA'
           ? 'Cotação não encontrada. Peça um novo link para a loja.'
+          : error.message === 'COTACAO_INDISPONIVEL'
+            ? 'Esta cotação não está mais disponível. Peça um novo link para a loja.'
           : 'Não foi possível enviar. Confira sua internet e tente novamente.';
         definirStatusFornecedor(mensagem, 'erro');
       } finally {
@@ -1831,19 +2111,38 @@
       btnDiminuir.className = 'btn-qtd';
       btnDiminuir.textContent = '−';
       btnDiminuir.setAttribute('aria-label', 'Diminuir quantidade');
-      btnDiminuir.addEventListener('click', () => alterarQtd(btnDiminuir, -1));
       const quantidade = document.createElement('input');
       quantidade.type = 'text';
+      quantidade.inputMode = 'numeric';
+      quantidade.pattern = '[0-9]*';
+      quantidade.autocomplete = 'off';
+      quantidade.maxLength = 4;
       quantidade.className = 'qtd-valor';
-      quantidade.value = String(Math.max(1, Number.parseInt(qtd, 10) || 1));
-      quantidade.readOnly = true;
+      quantidade.value = String(CotacaoCore.normalizarQuantidade(qtd));
       quantidade.setAttribute('aria-label', 'Quantidade');
+      quantidade.addEventListener('input', () => {
+        const somenteNumeros = quantidade.value.replace(/\D/g, '').slice(0, 4);
+        if (quantidade.value !== somenteNumeros) quantidade.value = somenteNumeros;
+        if (etapaAtual === 3) calcularTotalEGerarSplits();
+      });
+      const confirmarQuantidadeDigitada = () => {
+        quantidade.value = String(CotacaoCore.normalizarQuantidade(quantidade.value));
+        if (etapaAtual === 3) calcularTotalEGerarSplits();
+      };
+      quantidade.addEventListener('change', confirmarQuantidadeDigitada);
+      quantidade.addEventListener('blur', confirmarQuantidadeDigitada);
+      quantidade.addEventListener('keydown', (event) => {
+        if (event.key !== 'Enter') return;
+        event.preventDefault();
+        quantidade.blur();
+      });
       const btnAumentar = document.createElement('button');
       btnAumentar.type = 'button';
       btnAumentar.className = 'btn-qtd';
       btnAumentar.textContent = '+';
       btnAumentar.setAttribute('aria-label', 'Aumentar quantidade');
-      btnAumentar.addEventListener('click', () => alterarQtd(btnAumentar, 1));
+      configurarBotaoQuantidade(btnDiminuir, -1);
+      configurarBotaoQuantidade(btnAumentar, 1);
       controleQuantidade.append(btnDiminuir, quantidade, btnAumentar);
 
       const btnExcluir = document.createElement('button');
@@ -1862,9 +2161,56 @@
       }
     }
 
+    function configurarBotaoQuantidade(botao, delta) {
+      let timerAtraso = null;
+      let timerRepeticao = null;
+      let ignorarCliqueAte = 0;
+
+      const limparTimers = () => {
+        clearTimeout(timerAtraso);
+        clearInterval(timerRepeticao);
+        timerAtraso = null;
+        timerRepeticao = null;
+      };
+
+      const pararRepeticao = () => {
+        limparTimers();
+        ignorarCliqueAte = Date.now() + 800;
+      };
+
+      botao.addEventListener('pointerdown', (event) => {
+        if (event.pointerType === 'mouse' && event.button !== 0) return;
+        event.preventDefault();
+        limparTimers();
+        ignorarCliqueAte = Number.POSITIVE_INFINITY;
+        alterarQtd(botao, delta);
+        try {
+          botao.setPointerCapture(event.pointerId);
+        } catch {
+          // O toque ainda funciona em navegadores sem captura de ponteiro.
+        }
+        timerAtraso = setTimeout(() => {
+          timerRepeticao = setInterval(() => alterarQtd(botao, delta), 130);
+        }, 450);
+      });
+
+      ['pointerup', 'pointercancel', 'lostpointercapture'].forEach((evento) => {
+        botao.addEventListener(evento, pararRepeticao);
+      });
+      botao.addEventListener('click', (event) => {
+        if (Date.now() <= ignorarCliqueAte) {
+          event.preventDefault();
+          return;
+        }
+        alterarQtd(botao, delta);
+      });
+      botao.addEventListener('contextmenu', (event) => event.preventDefault());
+    }
+
     function alterarQtd(btn, delta) {
       const input = btn.parentElement.querySelector('.qtd-valor');
-      input.value = Math.max(1, parseInt(input.value) + delta);
+      const atual = CotacaoCore.normalizarQuantidade(input.value);
+      input.value = String(CotacaoCore.normalizarQuantidade(atual + delta));
       if (etapaAtual === 3) calcularTotalEGerarSplits();
     }
 
@@ -1911,7 +2257,7 @@
         nome: card.querySelector('.input-nome').value.trim(),
         emb: card.querySelector('.input-embalagem').value.trim(),
         precoCentavos: CotacaoCore.precoParaCentavos(card.querySelector('.input-preco').value),
-        quantidade: Number.parseInt(card.querySelector('.qtd-valor').value, 10) || 1,
+        quantidade: CotacaoCore.normalizarQuantidade(card.querySelector('.qtd-valor').value),
         vencedor: card.querySelector('.nome-vencedor')?.innerText || CotacaoCore.SEM_OFERTA
       }));
     }

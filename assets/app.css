@@ -521,10 +521,26 @@ select {
   color: var(--cp-navy-950);
   background: #fff;
   font-size: 1.25rem;
+  touch-action: none;
+  user-select: none;
+  -webkit-touch-callout: none;
 }
 
 .qtd-valor {
-  width: 40px;
+  width: 58px;
+  min-height: 42px;
+  border: 1px solid transparent;
+  border-radius: 5px;
+  color: var(--cp-navy-950);
+  background: white;
+  text-align: center;
+  font-family: var(--cp-display);
+  font-weight: 900;
+}
+
+.qtd-valor:hover,
+.qtd-valor:focus {
+  border-color: var(--cp-blue-600);
 }
 
 .btn-excluir {
