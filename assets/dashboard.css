@@ -730,6 +730,22 @@ body.modal-exclusao-aberto {
   opacity: 0.68;
 }
 
+.recebimento-confirmar {
+  border: 2px solid #7b1818;
+  color: white;
+  background: var(--cp-danger);
+}
+
+.recebimento-confirmar[data-acao="reabrir"] {
+  border-color: var(--cp-green-700);
+  color: #062b1c;
+  background: var(--cp-green-300);
+}
+
+.recebimento-confirmar:disabled {
+  opacity: 0.68;
+}
+
 .listas-fixed-action {
   position: fixed;
   z-index: 60;

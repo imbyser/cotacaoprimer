@@ -72,6 +72,49 @@ test("aceita quantidade digitada e mantém o pedido entre 1 e 9.999 unidades", (
   assert.equal(core.normalizarQuantidade("999999"), 9999);
 });
 
+test("usa 24 horas por padrão e limita o prazo entre 1 hora e 30 dias", () => {
+  assert.equal(core.normalizarPrazoRecebimentoHoras(""), 24);
+  assert.equal(core.normalizarPrazoRecebimentoHoras(0), 1);
+  assert.equal(core.normalizarPrazoRecebimentoHoras("36 horas"), 36);
+  assert.equal(core.normalizarPrazoRecebimentoHoras(9999), 720);
+});
+
+test("mantém links antigos abertos sem prazo para não interromper clientes existentes", () => {
+  assert.deepEqual(core.statusRecebimentoCotacao({}, 1_000), {
+    estado: "nao_iniciado",
+    aceitaPrecos: true,
+    prazoHoras: 24,
+    iniciadoEmMs: 0,
+    expiraEmMs: 0,
+    fechadoEmMs: 0
+  });
+});
+
+test("identifica recebimento aberto, expirado e fechado sem alterar as respostas", () => {
+  const aberta = {
+    prazoRecebimentoHoras: 24,
+    recebimentoIniciadoEm: new Date("2026-09-11T10:00:00.000Z"),
+    ofertas: { "Maria Silva": { precos: { Arroz: 10 } } }
+  };
+
+  assert.equal(
+    core.statusRecebimentoCotacao(aberta, Date.parse("2026-09-12T09:59:00.000Z")).estado,
+    "aberto"
+  );
+  assert.equal(
+    core.statusRecebimentoCotacao(aberta, Date.parse("2026-09-12T10:00:00.000Z")).estado,
+    "expirado"
+  );
+  assert.equal(
+    core.statusRecebimentoCotacao(
+      { ...aberta, recebimentoFechadoEm: { seconds: 1_757_585_000, nanoseconds: 0 } },
+      Date.parse("2026-09-11T11:00:00.000Z")
+    ).estado,
+    "fechado"
+  );
+  assert.deepEqual(aberta.ofertas, { "Maria Silva": { precos: { Arroz: 10 } } });
+});
+
 test("mantém compatibilidade com ofertas antigas por nome", () => {
   const produtos = [{ id: 0, nome: "Arroz 5kg", emb: "Fardo c/ 6" }];
   const ofertas = {
@@ -146,6 +189,7 @@ test("cria rascunho sem apagar o texto ainda incompleto", () => {
     tel: "",
     prazo: "",
     tipo: "",
+    prazoRecebimentoHoras: 24,
     produtos: [
       { id: "P-1", nome: "Arroz ", emb: "Fardo c/ 6" },
       { id: 2, nome: "", emb: "Caixa" }

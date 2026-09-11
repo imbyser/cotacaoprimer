@@ -281,6 +281,20 @@
       </section>
     </div>
 
+    <div class="lista-excluir-modal" id="recebimentoModal" hidden role="dialog" aria-modal="true" aria-labelledby="recebimentoModalTitulo" aria-describedby="recebimentoModalDescricao">
+      <section class="lista-excluir-painel">
+        <span class="dashboard-kicker">Prazo da cotação</span>
+        <h2 id="recebimentoModalTitulo">Fechar recebimento?</h2>
+        <p class="lista-excluir-nome" id="recebimentoModalResumo"></p>
+        <p id="recebimentoModalDescricao">Os fornecedores não poderão mais enviar nem atualizar preços por este link.</p>
+        <p class="lista-excluir-erro" id="recebimentoModalErro" role="alert" hidden></p>
+        <div class="lista-excluir-botoes">
+          <button class="lista-excluir-cancelar" type="button" onclick="fecharModalRecebimento()">Cancelar</button>
+          <button class="recebimento-confirmar" id="recebimentoModalConfirmar" type="button" onclick="confirmarAlteracaoRecebimento()">Sim, fechar agora</button>
+        </div>
+      </section>
+    </div>
+
     <section class="app-view workspace-view" id="workspaceView" hidden aria-labelledby="tituloHeader">
       <header class="workspace-header">
         <button class="workspace-voltar" type="button" onclick="abrirListas()">← Minhas listas</button>
@@ -365,6 +379,21 @@
             </select>
           </div>
           <p class="dados-pedido-erro" id="dadosPedidoErro" role="alert" hidden></p>
+        </div>
+
+        <div class="recebimento-controle" id="recebimentoControle" data-estado="nao_iniciado">
+          <label class="recebimento-prazo" for="prazoRecebimentoHoras">
+            <span>Receber preços por</span>
+            <span class="recebimento-prazo-campo">
+              <input type="number" id="prazoRecebimentoHoras" min="1" max="720" step="1" value="24" inputmode="numeric" onchange="prazoRecebimentoAlterado(this)" aria-describedby="recebimentoStatusTexto">
+              <span>horas</span>
+            </span>
+          </label>
+          <div class="recebimento-status">
+            <strong id="recebimentoStatusTitulo">Prazo de 24 horas</strong>
+            <span id="recebimentoStatusTexto">Começa quando você enviar ou compartilhar o link.</span>
+          </div>
+          <button class="recebimento-acao" id="btnAlterarRecebimento" type="button" onclick="solicitarAlteracaoRecebimento()" hidden>Fechar recebimento</button>
         </div>
 
         <div class="resumo-total" id="boxTotal" style="display: none;">
@@ -467,6 +496,9 @@
     let cotacoesExcluidas = [];
     let listaPendenteExclusaoId = null;
     let elementoAntesDoModalExclusao = null;
+    let acaoRecebimentoPendente = null;
+    let elementoAntesDoModalRecebimento = null;
+    let timerAtualizacaoRecebimento = null;
     let timerLimpezaLixeira = null;
     let restauracaoEmAndamento = false;
     let versaoCarregamentoListas = 0;
@@ -580,17 +612,27 @@
       window.inicializarRodapeDadosPedido?.();
 
       const modalExclusao = document.getElementById('listaExcluirModal');
+      const modalRecebimento = document.getElementById('recebimentoModal');
       modalExclusao.addEventListener('click', (event) => {
         if (event.target === modalExclusao) window.fecharConfirmacaoExclusao();
       });
+      modalRecebimento.addEventListener('click', (event) => {
+        if (event.target === modalRecebimento) window.fecharModalRecebimento();
+      });
       document.addEventListener('keydown', (event) => {
-        if (modalExclusao.hidden) return;
+        const modalAtivo = !modalExclusao.hidden
+          ? modalExclusao
+          : !modalRecebimento.hidden
+            ? modalRecebimento
+            : null;
+        if (!modalAtivo) return;
         if (event.key === 'Escape') {
-          window.fecharConfirmacaoExclusao();
+          if (modalAtivo === modalExclusao) window.fecharConfirmacaoExclusao();
+          else window.fecharModalRecebimento();
           return;
         }
         if (event.key === 'Tab') {
-          const botoes = Array.from(modalExclusao.querySelectorAll('button:not(:disabled)'));
+          const botoes = Array.from(modalAtivo.querySelectorAll('button:not(:disabled)'));
           const primeiro = botoes[0];
           const ultimo = botoes[botoes.length - 1];
           if (event.shiftKey && document.activeElement === primeiro) {
@@ -721,6 +763,7 @@
           tel: document.getElementById('telCliente').value,
           prazo: document.getElementById('prazoPagamento').value,
           tipo: document.getElementById('tipoCotacao').value,
+          prazoRecebimentoHoras: document.getElementById('prazoRecebimentoHoras').value,
           produtos: coletarProdutosDaTela(true),
           salvoEm: Date.now()
         });
@@ -781,7 +824,11 @@
       document.getElementById('telCliente').value = rascunho.tel || '';
       definirOpcaoSeExistir('tipoCotacao', rascunho.tipo);
       definirOpcaoSeExistir('prazoPagamento', rascunho.prazo);
+      document.getElementById('prazoRecebimentoHoras').value = CotacaoCore.normalizarPrazoRecebimentoHoras(
+        rascunho.prazoRecebimentoHoras
+      );
       window.atualizarResumoDadosPedido?.();
+      window.atualizarControleRecebimento?.();
 
       const lista = document.getElementById('listaProdutos');
       lista.replaceChildren();
@@ -1167,6 +1214,8 @@
       document.getElementById('listaProdutos').replaceChildren();
       document.getElementById('selectCotacoesUsuario').value = '';
       document.getElementById('statusSalvamento').innerText = '';
+      document.getElementById('prazoRecebimentoHoras').value = CotacaoCore.PRAZO_RECEBIMENTO_PADRAO_HORAS;
+      window.atualizarControleRecebimento?.();
       const produtos = Array.isArray(produtosIniciais) ? produtosIniciais.slice(0, 80) : [];
       if (produtos.length) {
         produtos.forEach((produto) => {
@@ -1348,6 +1397,9 @@
       const tel = document.getElementById('telCliente').value.trim();
       const prazo = document.getElementById('prazoPagamento').value;
       const tipo = document.getElementById('tipoCotacao').value;
+      const prazoRecebimentoHoras = CotacaoCore.normalizarPrazoRecebimentoHoras(
+        document.getElementById('prazoRecebimentoHoras').value
+      );
       const produtos = coletarProdutosDaTela(false);
 
       if (produtos.length === 0 && !cotacaoIdAtual) {
@@ -1372,6 +1424,7 @@
           const dadosCotacao = {
             userId: usuarioTelefone,
             cliente, tel, prazo, pagto: "Combinar", tipo, produtos,
+            prazoRecebimentoHoras,
             atualizadoEm: new Date()
           };
           if (cotacaoNova) dadosCotacao.criadoEm = new Date();
@@ -1401,6 +1454,7 @@
             ...cotacoesDoUsuario.filter((item) => item.id !== cotacaoIdAtual)
           ];
           atualizarPainelDeListas();
+          window.atualizarControleRecebimento?.(cotacaoAtualizada);
 
           if (versaoAlteracoes === versaoCapturada) {
             haAlteracoesPendentes = false;
@@ -1442,6 +1496,292 @@
       return sucesso;
     };
 
+    function obterCotacaoAtualNaMemoria() {
+      if (window.cotacaoDadosGlobais && !modoFornecedor) return window.cotacaoDadosGlobais;
+      return cotacoesDoUsuario.find((item) => item.id === cotacaoIdAtual) || null;
+    }
+
+    function registrarCotacaoAtualizada(cotacaoId, dados) {
+      if (!dados || modoFornecedor) return;
+      if (cotacaoId === cotacaoIdAtual) {
+        window.cotacaoDadosGlobais = { ...(window.cotacaoDadosGlobais || {}), ...dados };
+      }
+      const anterior = cotacoesDoUsuario.find((item) => item.id === cotacaoId) || {};
+      cotacoesDoUsuario = cotacoesDoUsuario.map((item) =>
+        item.id === cotacaoId ? { ...anterior, ...dados, id: cotacaoId } : item
+      );
+      window.atualizarControleRecebimento?.(
+        cotacaoId === cotacaoIdAtual ? { ...anterior, ...dados, id: cotacaoId } : undefined
+      );
+    }
+
+    function formatarDataHoraRecebimento(milissegundos) {
+      if (!milissegundos) return '';
+      const data = new Date(milissegundos);
+      const hoje = new Date();
+      const mesmoDia = data.getFullYear() === hoje.getFullYear() &&
+        data.getMonth() === hoje.getMonth() &&
+        data.getDate() === hoje.getDate();
+      const horario = new Intl.DateTimeFormat('pt-BR', {
+        hour: '2-digit',
+        minute: '2-digit'
+      }).format(data);
+      if (mesmoDia) return `hoje às ${horario}`;
+      const dia = new Intl.DateTimeFormat('pt-BR', {
+        day: '2-digit',
+        month: '2-digit'
+      }).format(data);
+      return `${dia} às ${horario}`;
+    }
+
+    function formatarTempoRestante(milissegundos) {
+      const minutos = Math.max(0, Math.ceil((milissegundos - Date.now()) / 60000));
+      if (minutos < 60) return `${minutos} ${minutos === 1 ? 'minuto' : 'minutos'}`;
+      const horas = Math.floor(minutos / 60);
+      const minutosRestantes = minutos % 60;
+      if (horas < 24) return minutosRestantes ? `${horas}h ${minutosRestantes}min` : `${horas}h`;
+      const dias = Math.floor(horas / 24);
+      const horasRestantes = horas % 24;
+      return horasRestantes ? `${dias}d ${horasRestantes}h` : `${dias} ${dias === 1 ? 'dia' : 'dias'}`;
+    }
+
+    window.atualizarControleRecebimento = function(dadosInformados) {
+      clearTimeout(timerAtualizacaoRecebimento);
+      timerAtualizacaoRecebimento = null;
+
+      const controle = document.getElementById('recebimentoControle');
+      const campoPrazo = document.getElementById('prazoRecebimentoHoras');
+      const titulo = document.getElementById('recebimentoStatusTitulo');
+      const texto = document.getElementById('recebimentoStatusTexto');
+      const botao = document.getElementById('btnAlterarRecebimento');
+      if (!controle || !campoPrazo || !titulo || !texto || !botao) return;
+
+      controle.hidden = modoFornecedor || (etapaAtual !== 1 && etapaAtual !== 3);
+      if (controle.hidden) return;
+
+      const dados = dadosInformados || obterCotacaoAtualNaMemoria() || {};
+      const status = CotacaoCore.statusRecebimentoCotacao(dados);
+      const prazoHoras = CotacaoCore.normalizarPrazoRecebimentoHoras(
+        dados.prazoRecebimentoHoras ?? campoPrazo.value
+      );
+      if (document.activeElement !== campoPrazo) campoPrazo.value = prazoHoras;
+      controle.dataset.estado = status.estado;
+
+      campoPrazo.disabled = status.estado === 'aberto';
+      botao.hidden = !cotacaoIdAtual;
+      botao.dataset.acao = status.aceitaPrecos && status.estado !== 'expirado' ? 'fechar' : 'reabrir';
+
+      if (status.estado === 'aberto') {
+        titulo.textContent = 'Recebendo preços';
+        texto.textContent = status.expiraEmMs
+          ? `Fecha ${formatarDataHoraRecebimento(status.expiraEmMs)}. Faltam ${formatarTempoRestante(status.expiraEmMs)}.`
+          : 'Este link antigo continua aberto até você fechar.';
+        botao.textContent = 'Fechar recebimento';
+        if (status.expiraEmMs) {
+          const espera = Math.min(60000, Math.max(1000, status.expiraEmMs - Date.now() + 100));
+          timerAtualizacaoRecebimento = setTimeout(() => window.atualizarControleRecebimento(), espera);
+        }
+        return;
+      }
+
+      if (status.estado === 'fechado') {
+        titulo.textContent = 'Recebimento fechado';
+        texto.textContent = 'As respostas recebidas continuam salvas.';
+        botao.textContent = `Reabrir por ${prazoHoras}h`;
+        return;
+      }
+
+      if (status.estado === 'expirado') {
+        titulo.textContent = 'Prazo encerrado';
+        texto.textContent = 'O link parou de aceitar novos preços.';
+        botao.textContent = `Reabrir por ${prazoHoras}h`;
+        return;
+      }
+
+      titulo.textContent = `Prazo de ${prazoHoras} ${prazoHoras === 1 ? 'hora' : 'horas'}`;
+      texto.textContent = 'Começa quando você enviar ou compartilhar o link.';
+      botao.textContent = 'Fechar recebimento';
+    };
+
+    window.prazoRecebimentoAlterado = function(campo) {
+      const prazoHoras = CotacaoCore.normalizarPrazoRecebimentoHoras(campo?.value);
+      if (campo) campo.value = prazoHoras;
+      const dados = { ...(obterCotacaoAtualNaMemoria() || {}), prazoRecebimentoHoras: prazoHoras };
+      window.atualizarControleRecebimento(dados);
+      window.agendarSalvarAutomatico();
+    };
+
+    async function finalizarHorarioDoRecebimento(docRef, cotacaoId) {
+      let docSnap = await getDoc(docRef);
+      if (!docSnap.exists()) throw new Error('COTACAO_NAO_ENCONTRADA');
+      let dados = docSnap.data();
+      const inicioMs = CotacaoCore.timestampParaMilissegundos(dados.recebimentoIniciadoEm);
+      if (!inicioMs) throw new Error('INICIO_NAO_CONFIRMADO');
+
+      const prazoHoras = CotacaoCore.normalizarPrazoRecebimentoHoras(dados.prazoRecebimentoHoras);
+      const expiraEmMs = inicioMs + prazoHoras * 60 * 60 * 1000;
+      const expiraAtualMs = CotacaoCore.timestampParaMilissegundos(dados.recebimentoExpiraEm);
+      if (expiraAtualMs !== expiraEmMs) {
+        await runTransaction(db, async (transaction) => {
+          const atual = await transaction.get(docRef);
+          if (!atual.exists()) throw new Error('COTACAO_NAO_ENCONTRADA');
+          const dadosAtuais = atual.data();
+          if (String(dadosAtuais.userId || '') !== String(usuarioTelefone || '')) {
+            throw new Error('COTACAO_DE_OUTRO_USUARIO');
+          }
+          if (CotacaoCore.timestampParaMilissegundos(dadosAtuais.recebimentoIniciadoEm) !== inicioMs) return;
+          if (CotacaoCore.timestampParaMilissegundos(dadosAtuais.recebimentoFechadoEm)) return;
+          transaction.update(docRef, { recebimentoExpiraEm: new Date(expiraEmMs) });
+        });
+        docSnap = await getDoc(docRef);
+        dados = docSnap.data();
+      }
+
+      registrarCotacaoAtualizada(cotacaoId, dados);
+      return dados;
+    }
+
+    async function ativarRecebimentoCotacao({ reiniciar = false } = {}) {
+      if (!cotacaoIdAtual || !usuarioTelefone) throw new Error('COTACAO_NAO_ENCONTRADA');
+      const cotacaoId = cotacaoIdAtual;
+      const docRef = doc(db, 'cotacoes', cotacaoId);
+      const prazoHoras = CotacaoCore.normalizarPrazoRecebimentoHoras(
+        document.getElementById('prazoRecebimentoHoras').value
+      );
+
+      const precisaFinalizar = await runTransaction(db, async (transaction) => {
+        const docSnap = await transaction.get(docRef);
+        if (!docSnap.exists()) throw new Error('COTACAO_NAO_ENCONTRADA');
+        const dados = docSnap.data();
+        if (String(dados.userId || '') !== String(usuarioTelefone || '')) {
+          throw new Error('COTACAO_DE_OUTRO_USUARIO');
+        }
+        if (CotacaoDashboardUI.cotacaoExcluida(dados)) throw new Error('COTACAO_INDISPONIVEL');
+
+        const status = CotacaoCore.statusRecebimentoCotacao(dados);
+        if (!reiniciar && (status.estado === 'fechado' || status.estado === 'expirado')) {
+          throw new Error('RECEBIMENTO_ENCERRADO');
+        }
+        if (!reiniciar && status.iniciadoEmMs) {
+          return !CotacaoCore.timestampParaMilissegundos(dados.recebimentoExpiraEm);
+        }
+
+        transaction.update(docRef, {
+          prazoRecebimentoHoras: prazoHoras,
+          recebimentoIniciadoEm: serverTimestamp(),
+          recebimentoExpiraEm: null,
+          recebimentoFechadoEm: null
+        });
+        return true;
+      });
+
+      if (!precisaFinalizar) {
+        const docSnap = await getDoc(docRef);
+        const dados = docSnap.data();
+        registrarCotacaoAtualizada(cotacaoId, dados);
+        return dados;
+      }
+      return finalizarHorarioDoRecebimento(docRef, cotacaoId);
+    }
+
+    async function fecharRecebimentoCotacao() {
+      if (!cotacaoIdAtual || !usuarioTelefone) throw new Error('COTACAO_NAO_ENCONTRADA');
+      const cotacaoId = cotacaoIdAtual;
+      const docRef = doc(db, 'cotacoes', cotacaoId);
+      await runTransaction(db, async (transaction) => {
+        const docSnap = await transaction.get(docRef);
+        if (!docSnap.exists()) throw new Error('COTACAO_NAO_ENCONTRADA');
+        const dados = docSnap.data();
+        if (String(dados.userId || '') !== String(usuarioTelefone || '')) {
+          throw new Error('COTACAO_DE_OUTRO_USUARIO');
+        }
+        if (CotacaoDashboardUI.cotacaoExcluida(dados)) throw new Error('COTACAO_INDISPONIVEL');
+        if (CotacaoCore.timestampParaMilissegundos(dados.recebimentoFechadoEm)) return;
+        transaction.update(docRef, { recebimentoFechadoEm: serverTimestamp() });
+      });
+      const docSnap = await getDoc(docRef);
+      const dados = docSnap.data();
+      registrarCotacaoAtualizada(cotacaoId, dados);
+      return dados;
+    }
+
+    window.solicitarAlteracaoRecebimento = function() {
+      if (!cotacaoIdAtual || modoFornecedor) return;
+      const status = CotacaoCore.statusRecebimentoCotacao(obterCotacaoAtualNaMemoria() || {});
+      const prazoHoras = CotacaoCore.normalizarPrazoRecebimentoHoras(
+        document.getElementById('prazoRecebimentoHoras').value
+      );
+      acaoRecebimentoPendente = status.estado === 'fechado' || status.estado === 'expirado'
+        ? 'reabrir'
+        : 'fechar';
+
+      const reabrir = acaoRecebimentoPendente === 'reabrir';
+      document.getElementById('recebimentoModalTitulo').textContent = reabrir
+        ? 'Reabrir recebimento?'
+        : 'Fechar recebimento?';
+      document.getElementById('recebimentoModalResumo').textContent = reabrir
+        ? `O link ficará aberto por ${prazoHoras} ${prazoHoras === 1 ? 'hora' : 'horas'}.`
+        : 'As respostas que já chegaram serão mantidas.';
+      document.getElementById('recebimentoModalDescricao').textContent = reabrir
+        ? 'O novo prazo começa assim que você confirmar.'
+        : 'Os fornecedores não poderão mais enviar nem atualizar preços por este link.';
+      const confirmar = document.getElementById('recebimentoModalConfirmar');
+      confirmar.dataset.acao = acaoRecebimentoPendente;
+      confirmar.textContent = reabrir ? 'Sim, reabrir agora' : 'Sim, fechar agora';
+      const erro = document.getElementById('recebimentoModalErro');
+      erro.hidden = true;
+      erro.textContent = '';
+
+      elementoAntesDoModalRecebimento = document.activeElement;
+      document.getElementById('recebimentoModal').hidden = false;
+      document.body.classList.add('modal-exclusao-aberto');
+      confirmar.focus();
+    };
+
+    window.fecharModalRecebimento = function(forcar = false) {
+      const confirmar = document.getElementById('recebimentoModalConfirmar');
+      if (confirmar.disabled && !forcar) return;
+      document.getElementById('recebimentoModal').hidden = true;
+      document.body.classList.remove('modal-exclusao-aberto');
+      acaoRecebimentoPendente = null;
+      if (elementoAntesDoModalRecebimento?.isConnected) elementoAntesDoModalRecebimento.focus();
+      elementoAntesDoModalRecebimento = null;
+    };
+
+    window.confirmarAlteracaoRecebimento = async function() {
+      if (!acaoRecebimentoPendente) return;
+      const confirmar = document.getElementById('recebimentoModalConfirmar');
+      const erro = document.getElementById('recebimentoModalErro');
+      const acao = acaoRecebimentoPendente;
+      confirmar.disabled = true;
+      confirmar.setAttribute('aria-busy', 'true');
+      confirmar.textContent = acao === 'reabrir' ? 'Reabrindo...' : 'Fechando...';
+      erro.hidden = true;
+
+      try {
+        if (acao === 'reabrir') await ativarRecebimentoCotacao({ reiniciar: true });
+        else await fecharRecebimentoCotacao();
+        window.fecharModalRecebimento(true);
+      } catch (error) {
+        console.error('Não foi possível alterar o recebimento da cotação:', error);
+        erro.textContent = 'Não foi possível concluir agora. Confira sua internet e tente novamente.';
+        erro.hidden = false;
+      } finally {
+        confirmar.disabled = false;
+        confirmar.removeAttribute('aria-busy');
+        confirmar.textContent = acao === 'reabrir' ? 'Sim, reabrir agora' : 'Sim, fechar agora';
+      }
+    };
+
+    function validarRecebimentoParaCompartilhar() {
+      const status = CotacaoCore.statusRecebimentoCotacao(obterCotacaoAtualNaMemoria() || {});
+      if (status.estado !== 'fechado' && status.estado !== 'expirado') return true;
+      window.atualizarControleRecebimento();
+      alert('O recebimento desta cotação está encerrado. Toque em “Reabrir” antes de enviar o link novamente.');
+      document.getElementById('btnAlterarRecebimento')?.focus();
+      return false;
+    }
+
     function obterPacoteEnvioCotacao(dadosLoja) {
       const linkVendedor = CotacaoCore.criarLinkVendedor(window.location.href, cotacaoIdAtual);
       if (!linkVendedor) return null;
@@ -1467,7 +1807,7 @@
 
     window.salvarCotacaoEGerarLink = async function() {
       const dadosLoja = window.validarDadosLojaParaEnvio?.();
-      if (!dadosLoja || !validarListaParaCompartilhar()) return;
+      if (!dadosLoja || !validarListaParaCompartilhar() || !validarRecebimentoParaCompartilhar()) return;
 
       const botao = document.getElementById('btnAcao');
       const textoOriginal = botao.textContent;
@@ -1480,6 +1820,7 @@
 
       try {
         const cotacaoSalva = await window.salvarEstadoAutomatico();
+        if (cotacaoSalva) await ativarRecebimentoCotacao();
         const pacote = cotacaoSalva && cotacaoIdAtual
           ? obterPacoteEnvioCotacao(dadosLoja)
           : null;
@@ -1495,6 +1836,13 @@
         } else {
           window.location.assign(pacote.whatsappUrl);
         }
+      } catch (error) {
+        janelaWhatsapp?.close();
+        console.error('Não foi possível preparar o link da cotação:', error);
+        const mensagem = error?.message === 'RECEBIMENTO_ENCERRADO'
+          ? 'O recebimento está encerrado. Reabra a cotação antes de enviar o link.'
+          : 'Não foi possível salvar e gerar o link. Confira sua internet e tente novamente.';
+        alert(mensagem);
       } finally {
         botao.disabled = false;
         botao.textContent = textoOriginal;
@@ -1503,7 +1851,7 @@
 
     window.compartilharCotacao = function() {
       const dadosLoja = window.validarDadosLojaParaEnvio?.();
-      if (!dadosLoja || !validarListaParaCompartilhar()) return;
+      if (!dadosLoja || !validarListaParaCompartilhar() || !validarRecebimentoParaCompartilhar()) return;
 
       const botao = document.getElementById('btnCompartilhar');
       const textoBotao = botao.querySelector('span');
@@ -1519,6 +1867,10 @@
         alert("Não foi possível gerar o link. Tente novamente.");
         return;
       }
+      const ativacao = Promise.resolve(salvamento).then((cotacaoSalva) => {
+        if (!cotacaoSalva) throw new Error('SALVAMENTO_FALHOU');
+        return ativarRecebimentoCotacao();
+      });
 
       let compartilhamento;
       try {
@@ -1536,9 +1888,8 @@
         compartilhamento = Promise.reject(error);
       }
 
-      Promise.all([Promise.resolve(salvamento), Promise.resolve(compartilhamento)])
-        .then(([cotacaoSalva]) => {
-          if (!cotacaoSalva) throw new Error('SALVAMENTO_FALHOU');
+      Promise.all([ativacao, Promise.resolve(compartilhamento)])
+        .then(() => {
           concluirEnvioDaCotacao();
         })
         .catch((error) => {
@@ -1583,6 +1934,15 @@
         );
         return;
       }
+      const statusRecebimento = CotacaoCore.statusRecebimentoCotacao(data);
+      if (modoFornecedor && !statusRecebimento.aceitaPrecos) {
+        exibirFalhaAoCarregarCotacao(
+          statusRecebimento.estado === 'expirado'
+            ? 'O prazo desta cotação terminou. Peça um novo link para a loja.'
+            : 'Esta cotação foi encerrada pela loja. Peça um novo link para continuar.'
+        );
+        return;
+      }
       const produtos = Array.isArray(data.produtos) ? data.produtos : [];
       const assinaturaAtual = assinaturaDosProdutos(produtos);
       const preservarEdicaoLocal = !modoFornecedor &&
@@ -1604,8 +1964,14 @@
         document.getElementById('telCliente').value = modoFornecedor ? '' : (data.tel || '');
         if (!modoFornecedor && data.tipo) document.getElementById('tipoCotacao').value = data.tipo;
         if (!modoFornecedor && data.prazo) document.getElementById('prazoPagamento').value = data.prazo;
+        if (!modoFornecedor) {
+          document.getElementById('prazoRecebimentoHoras').value = CotacaoCore.normalizarPrazoRecebimentoHoras(
+            data.prazoRecebimentoHoras
+          );
+        }
         window.atualizarResumoDadosPedido?.();
       }
+      if (!modoFornecedor) window.atualizarControleRecebimento?.(data);
 
       if (modoFornecedor) {
         document.getElementById('fornecedorClienteNome').textContent = data.cliente || 'uma loja';
@@ -1670,7 +2036,10 @@
         const botao = document.getElementById('btnAcao');
         botao.disabled = false;
         botao.textContent = 'Enviar meus preços';
-        definirStatusFornecedor('Preencha os valores e toque em “Enviar meus preços”.');
+        const avisoPrazo = statusRecebimento.expiraEmMs
+          ? ` Envie até ${formatarDataHoraRecebimento(statusRecebimento.expiraEmMs)}.`
+          : '';
+        definirStatusFornecedor(`Preencha os valores e toque em “Enviar meus preços”.${avisoPrazo}`);
       }
     }
 
@@ -1743,6 +2112,7 @@
       botao.setAttribute('aria-busy', 'true');
       botao.textContent = 'Enviando preços...';
       definirStatusFornecedor('Enviando. Aguarde um momento.');
+      let recebimentoEncerradoNoEnvio = false;
 
       try {
         const docRef = doc(db, 'cotacoes', cotacaoId);
@@ -1751,11 +2121,18 @@
           const docSnap = await transaction.get(docRef);
           if (!docSnap.exists()) throw new Error('COTACAO_NAO_ENCONTRADA');
 
-          if (CotacaoDashboardUI.cotacaoExcluida(docSnap.data())) {
+          const dadosCotacao = docSnap.data();
+          if (CotacaoDashboardUI.cotacaoExcluida(dadosCotacao)) {
             throw new Error('COTACAO_INDISPONIVEL');
           }
+          const statusRecebimento = CotacaoCore.statusRecebimentoCotacao(dadosCotacao);
+          if (!statusRecebimento.aceitaPrecos) {
+            throw new Error(statusRecebimento.estado === 'expirado'
+              ? 'PRAZO_ENCERRADO'
+              : 'COTACAO_FECHADA');
+          }
 
-          const ofertasAtuais = { ...(docSnap.data().ofertas || {}) };
+          const ofertasAtuais = { ...(dadosCotacao.ofertas || {}) };
           ofertasAtuais[nomeIdentificacao] = {
             vendedor,
             empresa,
@@ -1775,13 +2152,22 @@
           ? 'Cotação não encontrada. Peça um novo link para a loja.'
           : error.message === 'COTACAO_INDISPONIVEL'
             ? 'Esta cotação não está mais disponível. Peça um novo link para a loja.'
+          : error.message === 'PRAZO_ENCERRADO'
+            ? 'O prazo desta cotação terminou. Peça um novo link para a loja.'
+          : error.message === 'COTACAO_FECHADA'
+            ? 'Esta cotação foi encerrada pela loja. Peça um novo link para continuar.'
           : 'Não foi possível enviar. Confira sua internet e tente novamente.';
-        definirStatusFornecedor(mensagem, 'erro');
+        recebimentoEncerradoNoEnvio = ['COTACAO_INDISPONIVEL', 'PRAZO_ENCERRADO', 'COTACAO_FECHADA']
+          .includes(error.message);
+        if (recebimentoEncerradoNoEnvio) exibirFalhaAoCarregarCotacao(mensagem);
+        else definirStatusFornecedor(mensagem, 'erro');
       } finally {
         ofertaEmEnvio = false;
-        botao.disabled = false;
+        botao.disabled = recebimentoEncerradoNoEnvio;
         botao.removeAttribute('aria-busy');
-        botao.textContent = modoFornecedor ? 'Atualizar meus preços' : 'Salvar meus preços';
+        if (!recebimentoEncerradoNoEnvio) {
+          botao.textContent = modoFornecedor ? 'Atualizar meus preços' : 'Salvar meus preços';
+        }
       }
     };
 
@@ -1968,6 +2354,7 @@
       
       // AJUSTADO: EXIBIR SEÇÃO DE PAGAMENTO E PRAZO NAS ETAPAS 1 E 3
       document.getElementById('secaoPagamento').style.display = (isE1 || isE3) ? 'flex' : 'none';
+      window.atualizarControleRecebimento?.();
       
       document.getElementById('boxTotal').style.display = isE3 ? 'flex' : 'none';
       document.getElementById('painelEnvioDividido').style.display = isE3 ? 'block' : 'none';

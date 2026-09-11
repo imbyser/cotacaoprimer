@@ -4,6 +4,9 @@
   const SEM_OFERTA = "Sem oferta";
   const VERSAO_RASCUNHO = 1;
   const QUANTIDADE_MAXIMA = 9999;
+  const PRAZO_RECEBIMENTO_PADRAO_HORAS = 24;
+  const PRAZO_RECEBIMENTO_MAXIMO_HORAS = 720;
+  const MILISSEGUNDOS_POR_HORA = 60 * 60 * 1000;
 
   function normalizarEspacos(valor) {
     return String(valor || "").trim().replace(/\s+/g, " ");
@@ -20,6 +23,56 @@
     const quantidade = Number.parseInt(texto.match(/\d+/)?.[0] || "", 10);
     if (!Number.isFinite(quantidade)) return 1;
     return Math.min(QUANTIDADE_MAXIMA, Math.max(1, quantidade));
+  }
+
+  function normalizarPrazoRecebimentoHoras(valor) {
+    const horas = Number.parseInt(String(valor ?? "").trim(), 10);
+    if (!Number.isFinite(horas)) return PRAZO_RECEBIMENTO_PADRAO_HORAS;
+    return Math.min(PRAZO_RECEBIMENTO_MAXIMO_HORAS, Math.max(1, horas));
+  }
+
+  function timestampParaMilissegundos(valor) {
+    if (!valor) return 0;
+    if (valor instanceof Date) return Number.isFinite(valor.getTime()) ? valor.getTime() : 0;
+    if (typeof valor?.toMillis === "function") {
+      const resultado = Number(valor.toMillis());
+      return Number.isFinite(resultado) ? resultado : 0;
+    }
+
+    const segundos = Number(valor.seconds ?? valor._seconds);
+    if (Number.isFinite(segundos)) {
+      const nanos = Number(valor.nanoseconds ?? valor._nanoseconds ?? 0);
+      return segundos * 1000 + (Number.isFinite(nanos) ? Math.floor(nanos / 1e6) : 0);
+    }
+
+    if (typeof valor === "number") return Number.isFinite(valor) ? valor : 0;
+    const resultado = Date.parse(String(valor));
+    return Number.isFinite(resultado) ? resultado : 0;
+  }
+
+  function statusRecebimentoCotacao(cotacao = {}, agoraInformado = Date.now()) {
+    const agora = Number.isFinite(Number(agoraInformado)) ? Number(agoraInformado) : Date.now();
+    const prazoHoras = normalizarPrazoRecebimentoHoras(cotacao?.prazoRecebimentoHoras);
+    const fechadoEmMs = timestampParaMilissegundos(cotacao?.recebimentoFechadoEm);
+    const iniciadoEmMs = timestampParaMilissegundos(cotacao?.recebimentoIniciadoEm);
+    const expiraEmRegistradoMs = timestampParaMilissegundos(cotacao?.recebimentoExpiraEm);
+    const expiraEmMs = expiraEmRegistradoMs || (
+      iniciadoEmMs ? iniciadoEmMs + prazoHoras * MILISSEGUNDOS_POR_HORA : 0
+    );
+
+    if (fechadoEmMs) {
+      return { estado: "fechado", aceitaPrecos: false, prazoHoras, iniciadoEmMs, expiraEmMs, fechadoEmMs };
+    }
+    if (expiraEmMs && expiraEmMs <= agora) {
+      return { estado: "expirado", aceitaPrecos: false, prazoHoras, iniciadoEmMs, expiraEmMs, fechadoEmMs: 0 };
+    }
+    if (iniciadoEmMs || expiraEmMs) {
+      return { estado: "aberto", aceitaPrecos: true, prazoHoras, iniciadoEmMs, expiraEmMs, fechadoEmMs: 0 };
+    }
+
+    // Listas antigas não possuem os campos de prazo. Elas continuam aceitando
+    // respostas para não interromper links que clientes já enviaram.
+    return { estado: "nao_iniciado", aceitaPrecos: true, prazoHoras, iniciadoEmMs: 0, expiraEmMs: 0, fechadoEmMs: 0 };
   }
 
   function validarDadosLoja(nomeInformado, telefoneInformado) {
@@ -263,6 +316,7 @@
       tel: String(dados.tel ?? ""),
       prazo: String(dados.prazo ?? ""),
       tipo: String(dados.tipo ?? ""),
+      prazoRecebimentoHoras: normalizarPrazoRecebimentoHoras(dados.prazoRecebimentoHoras),
       produtos,
       salvoEm: Number.isFinite(salvoEmInformado) && salvoEmInformado > 0
         ? salvoEmInformado
@@ -290,8 +344,13 @@
     SEM_OFERTA,
     VERSAO_RASCUNHO,
     QUANTIDADE_MAXIMA,
+    PRAZO_RECEBIMENTO_PADRAO_HORAS,
+    PRAZO_RECEBIMENTO_MAXIMO_HORAS,
     normalizarEspacos,
     normalizarQuantidade,
+    normalizarPrazoRecebimentoHoras,
+    timestampParaMilissegundos,
+    statusRecebimentoCotacao,
     nomeCompletoValido,
     validarDadosLoja,
     criarLinkVendedor,
