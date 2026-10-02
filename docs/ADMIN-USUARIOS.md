@@ -41,6 +41,10 @@ Backup anterior: branch local `backup/antes-suspensao-admin-20261002` e arquivos
 
 Neste servidor, a credencial GitHub consultada está ligada a `hartmake12`, sem permissão de push em `imbyser/cotacaoprimer`; a credencial Vercel salva retorna `Not authorized`. Essas conexões precisam ser restauradas para publicar a correção no projeto existente.
 
+### Recuperação de acesso no mesmo dia
+
+A credencial GitHub de `imbyser` foi recuperada do servidor antigo autorizado e validada neste servidor, incluindo teste de push. Ela está em pasta privada fora do repositório e foi configurada somente no Git deste projeto. A sessão Vercel antiga não conseguiu ser renovada pelo cliente oficial; a publicação usa a integração existente do GitHub com a Vercel.
+
 ## Retorno
 
 - Código anterior: branch `backup/antes-admin-20260822` e tag `backup-antes-admin-20260822`.
