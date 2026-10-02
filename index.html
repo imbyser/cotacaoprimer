@@ -462,6 +462,7 @@
   </div>
 
   <script src="assets/quote-core.js"></script>
+  <script src="assets/account-access.js"></script>
   <script src="assets/dashboard.js"></script>
   <script src="assets/voice-list.js"></script>
   <script src="assets/order-panel.js"></script>
@@ -508,6 +509,46 @@
     const ATRASO_AUTOSAVE_MS = 700;
     const PREFIXO_RASCUNHO = 'rascunhoCotacao_';
     window.cotacaoDadosGlobais = null;
+
+    const monitorAcessoConta = CotacaoAccountAccess.criarMonitor({
+      assinar: (referencia, aoAtualizar, aoErro) => onSnapshot(referencia, aoAtualizar, aoErro),
+      aoBloquear: encerrarAcessoDaConta,
+      aoErro: (error) => console.error('Não foi possível conferir a situação da conta:', error.code || error.message)
+    });
+
+    function encerrarAcessoDaConta(motivo) {
+      if (modoFornecedor || !usuarioTelefone) return;
+      if (haAlteracoesPendentes) guardarRascunhoLocal();
+      monitorAcessoConta.parar();
+      pararListenerCotacao();
+      clearTimeout(timerSalvarAuto);
+      clearTimeout(timerLimpezaLixeira);
+      clearTimeout(timerAtualizacaoRecebimento);
+      timerSalvarAuto = null;
+      timerLimpezaLixeira = null;
+      timerAtualizacaoRecebimento = null;
+      usuarioTelefone = null;
+      cotacaoIdAtual = null;
+      cotacaoRenderizadaId = null;
+      window.cotacaoDadosGlobais = null;
+      cotacoesDoUsuario = [];
+      cotacoesExcluidas = [];
+      haAlteracoesPendentes = false;
+      versaoCarregamentoListas += 1;
+      localStorage.removeItem('usuario_whatsapp');
+      localStorage.removeItem('usuario_senha');
+      document.getElementById('authPassword').value = '';
+      document.getElementById('appContainer').style.display = 'none';
+      document.getElementById('authOverlay').style.display = 'flex';
+      const erro = document.getElementById('authErrorMsg');
+      erro.textContent = motivo === 'ACESSO_SUSPENSO'
+        ? 'Seu acesso foi suspenso. Fale com o responsável para liberar novamente.'
+        : motivo === 'SENHA_ALTERADA'
+          ? 'Sua senha foi alterada. Entre novamente com a nova senha.'
+          : 'Seu acesso foi alterado. Fale com o responsável e entre novamente.';
+      erro.style.display = 'block';
+      document.getElementById('authPhone').focus();
+    }
 
     window.mascaraTelefone = function(input) {
       let v = input.value.replace(/\D/g, "");
@@ -894,7 +935,14 @@
             document.getElementById('trialBanner').style.display = 'none';
             document.getElementById('painelCotacoes').style.display = 'none';
 
+            monitorAcessoConta.iniciar({
+              referencia: querySnapshot.docs[0].ref,
+              telefone: phoneNum,
+              senha
+            });
+
             await carregarListaCotacoesUsuario();
+            if (usuarioTelefone !== phoneNum) return;
             rascunhoPendenteLogin = obterRascunhoLocal(usuarioTelefone);
             document.getElementById('dashboardDraft').hidden = !rascunhoPendenteLogin;
             mostrarTela('dashboard');
@@ -934,6 +982,7 @@
 
       localStorage.removeItem('usuario_whatsapp');
       localStorage.removeItem('usuario_senha');
+      monitorAcessoConta.parar();
       location.reload();
     };
 

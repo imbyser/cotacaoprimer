@@ -221,6 +221,7 @@
     porId("accountMetaPaymentId").textContent = dadosBase.ultimoPagamentoId || "Sem registro";
     porId("newPasswordField").hidden = !criando;
     porId("accountPassword").required = criando;
+    porId("accountPassword").disabled = !criando;
     porId("accountDialogKicker").textContent = criandoDoHistorico ? "Histórico encontrado" : (criando ? "Cadastro" : "Dados do cliente");
     porId("accountDialogTitle").textContent = criandoDoHistorico ? "Criar acesso" : (criando ? "Nova conta" : "Editar conta");
     porId("accountSubmit").textContent = criandoDoHistorico ? "Criar acesso" : (criando ? "Criar conta" : "Salvar alterações");

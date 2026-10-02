@@ -27,7 +27,19 @@
 - Campos antigos desconhecidos são preservados porque as atualizações são parciais.
 - Nome ou plano ausentes em uma conta legada continuam ausentes até uma alteração explícita do administrador.
 - Bloquear uma conta exige confirmação no navegador e usa o mesmo estado `SUSPENSA` já entendido pelo login atual.
+- A edição desativa o campo escondido de senha inicial, evitando que o preenchimento automático do navegador impeça salvar a suspensão.
+- O app acompanha a situação da conta no Firebase durante a sessão. Ao receber suspensão, remoção da conta ou alteração das credenciais, fecha o painel e solicita nova entrada. Um rascunho pendente é preservado localmente para quando o acesso for liberado.
 - O próprio WhatsApp administrador e seu acesso ficam protegidos contra alteração acidental no painel; a troca exige atualização consciente de `ADMIN_WHATSAPP` na Vercel.
+
+## Correção de suspensão — 02/10/2026
+
+Reprodução no Chromium com contas e Firebase simulados: uma senha preenchida no campo escondido impedia o formulário de enviar a alteração. Após a correção, o formulário enviou `SUSPENSA`. A suspensão de uma sessão já aberta também foi validada, incluindo preservação do rascunho e ausência de novas gravações após o bloqueio.
+
+Os testes não alteraram usuários reais. Foram aprovados os oito arquivos de testes automatizados e a verificação de sintaxe dos scripts.
+
+Backup anterior: branch local `backup/antes-suspensao-admin-20261002` e arquivos privados em `/home/lcientes sites/backups/cotacao-prime/2026-10-02-before-admin-suspension/`. O backup de leitura do Firestore contém 101 documentos.
+
+Neste servidor, a credencial GitHub consultada está ligada a `hartmake12`, sem permissão de push em `imbyser/cotacaoprimer`; a credencial Vercel salva retorna `Not authorized`. Essas conexões precisam ser restauradas para publicar a correção no projeto existente.
 
 ## Retorno
 
